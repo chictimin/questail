@@ -3,8 +3,8 @@
 /**
  * QuestTail CLI
  *
- *   questail login                      Interactive setup
- *   questail import steam [<id>] [-o <dir>]
+ *   questail sniff                      Register API key & SteamID
+ *   questail gather steam [<id>] [-o <dir>]
  *   questail config set/get/delete <key> [value]
  *
  * Config stored in: ~/.config/questail/.env
@@ -132,7 +132,7 @@ async function resolveSteamId(input: string, apiKey: string): Promise<string> {
 
 // ─── Login ───────────────────────────────────────────────────
 
-async function cmdLogin(): Promise<void> {
+async function cmdSniff(): Promise<void> {
   console.log(_('login_title'));
   process.stdout.write('\n');
   console.log(_('login_api_key_needed'));
@@ -176,7 +176,7 @@ async function cmdLogin(): Promise<void> {
 
   console.error(_('login_done', CONFIG_FILE));
   const run = await ask(_('login_ask_import_now'));
-  if (!run.toLowerCase().startsWith('n')) await cmdImportSteam();
+  if (!run.toLowerCase().startsWith('n')) await cmdGatherSteam();
 }
 
 async function promptSteamId(): Promise<string> {
@@ -262,7 +262,7 @@ function parseOutputFlag(): string {
   return resolve('./games');
 }
 
-async function cmdImportSteam(): Promise<void> {
+async function cmdGatherSteam(): Promise<void> {
   const config = await getSteamConfig();
   const outputDir = parseOutputFlag();
 
@@ -302,12 +302,12 @@ function main(): void {
   const cmd = process.argv[2];
 
   switch (cmd) {
-    case 'login':
-      void cmdLogin().catch(e => { console.error(_('error', e.message)); process.exit(1); });
+    case 'sniff':
+      void cmdSniff().catch(e => { console.error(_('error', e.message)); process.exit(1); });
       break;
-    case 'import':
+    case 'gather':
       if (process.argv[3] === 'steam') {
-        void cmdImportSteam().catch(e => { console.error(_('error', e.message)); process.exit(1); });
+        void cmdGatherSteam().catch(e => { console.error(_('error', e.message)); process.exit(1); });
       } else {
         console.error(_('usage_import'));
         process.exit(1);

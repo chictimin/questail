@@ -1,40 +1,69 @@
-# QuestTail (퀘스테일)
+# QuestTail
 
-> 여러 플랫폼(Steam/PSN/Xbox)에 흩어진 게임 이력을 모아 Markdown으로 아카이빙하고, LLM으로 개인 취향 분석을 받는 personal-first 도구.
+> English · [한국어](./README.ko.md)
 
-**현재 단계: M1** — Steam 라이브러리를 Markdown 파일로 추출하는 CLI.
+> A personal-first tool that gathers game history scattered across platforms (Steam/PSN/Xbox) into Markdown archives and provides personal taste analysis via LLM.
 
-## 설치
+**Current phase: M1** — CLI that exports your Steam library to Markdown files.
+
+## Quick Start
 
 ```bash
 git clone https://github.com/chictimin/questail.git
 cd questail
 pnpm install
 pnpm build
+
+# Global install (optional)
+pnpm link --global
 ```
 
-## 사용법
+## Usage
 
 ```bash
-# 1. Steam Web API 키 발급 (https://steamcommunity.com/dev/apikey)
-export STEAM_API_KEY=ABCDEF1234567890
+# 1. Register API key & SteamID (first time only)
+questail sniff
 
-# 2. Steam 라이브러리 → Markdown 파일로 추출
-node packages/core/dist/cli.js import steam <SteamID64>
+# 2. Gather your Steam library
+questail gather steam
 
-# 출력 디렉토리 지정 (기본: ./games/)
-node packages/core/dist/cli.js import steam <SteamID64> --output ./my-vault/games
+# 3. Manage configuration
+questail config set language en
+questail config get steam-api-key
 ```
 
-### SteamID64 확인 방법
+### Detailed Walkthrough
 
-Steam 프로필 URL에서 확인:
-- `https://steamcommunity.com/profiles/76561197960287930` → `76561197960287930`
-- 커스텀 URL(`https://steamcommunity.com/id/myname`)인 경우 [SteamID Finder](https://steamidfinder.com/) 등으로 변환
+**`questail sniff`** — Interactive setup. Registers your Steam Web API key and SteamID in one go.
 
-## 출력 예시
+- SteamID accepts profile URLs (`https://steamcommunity.com/id/xxx`), vanity names, or numeric SteamID64 (auto-resolved via ResolveVanityURL API)
+- Saved to `~/.config/questail/.env` — skipped on subsequent runs
+- Prompts whether to proceed with `gather steam` right after setup
 
-`./games/` 디렉토리에 게임별 md 파일이 생성됩니다:
+**`questail gather steam [<id>] [-o <dir>]`** — Fetches your Steam library.
+
+- Omitting `<id>` uses the steam-id stored in config
+- `-o <dir>` output directory (default: `./games/`)
+
+**`questail config`** — Configuration management:
+
+| Command | Description |
+|---------|-------------|
+| `questail config set <key> <value>` | Save a key-value pair |
+| `questail config get <key>` | Retrieve a value (secrets masked) |
+| `questail config delete <key>` | Delete a value |
+
+### Configuration Keys
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| `steam-api-key` | Steam Web API key | `ABCDEF1234567890` |
+| `steam-id` | SteamID64 (numeric) | `76561197960287930` |
+| `language` | Output language (`ko` / `en`) | `en` |
+
+## Output Example
+
+Each game is written as a Markdown file in `./games/`:
 
 ```markdown
 ---
@@ -43,40 +72,40 @@ game_id: 1245620
 platform: steam
 source: auto
 playtime_minutes: 9840
-achievement_pct: 67
 last_played: 1712345678
 ---
 
-> Steam에서 자동 가져온 게임 데이터입니다.
+> Auto-imported from Steam.
 ```
 
-파일명: `{appId}-{title-slug}.md` (예: `1245620-elden-ring.md`)
+File naming: `{appId}-{title-slug}.md` (e.g. `1245620-elden-ring.md`)
 
-## 구조
+## Project Structure
 
 ```
 questail/
 ├── packages/
 │   └── core/                  # @questail/core
 │       ├── src/
-│       │   ├── connectors/    # 플랫폼 어댑터 (Steam 등)
-│       │   ├── normalize/     # 표준 스키마 변환
-│       │   ├── storage/       # Markdown 직렬화
-│       │   └── cli.ts         # CLI 진입점
+│       │   ├── connectors/    # Platform adapters (Steam)
+│       │   ├── normalize/     # Standard schema transformation
+│       │   ├── storage/       # Markdown serialization
+│       │   ├── i18n.ts        # Internationalization
+│       │   └── cli.ts         # CLI entry point
 │       └── package.json
 ├── pnpm-workspace.yaml
 └── package.json
 ```
 
-## 앞으로
+## Roadmap
 
-| 단계 | 목표 |
-|------|------|
-| **M1** ✅ | Steam 라이브러리 → Markdown CLI |
-| M2 | AI 취향 분석 리포트 CLI |
-| M3 | 별점 입력 + 웹 데모 UI |
-| M4+ | PSN/Xbox, 수기 추가, 분석 심화 |
+| Phase | Goal |
+|-------|------|
+| **M1** ✅ | Steam library → Markdown CLI |
+| M2 | AI taste analysis report CLI |
+| M3 | Rating input + Web demo UI |
+| M4+ | PSN/Xbox connectors, manual entries, advanced analytics |
 
-## 라이선스
+## License
 
 MIT

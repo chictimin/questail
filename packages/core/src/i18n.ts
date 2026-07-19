@@ -24,8 +24,8 @@ const STRINGS: Record<Locale, Record<string, string | ((...args: string[]) => st
     login_id_required: 'SteamID는 필수입니다.',
     login_resolving: 'SteamID 확인 중...',
     login_resolve_fail: (e: string) => `SteamID 변환 실패: ${e}`,
-    login_done: (path: string) => `✅ 로그인 완료. 저장 위치: ${path}`,
-    login_ask_import_now: '\n지금 Steam 라이브러리를 가져올까요? (Y/n): ',
+login_done: (path: string) => `✅ Sniff 완료. 저장 위치: ${path}`,
+  login_ask_import_now: '\n지금 Steam 라이브러리를 수집할까요? (gather) (Y/n): ',
     login_saved: (key: string) => `✅ ${key} 저장 완료. 다음부터는 생략됩니다.`,
     login_ask_save: 'config에 저장할까요? (Y/n): ',
 
@@ -38,11 +38,11 @@ const STRINGS: Record<Locale, Record<string, string | ((...args: string[]) => st
     config_delete_usage: '사용법: questail config delete <key>',
 
     // import
-    import_fetching: (id: string) => `SteamID ${id}의 게임 목록을 가져오는 중...`,
-    import_summary: (count: string, dir: string) => `총 ${count}개 게임 → ${dir}/`,
-    import_item: (title: string, hours: string, path: string) => `  ✓ ${title} (${hours}h) → ${path}`,
-    import_done: (count: string, dir: string) => `✅ 완료: ${count}개 게임을 ${dir}/ 에 저장했습니다.`,
-    import_steam_id_resolved: (input: string, id: string) => `✓ SteamID 변환: ${input} → ${id}`,
+    import_fetching: (id: string) => `Steam 라이브러리를 확인 중입니다... (SteamID: ${id})`,
+    import_summary: (count: string, dir: string) => `${count}개 게임 발견! 꼬리가 가리키는 방향 → ${dir}/`,
+    import_item: (title: string, hours: string, path: string) => `  ✓ ${title} (${hours}h)`,
+    import_done: (count: string, dir: string) => `✅ ${count}개 게임, 다 가져왔어요! 저장 위치: ${dir}/`,
+    import_steam_id_resolved: (input: string, id: string) => `✓ SteamID 확인: ${input} → ${id}`,
 
     // errors
     error_api_key_missing: [
@@ -56,15 +56,15 @@ const STRINGS: Record<Locale, Record<string, string | ((...args: string[]) => st
       'SteamID가 설정되지 않았습니다.',
       '',
       '  questail config set steam-id <SteamID64 또는 프로필 URL>',
-      '  또는: questail import steam <SteamID64>',
+      '  또는: questail gather steam <SteamID64>',
     ].join('\n'),
     error_steam_api: (msg: string) => `오류: ${msg}`,
     error: (msg: string) => `오류: ${msg}`,
 
     // general
     usage_header: '사용법:',
-    usage_import: '  questail import steam [<id>] [-o <dir>]',
-    usage_login: '  questail login                       # 대화형 설정',
+    usage_import: '  questail gather steam [<id>] [-o <dir>]',
+    usage_login: '  questail sniff                       # 대화형 설정',
     usage_config_set: '  questail config set <key> <value>',
     usage_config_get: '  questail config get <key>',
     usage_config_delete: '  questail config delete <key>',
@@ -87,8 +87,8 @@ const STRINGS: Record<Locale, Record<string, string | ((...args: string[]) => st
     login_id_required: 'SteamID is required.',
     login_resolving: 'Resolving SteamID...',
     login_resolve_fail: (e: string) => `SteamID resolve failed: ${e}`,
-    login_done: (path: string) => `✅ Login complete. Saved at: ${path}`,
-    login_ask_import_now: '\nImport your Steam library now? (Y/n): ',
+    login_done: (path: string) => `✅ Sniff complete. Saved at: ${path}`,
+    login_ask_import_now: '\nGather your Steam library now? (Y/n): ',
     login_saved: (key: string) => `✅ ${key} saved. Will be auto-loaded next time.`,
     login_ask_save: 'Save to config? (Y/n): ',
 
@@ -99,10 +99,10 @@ const STRINGS: Record<Locale, Record<string, string | ((...args: string[]) => st
     config_set_usage: 'Usage: questail config set <key> <value>',
     config_delete_usage: 'Usage: questail config delete <key>',
 
-    import_fetching: (id: string) => `Fetching game list for SteamID ${id}...`,
-    import_summary: (count: string, dir: string) => `${count} games → ${dir}/`,
-    import_item: (title: string, hours: string, path: string) => `  ✓ ${title} (${hours}h) → ${path}`,
-    import_done: (count: string, dir: string) => `✅ Done: ${count} games saved to ${dir}/`,
+    import_fetching: (id: string) => `Checking your Steam library... (SteamID: ${id})`,
+    import_summary: (count: string, dir: string) => `Found ${count} games! Tail pointing at → ${dir}/`,
+    import_item: (title: string, hours: string, path: string) => `  ✓ ${title} (${hours}h)`,
+    import_done: (count: string, dir: string) => `✅ ${count} games gathered! Saved at: ${dir}/`,
     import_steam_id_resolved: (input: string, id: string) => `✓ SteamID resolved: ${input} → ${id}`,
 
     error_api_key_missing: [
@@ -116,14 +116,14 @@ const STRINGS: Record<Locale, Record<string, string | ((...args: string[]) => st
       'SteamID is not configured.',
       '',
       '  questail config set steam-id <SteamID64 or profile URL>',
-      '  or: questail import steam <SteamID64>',
+      '  or: questail gather steam <SteamID64>',
     ].join('\n'),
     error_steam_api: (msg: string) => `Error: ${msg}`,
     error: (msg: string) => `Error: ${msg}`,
 
     usage_header: 'Usage:',
-    usage_import: '  questail import steam [<id>] [-o <dir>]',
-    usage_login: '  questail login                       # Interactive setup',
+    usage_import: '  questail gather steam [<id>] [-o <dir>]',
+    usage_login: '  questail sniff                       # Interactive setup',
     usage_config_set: '  questail config set <key> <value>',
     usage_config_get: '  questail config get <key>',
     usage_config_delete: '  questail config delete <key>',
