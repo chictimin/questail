@@ -5,11 +5,25 @@
  * 볼트 호환 frontmatter 사용, 객관/주관 분리(source) 유지.
  */
 
+import { writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { type NormalizedGame } from '../normalize/index.js';
 
 export interface GameNote {
   frontmatter: Record<string, unknown>;
   body: string;
+}
+
+/**
+ * 게임 제목을 파일명용 slug로 변환
+ * 예: "The Witcher 3: Wild Hunt" → "the-witcher-3-wild-hunt"
+ */
+export function toSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
 }
 
 /**
@@ -48,12 +62,38 @@ export function serializeGameNote(game: NormalizedGame): GameNote {
  * GameNote를 실제 md 문자열로 변환
  */
 export function formatNote(note: GameNote): string {
-  const fmLines = Object.entries(note.frontmatter).map(([key, value]) => {
-    if (Array.isArray(value)) {
-      return `${key}:\n${value.map(v => `  - ${v}`).join('\n')}`;
-    }
-    return `${key}: ${value}`;
-  });
+  const fmLines = Object.entries(note.frontmatter)
+    .map(([key, value]) => {
+      if (Array.isArray(value)) {
+        return `${key}:\n${value.map(v => `  - ${v}`).join('\n')}`;
+      }
+      return `${key}: ${value}`;
+    });
 
   return `---\n${fmLines.join('\n')}\n---\n\n${note.body}`;
+}
+
+/**
+ * 게임 노트를 디스크에 쓴다
+ * @param outputDir  출력 디렉토리 경로
+ * @param game       정규화된 게임 데이터
+ * @param note       직렬화된 노트
+ * @returns 생성된 파일 경로
+ */
+export async function writeGameNote(
+  outputDir: string,
+  game: NormalizedGame,
+  note?: GameNote,
+): Promise<string> {
+  const slug = toSlug(game.title);
+  const filename = `${game.id}-${slug}.md`;
+  const filepath = join(outputDir, filename);
+
+  const resolvedNote = note ?? serializeGameNote(game);
+  const content = formatNote(resolvedNote);
+
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(filepath, content, 'utf-8');
+
+  return filepath;
 }

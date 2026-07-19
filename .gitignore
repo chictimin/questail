@@ -5,3 +5,7 @@ dist/
 .env
 .env.local
 .DS_Store
+
+# CLI output (imported game data)
+games/
+output/
