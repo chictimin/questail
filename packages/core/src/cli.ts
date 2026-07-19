@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { fetchOwnedGames, type SteamConfig } from './connectors/steam.js';
+import { fetchOwnedGames, resolveToSteamId, type SteamConfig } from './connectors/steam.js';
 import { normalizeSteamGame } from './normalize/index.js';
 import { writeGameNote } from './storage/index.js';
 
@@ -103,16 +103,24 @@ function cmdConfigGet(key: string): void {
     console.error(`설정되지 않음: ${key}`);
     process.exit(1);
   }
-  // 키가 설정돼있으면 마스킹해서 출력
-  const masked = value.length > 8
-    ? value.slice(0, 4) + '*'.repeat(value.length - 8) + value.slice(-4)
-    : '*'.repeat(value.length);
-  console.log(`${key}=${masked}`);
+  console.log(`${key}=${maskValue(value)}`);
 }
 
 async function cmdConfigSet(key: string, value: string): Promise<void> {
-  await saveConfig(key, value);
+  // steam-id는 저장 시점에 URL → 숫자 SteamID64로 변환
+  const saveValue = (key === 'steam-id' && process.env.STEAM_API_KEY)
+    ? await resolveSteamId(value, process.env.STEAM_API_KEY)
+    : value;
+  await saveConfig(key, saveValue);
   console.error(`✅ ${key} 저장 완료 (${CONFIG_FILE})`);
+}
+
+/** SteamID를 숫자 17자리로 보장. URL이나 vanity name도 처리. */
+async function resolveSteamId(input: string, apiKey: string): Promise<string> {
+  if (/^\d{17}$/.test(input)) return input;  // 이미 숫자면 그대로
+  const resolved = await resolveToSteamId(input, apiKey);
+  console.error(`✓ SteamID 변환: ${input} → ${resolved}`);
+  return resolved;
 }
 
 async function cmdConfigDelete(key: string): Promise<void> {
@@ -155,9 +163,9 @@ async function cmdConfig(): Promise<void> {
 
 const STEAM_API_URL = 'https://steamcommunity.com/dev/apikey';
 const STEAMID_HELP =
-  '방법 1) Steam 클라이언트 → 프로필 → URL 숫자 (steamcommunity.com/profiles/7656119...)';
+  '방법 1) Steam 클라이언트 → 프로피 → 프로필 페이지 URL 복사';
 const STEAMID_HELP2 =
-  '방법 2) 커스텀 URL이면 https://steamidfinder.com 에서 변환';
+  '방법 2) 숫자만 알고 있으면 그대로 입력 가능 (17자리)';
 
 function ask(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -170,8 +178,10 @@ function ask(question: string): Promise<string> {
 }
 
 function maskValue(value: string): string {
-  if (value.length <= 8) return '*'.repeat(value.length);
-  return value.slice(0, 4) + '*'.repeat(value.length - 8) + value.slice(-4);
+  if (value.length <= 4) return value.slice(0, 1) + '*'.repeat(value.length - 1);
+  const keep = Math.min(4, Math.floor(value.length / 3));
+  const masked = Math.max(0, value.length - keep * 2);
+  return value.slice(0, keep) + '*'.repeat(masked) + value.slice(-keep);
 }
 
 // ─── Login ───────────────────────────────────────────────────
@@ -214,9 +224,16 @@ async function cmdLogin(): Promise<void> {
   }
 
   if (!steamId) {
-    const input = await ask('SteamID64 (또는 프로필 URL 숫자)를 입력하세요: ');
+    const apiKey = process.env.STEAM_API_KEY!;
+    const input = await ask('Steam 프로필 URL 또는 SteamID64를 입력하세요: ');
     if (!input) { console.error('SteamID는 필수입니다.'); process.exit(1); }
-    steamId = input;
+    console.error('SteamID 확인 중...');
+    try {
+      steamId = await resolveToSteamId(input, apiKey);
+    } catch (e: any) {
+      console.error(`SteamID 변환 실패: ${e.message}`);
+      process.exit(1);
+    }
     await saveConfig('steam-id', steamId);
   }
 
@@ -233,19 +250,28 @@ async function promptSteamId(): Promise<string> {
   console.log(STEAMID_HELP);
   console.log(STEAMID_HELP2);
 
-  const id = await ask('\nSteamID64 를 입력하세요: ');
-  if (!id) {
+  const input = await ask('\nSteam 프로필 URL 또는 SteamID64를 입력하세요: ');
+  if (!input) {
     console.error('SteamID는 필수입니다.');
+    process.exit(1);
+  }
+
+  console.error('SteamID 확인 중...');
+  let steamId: string;
+  try {
+    steamId = await resolveToSteamId(input, process.env.STEAM_API_KEY!);
+  } catch (e: any) {
+    console.error(`SteamID 변환 실패: ${e.message}`);
     process.exit(1);
   }
 
   const save = await ask('config에 저장할까요? (Y/n): ');
   if (!save.toLowerCase().startsWith('n')) {
-    await saveConfig('steam-id', id);
+    await saveConfig('steam-id', steamId);
     console.error('✅ steam-id 저장 완료. 다음부터는 생략됩니다.');
   }
 
-  return id;
+  return steamId;
 }
 
 // ─── Import commands ─────────────────────────────────────────
@@ -264,10 +290,10 @@ async function getSteamConfig(): Promise<Required<SteamConfig>> {
   // 인자로 SteamID가 주어졌으면 그것을, 없으면 config 값을 사용
   const argSteamId = process.argv[4];
   if (argSteamId && !argSteamId.startsWith('-')) {
-    return { apiKey, steamId: argSteamId };
+    return { apiKey, steamId: await resolveSteamId(argSteamId, apiKey) };
   }
   if (process.env.STEAM_ID) {
-    return { apiKey, steamId: process.env.STEAM_ID };
+    return { apiKey, steamId: await resolveSteamId(process.env.STEAM_ID, apiKey) };
   }
 
   // 둘 다 없으면 대화형 입력

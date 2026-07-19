@@ -29,26 +29,23 @@ export interface NormalizedGame {
   genres?: string[];
 }
 
+import type { SteamApiGame } from '../connectors/steam.js';
+
 /**
  * Steam API 응답을 표준 스키마로 변환
  */
-export function normalizeSteamGame(game: {
-  appId: number;
-  name: string;
-  playtimeForever: number;
-  rtimeLastPlayed: number;
-}, achievements?: { achieved: number; unlocktime: number }[]): NormalizedGame {
+export function normalizeSteamGame(game: SteamApiGame, achievements?: { achieved: number; unlocktime: number }[]): NormalizedGame {
   const totalAchievements = achievements?.length ?? 0;
   const achievedCount = achievements?.filter(a => a.achieved === 1).length ?? 0;
   const achievementPercent = totalAchievements > 0 ? Math.round((achievedCount / totalAchievements) * 100) : undefined;
 
   return {
-    id: String(game.appId),
+    id: String(game.appid),
     platform: 'steam',
     title: game.name,
     source: 'auto',
-    playtimeMinutes: game.playtimeForever,
-    lastPlayedAt: game.rtimeLastPlayed || undefined,
+    playtimeMinutes: game.playtime_forever ?? 0,
+    lastPlayedAt: game.rtime_last_played || undefined,
     achievementPercent,
   };
 }

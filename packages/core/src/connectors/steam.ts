@@ -10,23 +10,23 @@ export interface SteamConfig {
   steamId: string;
 }
 
-export interface SteamGame {
-  appId: number;
+export interface SteamApiGame {
+  appid: number;
   name: string;
-  playtimeForever: number;
-  playtimeWindows: number;
-  playtimeMac: number;
-  playtimeLinux: number;
-  rtimeLastPlayed: number;
-  hasCommunityVisibleStats: boolean;
-  imgIconUrl?: string;
-  imgLogoUrl?: string;
+  playtime_forever: number;
+  playtime_windows_forever?: number;
+  playtime_mac_forever?: number;
+  playtime_linux_forever?: number;
+  rtime_last_played: number;
+  has_community_visible_stats?: boolean;
+  img_icon_url?: string;
+  img_logo_url?: string;
 }
 
 export interface OwnedGamesResponse {
   response: {
     game_count: number;
-    games: SteamGame[];
+    games: SteamApiGame[];
   };
 }
 
@@ -111,4 +111,54 @@ export async function fetchPlayerAchievements(
     + `?key=${config.apiKey}&steamid=${config.steamId}&appid=${appId}&format=json`;
 
   return steamFetch<PlayerAchievementsResponse>(url, 'GetPlayerAchievements');
+}
+
+// ─── SteamID 변환 유틸리티 ──────────────────────────────────
+
+export interface ResolveVanityUrlResponse {
+  response: {
+    steamid?: string;
+    success: number;
+    message?: string;
+  };
+}
+
+/** Steam 커스텀 URL을 SteamID64로 변환 */
+export async function resolveVanityUrl(apiKey: string, vanityName: string): Promise<string> {
+  const url = `${STEAM_API_BASE}/ISteamUser/ResolveVanityURL/v0001/`
+    + `?key=${apiKey}&vanityurl=${encodeURIComponent(vanityName)}&format=json`;
+  const data = await steamFetch<ResolveVanityUrlResponse>(url, 'ResolveVanityURL');
+  if (data.response.success !== 1) {
+    throw new Error(`SteamID 변환 실패: ${data.response.message ?? '알 수 없는 오류'}`);
+  }
+  return data.response.steamid!;
+}
+
+const STEAM_PROFILE_REGEX = /steamcommunity\.com\/(?:profiles\/(\d+)|id\/([^/\s?#]+))/i;
+
+/**
+ * 사용자 입력(URL, 숫자ID, 커스텀URL명)을 SteamID64로 변환
+ *
+ * - URL: https://steamcommunity.com/profiles/7656119... → 숫자 추출
+ * - URL: https://steamcommunity.com/id/vanity → ResolveVanityURL API 호출
+ * - 숫자: 76561197960287930 → 그대로 사용
+ * - 문자열: vanity → ResolveVanityURL API 호출
+ */
+export async function resolveToSteamId(input: string, apiKey: string): Promise<string> {
+  // 1) 전체 URL인 경우
+  const match = input.match(STEAM_PROFILE_REGEX);
+  if (match) {
+    if (match[1]) return match[1];                       // profiles/숫자
+    return resolveVanityUrl(apiKey, match[2]);            // id/vanity
+  }
+
+  // 2) 순수 숫자 (17자리 SteamID64)
+  if (/^\d{17}$/.test(input)) return input;
+
+  // 3) 숫자가 아닌 문자열 → vanity name으로 간주
+  if (!/^\d+$/.test(input)) {
+    return resolveVanityUrl(apiKey, input);
+  }
+
+  throw new Error(`SteamID를 인식할 수 없습니다: ${input}`);
 }
