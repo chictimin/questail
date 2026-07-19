@@ -13,6 +13,7 @@
  *   STEAM_API_KEY — Steam Web API 키
  */
 
+import 'dotenv/config';
 import { fetchOwnedGames, type SteamConfig } from './connectors/steam.js';
 import { normalizeSteamGame } from './normalize/index.js';
 import { writeGameNote } from './storage/index.js';
