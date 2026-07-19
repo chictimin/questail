@@ -34,8 +34,10 @@ function loadEnvFile(filepath: string): void {
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
     const val = trimmed.slice(eqIdx + 1).trim();
-    if (!process.env[key]) {
-      process.env[key] = val;
+    // config key → 환경변수명 매핑
+    const envKey = ({ 'steam-api-key': 'STEAM_API_KEY', 'steam-id': 'STEAM_ID' } satisfies Record<string, string>)[key] ?? key;
+    if (!process.env[envKey]) {
+      process.env[envKey] = val;
     }
   }
 }
@@ -161,9 +163,13 @@ function getSteamConfig(): Required<SteamConfig> {
     process.exit(1);
   }
 
-  const steamId = process.argv[3];
+  const argSteamId = process.argv[4];
+  const steamId = (argSteamId && !argSteamId.startsWith('-')) ? argSteamId : process.env.STEAM_ID;
   if (!steamId) {
-    console.error('사용법: questail import steam <steamId> [--output <dir>]');
+    console.error('SteamID가 설정되지 않았습니다.');
+    console.error('');
+    console.error('  questail config set steam-id <SteamID64>');
+    console.error('  또는: questail import steam <SteamID64>');
     process.exit(1);
   }
 
@@ -217,7 +223,7 @@ function main(): void {
       if (process.argv[3] === 'steam') {
         awaitHandler(cmdImportSteam());
       } else {
-        console.error('사용법: questail import steam <steamId> [--output <dir>]');
+        console.error('사용법: questail import steam [<steamId>] [--output <dir>]');
         process.exit(1);
       }
       break;
@@ -226,10 +232,11 @@ function main(): void {
       break;
     default:
       console.error('사용법:');
-      console.error('  questail import steam <steamId> [--output <dir>]');
+      console.error('  questail import steam [<steamId>] [--output <dir>]');
       console.error('  questail config set steam-api-key <key>');
-      console.error('  questail config get steam-api-key');
-      console.error('  questail config delete steam-api-key');
+      console.error('  questail config set steam-id <SteamID64>');
+      console.error('  questail config get <key>');
+      console.error('  questail config delete <key>');
       process.exit(1);
   }
 }
