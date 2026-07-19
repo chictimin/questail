@@ -14,6 +14,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
+import { createInterface } from 'node:readline';
 import { fetchOwnedGames, type SteamConfig } from './connectors/steam.js';
 import { normalizeSteamGame } from './normalize/index.js';
 import { writeGameNote } from './storage/index.js';
@@ -150,9 +151,106 @@ async function cmdConfig(): Promise<void> {
   }
 }
 
+// ─── 대화형 입력 ────────────────────────────────────────────
+
+const STEAM_API_URL = 'https://steamcommunity.com/dev/apikey';
+const STEAMID_HELP =
+  '방법 1) Steam 클라이언트 → 프로필 → URL 숫자 (steamcommunity.com/profiles/7656119...)';
+const STEAMID_HELP2 =
+  '방법 2) 커스텀 URL이면 https://steamidfinder.com 에서 변환';
+
+function ask(question: string): Promise<string> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => {
+    rl.question(question, answer => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+function maskValue(value: string): string {
+  if (value.length <= 8) return '*'.repeat(value.length);
+  return value.slice(0, 4) + '*'.repeat(value.length - 8) + value.slice(-4);
+}
+
+// ─── Login ───────────────────────────────────────────────────
+
+async function cmdLogin(): Promise<void> {
+  console.log('=== QuestTail 로그인 ===\n');
+
+  // --- API 키 ---
+  console.log('Steam API 키가 필요합니다.');
+  console.log(`발급: ${STEAM_API_URL}\n`);
+
+  let apiKey = process.env.STEAM_API_KEY;
+  if (apiKey) {
+    console.log(`현재 저장된 키: ${maskValue(apiKey)}`);
+    const reuse = await ask('이 키를 사용할까요? (Y/n): ');
+    if (reuse.toLowerCase().startsWith('n')) {
+      apiKey = '';
+    }
+  }
+
+  if (!apiKey) {
+    const input = await ask('Steam API 키를 입력하세요: ');
+    if (!input) { console.error('API 키는 필수입니다.'); process.exit(1); }
+    apiKey = input;
+    await saveConfig('steam-api-key', apiKey);
+  }
+
+  // --- SteamID ---
+  console.log(`\nSteam 계정 ID가 필요합니다.`);
+  console.log(STEAMID_HELP);
+  console.log(`${STEAMID_HELP2}\n`);
+
+  let steamId = process.env.STEAM_ID;
+  if (steamId) {
+    console.log(`현재 저장된 SteamID: ${maskValue(steamId)}`);
+    const reuse = await ask('이 ID를 사용할까요? (Y/n): ');
+    if (reuse.toLowerCase().startsWith('n')) {
+      steamId = '';
+    }
+  }
+
+  if (!steamId) {
+    const input = await ask('SteamID64 (또는 프로필 URL 숫자)를 입력하세요: ');
+    if (!input) { console.error('SteamID는 필수입니다.'); process.exit(1); }
+    steamId = input;
+    await saveConfig('steam-id', steamId);
+  }
+
+  console.log(`\n✅ 로그인 완료. 저장 위치: ${CONFIG_FILE}`);
+
+  // 바로 import 할지 확인
+  const run = await ask('\n지금 Steam 라이브러리를 가져올까요? (Y/n): ');
+  if (!run.toLowerCase().startsWith('n')) {
+    await cmdImportSteam();
+  }
+}
+
+async function promptSteamId(): Promise<string> {
+  console.log(STEAMID_HELP);
+  console.log(STEAMID_HELP2);
+
+  const id = await ask('\nSteamID64 를 입력하세요: ');
+  if (!id) {
+    console.error('SteamID는 필수입니다.');
+    process.exit(1);
+  }
+
+  const save = await ask('config에 저장할까요? (Y/n): ');
+  if (!save.toLowerCase().startsWith('n')) {
+    await saveConfig('steam-id', id);
+    console.error('✅ steam-id 저장 완료. 다음부터는 생략됩니다.');
+  }
+
+  return id;
+}
+
 // ─── Import commands ─────────────────────────────────────────
 
-function getSteamConfig(): Required<SteamConfig> {
+async function getSteamConfig(): Promise<Required<SteamConfig>> {
   const apiKey = process.env.STEAM_API_KEY;
   if (!apiKey) {
     console.error('Steam API 키가 설정되지 않았습니다.');
@@ -163,17 +261,17 @@ function getSteamConfig(): Required<SteamConfig> {
     process.exit(1);
   }
 
+  // 인자로 SteamID가 주어졌으면 그것을, 없으면 config 값을 사용
   const argSteamId = process.argv[4];
-  const steamId = (argSteamId && !argSteamId.startsWith('-')) ? argSteamId : process.env.STEAM_ID;
-  if (!steamId) {
-    console.error('SteamID가 설정되지 않았습니다.');
-    console.error('');
-    console.error('  questail config set steam-id <SteamID64>');
-    console.error('  또는: questail import steam <SteamID64>');
-    process.exit(1);
+  if (argSteamId && !argSteamId.startsWith('-')) {
+    return { apiKey, steamId: argSteamId };
+  }
+  if (process.env.STEAM_ID) {
+    return { apiKey, steamId: process.env.STEAM_ID };
   }
 
-  return { apiKey, steamId };
+  // 둘 다 없으면 대화형 입력
+  return { apiKey, steamId: await promptSteamId() };
 }
 
 function parseOutputFlag(): string {
@@ -188,7 +286,7 @@ function parseOutputFlag(): string {
 }
 
 async function cmdImportSteam() {
-  const config = getSteamConfig();
+  const config = await getSteamConfig();
   const outputDir = parseOutputFlag();
 
   console.error(`SteamID ${config.steamId}의 게임 목록을 가져오는 중...`);
@@ -227,12 +325,16 @@ function main(): void {
         process.exit(1);
       }
       break;
+    case 'login':
+      awaitHandler(cmdLogin());
+      break;
     case 'config':
       awaitHandler(cmdConfig());
       break;
     default:
       console.error('사용법:');
-      console.error('  questail import steam [<steamId>] [--output <dir>]');
+      console.error('  questail login                       # 대화형 설정 (API 키 + SteamID)');
+      console.error('  questail import steam [<id>] [-o <dir>]');
       console.error('  questail config set steam-api-key <key>');
       console.error('  questail config set steam-id <SteamID64>');
       console.error('  questail config get <key>');
