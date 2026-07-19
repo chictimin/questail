@@ -3,11 +3,12 @@
 /**
  * QuestTail CLI
  *
- * 사용법:
- *   questail import steam <steamId> [--output <dir>]
- *   questail config set steam-api-key <key>
- *   questail config get steam-api-key
- *   questail config delete steam-api-key
+ *   questail login                      Interactive setup
+ *   questail import steam [<id>] [-o <dir>]
+ *   questail config set/get/delete <key> [value]
+ *
+ * Config stored in: ~/.config/questail/.env
+ * Local .env also loaded (higher priority)
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -18,13 +19,32 @@ import { createInterface } from 'node:readline';
 import { fetchOwnedGames, resolveToSteamId, type SteamConfig } from './connectors/steam.js';
 import { normalizeSteamGame } from './normalize/index.js';
 import { writeGameNote } from './storage/index.js';
+import { detectLocale, t, type Locale } from './i18n.js';
 
-// ─── Config (전역 설정) ──────────────────────────────────────
+// ─── Config Paths ────────────────────────────────────────────
 
 const CONFIG_DIR = resolve(homedir(), '.config', 'questail');
 const CONFIG_FILE = join(CONFIG_DIR, '.env');
 
-/** .env 파일을 읽어 process.env에 로드 (이미 있는 값은 유지) */
+// ─── I18n ────────────────────────────────────────────────────
+
+let locale: Locale = 'ko';
+
+function detectLanguage(): void {
+  const fromConfig = process.env.LANGUAGE as Locale | undefined;
+  if (fromConfig === 'en' || fromConfig === 'ko') {
+    locale = fromConfig;
+    return;
+  }
+  locale = detectLocale();
+}
+
+function _(key: string, ...args: string[]): string {
+  return t(locale, key, ...args);
+}
+
+// ─── Env Loader ──────────────────────────────────────────────
+
 function loadEnvFile(filepath: string): void {
   if (!existsSync(filepath)) return;
   const content = readFileSync(filepath, 'utf-8');
@@ -35,137 +55,55 @@ function loadEnvFile(filepath: string): void {
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
     const val = trimmed.slice(eqIdx + 1).trim();
-    // config key → 환경변수명 매핑
-    const envKey = ({ 'steam-api-key': 'STEAM_API_KEY', 'steam-id': 'STEAM_ID' } satisfies Record<string, string>)[key] ?? key;
+    const envKey = ({ 'steam-api-key': 'STEAM_API_KEY', 'steam-id': 'STEAM_ID', 'language': 'LANGUAGE' } satisfies Record<string, string>)[key] ?? key;
     if (!process.env[envKey]) {
       process.env[envKey] = val;
     }
   }
 }
 
-/** ~/.config/questail/.env 에 키-값 저장 */
+function initEnv(): void {
+  loadEnvFile(CONFIG_FILE);
+  loadEnvFile(resolve('.env'));
+  detectLanguage();
+}
+
+// ─── Config File Operations ──────────────────────────────────
+
 async function saveConfig(key: string, value: string): Promise<void> {
   await mkdir(CONFIG_DIR, { recursive: true });
-
   let lines: string[] = [];
   if (existsSync(CONFIG_FILE)) {
     lines = (await readFile(CONFIG_FILE, 'utf-8')).split('\n');
   }
-
-  const existingIdx = lines.findIndex(l => l.trim().startsWith(`${key}=`));
   const entry = `${key}=${value}`;
-
-  if (existingIdx !== -1) {
-    lines[existingIdx] = entry;
+  const idx = lines.findIndex(l => l.trim().startsWith(`${key}=`));
+  if (idx !== -1) {
+    lines[idx] = entry;
   } else {
-    // 빈 줄로 끝나면 그 위에, 아니면 추가
-    if (lines.length > 0 && lines[lines.length - 1].trim() === '') {
-      lines[lines.length - 1] = entry;
-    } else {
+    const last = lines.at(-1)?.trim() ?? '';
+    if (last === '' || lines.length === 0) {
       lines.push(entry);
+    } else {
+      lines[lines.length - 1] = entry;
     }
   }
-
   await writeFile(CONFIG_FILE, lines.join('\n').trimEnd() + '\n', 'utf-8');
+  process.env[key.toUpperCase().replace(/-/g, '_')] = value;
 }
 
-/** ~/.config/questail/.env 에서 키 삭제 */
-async function deleteConfig(key: string): Promise<boolean> {
+async function deleteConfigFromFile(key: string): Promise<boolean> {
   if (!existsSync(CONFIG_FILE)) return false;
-
   const lines = (await readFile(CONFIG_FILE, 'utf-8')).split('\n');
   const filtered = lines.filter(l => !l.trim().startsWith(`${key}=`));
-
   if (filtered.length === lines.length) return false;
-
   await writeFile(CONFIG_FILE, filtered.join('\n').trimEnd() + '\n', 'utf-8');
+  const envKey = key.toUpperCase().replace(/-/g, '_');
+  delete process.env[envKey];
   return true;
 }
 
-/** ~/.config/questail/.env 에서 키 조회 */
-function getConfig(key: string): string | undefined {
-  if (!existsSync(CONFIG_FILE)) return undefined;
-  const content = readFileSync(CONFIG_FILE, 'utf-8');
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith(`${key}=`)) {
-      return trimmed.slice(key.length + 1);
-    }
-  }
-  return undefined;
-}
-
-// ─── Config commands ─────────────────────────────────────────
-
-function cmdConfigGet(key: string): void {
-  const value = getConfig(key);
-  if (value === undefined) {
-    console.error(`설정되지 않음: ${key}`);
-    process.exit(1);
-  }
-  console.log(`${key}=${maskValue(value)}`);
-}
-
-async function cmdConfigSet(key: string, value: string): Promise<void> {
-  // steam-id는 저장 시점에 URL → 숫자 SteamID64로 변환
-  const saveValue = (key === 'steam-id' && process.env.STEAM_API_KEY)
-    ? await resolveSteamId(value, process.env.STEAM_API_KEY)
-    : value;
-  await saveConfig(key, saveValue);
-  console.error(`✅ ${key} 저장 완료 (${CONFIG_FILE})`);
-}
-
-/** SteamID를 숫자 17자리로 보장. URL이나 vanity name도 처리. */
-async function resolveSteamId(input: string, apiKey: string): Promise<string> {
-  if (/^\d{17}$/.test(input)) return input;  // 이미 숫자면 그대로
-  const resolved = await resolveToSteamId(input, apiKey);
-  console.error(`✓ SteamID 변환: ${input} → ${resolved}`);
-  return resolved;
-}
-
-async function cmdConfigDelete(key: string): Promise<void> {
-  const removed = await deleteConfig(key);
-  if (removed) {
-    console.error(`✅ ${key} 삭제 완료`);
-  } else {
-    console.error(`설정되지 않음: ${key}`);
-  }
-}
-
-async function cmdConfig(): Promise<void> {
-  const sub = process.argv[3];
-  const key = process.argv[4];
-  const value = process.argv[5];
-
-  switch (sub) {
-    case 'get':
-      if (!key) { console.error('사용법: questail config get <key>'); process.exit(1); }
-      cmdConfigGet(key);
-      break;
-    case 'set':
-      if (!key || !value) { console.error('사용법: questail config set <key> <value>'); process.exit(1); }
-      await cmdConfigSet(key, value);
-      break;
-    case 'delete':
-      if (!key) { console.error('사용법: questail config delete <key>'); process.exit(1); }
-      await cmdConfigDelete(key);
-      break;
-    default:
-      console.error('사용법:');
-      console.error('  questail config get <key>');
-      console.error('  questail config set <key> <value>');
-      console.error('  questail config delete <key>');
-      process.exit(1);
-  }
-}
-
-// ─── 대화형 입력 ────────────────────────────────────────────
-
-const STEAM_API_URL = 'https://steamcommunity.com/dev/apikey';
-const STEAMID_HELP =
-  '방법 1) Steam 클라이언트 → 프로피 → 프로필 페이지 URL 복사';
-const STEAMID_HELP2 =
-  '방법 2) 숫자만 알고 있으면 그대로 입력 가능 (17자리)';
+// ─── Helpers ─────────────────────────────────────────────────
 
 function ask(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -184,110 +122,126 @@ function maskValue(value: string): string {
   return value.slice(0, keep) + '*'.repeat(masked) + value.slice(-keep);
 }
 
+/** Resolve SteamID input to numeric 17-digit ID */
+async function resolveSteamId(input: string, apiKey: string): Promise<string> {
+  if (/^\d{17}$/.test(input)) return input;
+  const resolved = await resolveToSteamId(input, apiKey);
+  console.error(_('import_steam_id_resolved', input, resolved));
+  return resolved;
+}
+
 // ─── Login ───────────────────────────────────────────────────
 
 async function cmdLogin(): Promise<void> {
-  console.log('=== QuestTail 로그인 ===\n');
-
-  // --- API 키 ---
-  console.log('Steam API 키가 필요합니다.');
-  console.log(`발급: ${STEAM_API_URL}\n`);
+  console.log(_('login_title'));
+  process.stdout.write('\n');
+  console.log(_('login_api_key_needed'));
+  console.log(_('login_api_key_url'));
+  process.stdout.write('\n');
 
   let apiKey = process.env.STEAM_API_KEY;
   if (apiKey) {
-    console.log(`현재 저장된 키: ${maskValue(apiKey)}`);
-    const reuse = await ask('이 키를 사용할까요? (Y/n): ');
-    if (reuse.toLowerCase().startsWith('n')) {
-      apiKey = '';
-    }
+    console.log(_('login_current_key', maskValue(apiKey)));
+    const reuse = await ask(_('login_ask_reuse_key'));
+    if (reuse.toLowerCase().startsWith('n')) apiKey = '';
   }
-
   if (!apiKey) {
-    const input = await ask('Steam API 키를 입력하세요: ');
-    if (!input) { console.error('API 키는 필수입니다.'); process.exit(1); }
+    const input = await ask(_('login_ask_new_key'));
+    if (!input) { console.error(_('login_key_required')); process.exit(1); }
     apiKey = input;
     await saveConfig('steam-api-key', apiKey);
   }
 
-  // --- SteamID ---
-  console.log(`\nSteam 계정 ID가 필요합니다.`);
-  console.log(STEAMID_HELP);
-  console.log(`${STEAMID_HELP2}\n`);
+  process.stdout.write('\n');
+  console.log(_('login_id_needed'));
+  console.log(_('login_id_help1'));
+  console.log(_('login_id_help2'));
+  process.stdout.write('\n');
 
   let steamId = process.env.STEAM_ID;
   if (steamId) {
-    console.log(`현재 저장된 SteamID: ${maskValue(steamId)}`);
-    const reuse = await ask('이 ID를 사용할까요? (Y/n): ');
-    if (reuse.toLowerCase().startsWith('n')) {
-      steamId = '';
-    }
+    console.log(_('login_current_key', maskValue(steamId)));
+    const reuse = await ask(_('login_ask_reuse_id'));
+    if (reuse.toLowerCase().startsWith('n')) steamId = '';
   }
-
   if (!steamId) {
-    const apiKey = process.env.STEAM_API_KEY!;
-    const input = await ask('Steam 프로필 URL 또는 SteamID64를 입력하세요: ');
-    if (!input) { console.error('SteamID는 필수입니다.'); process.exit(1); }
-    console.error('SteamID 확인 중...');
-    try {
-      steamId = await resolveToSteamId(input, apiKey);
-    } catch (e: any) {
-      console.error(`SteamID 변환 실패: ${e.message}`);
-      process.exit(1);
-    }
+    const apiKeyVal = process.env.STEAM_API_KEY!;
+    const input = await ask(_('login_ask_new_id'));
+    if (!input) { console.error(_('login_id_required')); process.exit(1); }
+    console.error(_('login_resolving'));
+    try { steamId = await resolveToSteamId(input, apiKeyVal); }
+    catch (e: any) { console.error(_('login_resolve_fail', e.message)); process.exit(1); }
     await saveConfig('steam-id', steamId);
   }
 
-  console.log(`\n✅ 로그인 완료. 저장 위치: ${CONFIG_FILE}`);
-
-  // 바로 import 할지 확인
-  const run = await ask('\n지금 Steam 라이브러리를 가져올까요? (Y/n): ');
-  if (!run.toLowerCase().startsWith('n')) {
-    await cmdImportSteam();
-  }
+  console.error(_('login_done', CONFIG_FILE));
+  const run = await ask(_('login_ask_import_now'));
+  if (!run.toLowerCase().startsWith('n')) await cmdImportSteam();
 }
 
 async function promptSteamId(): Promise<string> {
-  console.log(STEAMID_HELP);
-  console.log(STEAMID_HELP2);
-
-  const input = await ask('\nSteam 프로필 URL 또는 SteamID64를 입력하세요: ');
-  if (!input) {
-    console.error('SteamID는 필수입니다.');
-    process.exit(1);
-  }
-
-  console.error('SteamID 확인 중...');
+  console.log(_('login_id_help1'));
+  console.log(_('login_id_help2'));
+  const input = await ask(`\n${_('login_ask_new_id')}`);
+  if (!input) { console.error(_('login_id_required')); process.exit(1); }
+  console.error(_('login_resolving'));
   let steamId: string;
-  try {
-    steamId = await resolveToSteamId(input, process.env.STEAM_API_KEY!);
-  } catch (e: any) {
-    console.error(`SteamID 변환 실패: ${e.message}`);
-    process.exit(1);
-  }
-
-  const save = await ask('config에 저장할까요? (Y/n): ');
+  try { steamId = await resolveToSteamId(input, process.env.STEAM_API_KEY!); }
+  catch (e: any) { console.error(_('login_resolve_fail', e.message)); process.exit(1); }
+  const save = await ask(_('login_ask_save'));
   if (!save.toLowerCase().startsWith('n')) {
     await saveConfig('steam-id', steamId);
-    console.error('✅ steam-id 저장 완료. 다음부터는 생략됩니다.');
+    console.error(_('login_saved', 'steam-id'));
   }
-
   return steamId;
 }
 
-// ─── Import commands ─────────────────────────────────────────
+// ─── Config Subcommand ───────────────────────────────────────
+
+async function cmdConfig(): Promise<void> {
+  const sub = process.argv[3];
+  const key = process.argv[4];
+  const value = process.argv[5];
+
+  switch (sub) {
+    case 'get': {
+      if (!key) { console.error(_('config_get_usage')); process.exit(1); }
+      const envKey = key.toUpperCase().replace(/-/g, '_');
+      const v = process.env[envKey];
+      if (!v) { console.error(_('config_not_set', key)); process.exit(1); }
+      console.log(`${key}=${maskValue(v)}`);
+      break;
+    }
+    case 'set': {
+      if (!key || !value) { console.error(_('config_set_usage')); process.exit(1); }
+      const saveValue = (key === 'steam-id' && process.env.STEAM_API_KEY)
+        ? await resolveSteamId(value, process.env.STEAM_API_KEY)
+        : value;
+      await saveConfig(key, saveValue);
+      if (key === 'language') detectLanguage();
+      console.error(_('config_saved', key, CONFIG_FILE));
+      break;
+    }
+    case 'delete': {
+      if (!key) { console.error(_('config_delete_usage')); process.exit(1); }
+      const removed = await deleteConfigFromFile(key);
+      console.error(removed ? _('config_deleted', key) : _('config_not_set', key));
+      break;
+    }
+    default:
+      console.error(_('config_get_usage'));
+      console.error(_('config_set_usage'));
+      console.error(_('config_delete_usage'));
+      process.exit(1);
+  }
+}
+
+// ─── Import Subcommand ───────────────────────────────────────
 
 async function getSteamConfig(): Promise<Required<SteamConfig>> {
   const apiKey = process.env.STEAM_API_KEY;
-  if (!apiKey) {
-    console.error('Steam API 키가 설정되지 않았습니다.');
-    console.error('');
-    console.error('  questail config set steam-api-key <발급받은_키>');
-    console.error('');
-    console.error('키 발급: https://steamcommunity.com/dev/apikey');
-    process.exit(1);
-  }
+  if (!apiKey) { console.error(_('error_api_key_missing')); process.exit(1); }
 
-  // 인자로 SteamID가 주어졌으면 그것을, 없으면 config 값을 사용
   const argSteamId = process.argv[4];
   if (argSteamId && !argSteamId.startsWith('-')) {
     return { apiKey, steamId: await resolveSteamId(argSteamId, apiKey) };
@@ -295,8 +249,6 @@ async function getSteamConfig(): Promise<Required<SteamConfig>> {
   if (process.env.STEAM_ID) {
     return { apiKey, steamId: await resolveSteamId(process.env.STEAM_ID, apiKey) };
   }
-
-  // 둘 다 없으면 대화형 입력
   return { apiKey, steamId: await promptSteamId() };
 }
 
@@ -304,76 +256,75 @@ function parseOutputFlag(): string {
   const idx = process.argv.indexOf('--output');
   const idxShort = process.argv.indexOf('-o');
   const targetIdx = idx !== -1 ? idx : idxShort;
-
   if (targetIdx !== -1 && process.argv[targetIdx + 1]) {
     return resolve(process.argv[targetIdx + 1]);
   }
   return resolve('./games');
 }
 
-async function cmdImportSteam() {
+async function cmdImportSteam(): Promise<void> {
   const config = await getSteamConfig();
   const outputDir = parseOutputFlag();
 
-  console.error(`SteamID ${config.steamId}의 게임 목록을 가져오는 중...`);
+  console.error(_('import_fetching', config.steamId));
   const data = await fetchOwnedGames(config);
   const games = data.response.games
     .map(g => normalizeSteamGame(g))
     .sort((a, b) => b.playtimeMinutes - a.playtimeMinutes);
 
-  console.error(`\n총 ${games.length}개 게임을 ${outputDir}/ 에 쓰는 중...\n`);
+  console.error(_('import_summary', String(games.length), outputDir));
+  process.stdout.write('\n');
 
   let count = 0;
   for (const game of games) {
-    const filepath = await writeGameNote(outputDir, game);
-    const hours = (game.playtimeMinutes / 60).toFixed(1);
-    console.error(`  ✓ ${game.title} (${hours}h) → ${filepath}`);
+    const fp = await writeGameNote(outputDir, game);
+    const h = (game.playtimeMinutes / 60).toFixed(1);
+    console.error(_('import_item', game.title, h, fp));
     count++;
   }
 
-  console.error(`\n✅ 완료: ${count}개 게임을 ${outputDir}/ 에 저장했습니다.`);
+  console.error(_('import_done', String(count), outputDir));
 }
 
 // ─── Main ────────────────────────────────────────────────────
 
-function main(): void {
-  loadEnvFile(CONFIG_FILE);       // 전역 설정 (~/.config/questail/.env)
-  loadEnvFile(resolve('.env'));   // 로컬 .env (우선순위 높음)
+function printUsage(): void {
+  console.error(_('usage_header'));
+  console.error(_('usage_login'));
+  console.error(_('usage_import'));
+  console.error(_('usage_config_set'));
+  console.error(_('usage_config_get'));
+  console.error(_('usage_config_delete'));
+}
 
+function main(): void {
+  initEnv();
   const cmd = process.argv[2];
 
   switch (cmd) {
+    case 'login':
+      void cmdLogin().catch(e => { console.error(_('error', e.message)); process.exit(1); });
+      break;
     case 'import':
       if (process.argv[3] === 'steam') {
-        awaitHandler(cmdImportSteam());
+        void cmdImportSteam().catch(e => { console.error(_('error', e.message)); process.exit(1); });
       } else {
-        console.error('사용법: questail import steam [<steamId>] [--output <dir>]');
+        console.error(_('usage_import'));
         process.exit(1);
       }
       break;
-    case 'login':
-      awaitHandler(cmdLogin());
-      break;
     case 'config':
-      awaitHandler(cmdConfig());
+      void cmdConfig().catch(e => { console.error(_('error', e.message)); process.exit(1); });
       break;
     default:
-      console.error('사용법:');
-      console.error('  questail login                       # 대화형 설정 (API 키 + SteamID)');
-      console.error('  questail import steam [<id>] [-o <dir>]');
-      console.error('  questail config set steam-api-key <key>');
-      console.error('  questail config set steam-id <SteamID64>');
-      console.error('  questail config get <key>');
-      console.error('  questail config delete <key>');
-      process.exit(1);
+      if (cmd === '--help' || cmd === '-h' || !cmd) {
+        printUsage();
+      } else {
+        console.error(_('unknown_cmd'));
+        printUsage();
+        process.exit(1);
+      }
   }
-}
-
-function awaitHandler(p: Promise<unknown>): void {
-  p.catch(err => {
-    console.error('오류:', err.message);
-    process.exit(1);
-  });
 }
 
 main();
