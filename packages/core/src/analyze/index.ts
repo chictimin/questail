@@ -19,7 +19,7 @@ export interface AnalysisReport {
   /** LLM 정성 해석 — 무LLM 폴백 시 undefined (빈 문자열 아님) */
   summary?: string;
   /** 정량 지표 — LLM 유무와 무관하게 항상 채워짐 */
-  stats: Record<string, unknown>;
+  stats: QuantitativeStats;
 }
 
 /** 플레이타임 상위 게임 1개 */
@@ -213,15 +213,42 @@ export async function analyzeLibrary(
   const stats = computeStats(library, profile);
 
   // D3 폴백 경계: 호출 가능 판정(canCallLlm)부터. 불가하면 시도조차 하지 않는다.
-  const statsRecord = stats as unknown as Record<string, unknown>;
   if (!options || !canCallLlm(options)) {
-    return { summary: undefined, stats: statsRecord };
+    return { summary: undefined, stats };
   }
   try {
     const summary = await callLlm(options, buildPrompt(stats));
-    return { summary, stats: statsRecord };
+    return { summary, stats };
   } catch (err) {
     warnFallback('analyze', err);
-    return { summary: undefined, stats: statsRecord };
+    return { summary: undefined, stats };
   }
+}
+
+// ─── JSON 사이드카 ─────────────────────────────────────────────
+// 설계 의도: 곧 들어올 시계열 변화 지표가 "지난 리포트 대비"를 계산해야
+// 하는데, md를 파싱하는 것보다 JSON을 읽는 게 훨씬 견고하다. M3 웹 UI도
+// 같은 파일을 그대로 소비한다. 구조가 계약이 되므로 schemaVersion으로
+// 버전을 박아 둔다 — 형식이 바뀌면 읽는 쪽이 구분할 수 있어야 한다.
+
+/** 리포트 JSON 사이드카 스키마 버전. 구조가 바뀌면 올린다. */
+export const REPORT_SCHEMA_VERSION = 1;
+
+export interface AnalysisReportJson {
+  schemaVersion: typeof REPORT_SCHEMA_VERSION;
+  /** 리포트 생성 시각 (md 헤더의 생성 시각과 동일) */
+  generatedAt: string;
+  stats: QuantitativeStats;
+  /** 무LLM 폴백 시 키 자체를 생략 (null이 아님) */
+  summary?: string;
+}
+
+export function toReportJson(report: AnalysisReport, generatedAt: Date): AnalysisReportJson {
+  const json: AnalysisReportJson = {
+    schemaVersion: REPORT_SCHEMA_VERSION,
+    generatedAt: generatedAt.toISOString(),
+    stats: report.stats,
+  };
+  if (report.summary !== undefined) json.summary = report.summary;
+  return json;
 }

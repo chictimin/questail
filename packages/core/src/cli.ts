@@ -20,7 +20,7 @@ import { fetchOwnedGames, fetchPlayerAchievements, fetchWishlistAppIds, resolveT
 import { normalizeSteamGame } from './normalize/index.js';
 import { appendHistoryLog, buildHistoryRecords, HISTORY_FILENAME, writeGameNote, writeLibraryIndex, parseLibraryMarkdown } from './storage/index.js';
 import { buildTasteProfile } from './profile/index.js';
-import { analyzeLibrary, type QuantitativeStats } from './analyze/index.js';
+import { analyzeLibrary, type AnalysisReportJson, type QuantitativeStats, toReportJson } from './analyze/index.js';
 import { fetchAppMetaBatch } from './metadata/index.js';
 import { detectLocale, t, type Locale } from './i18n.js';
 import type { GameMeta, NormalizedGame } from './types.js';
@@ -594,13 +594,20 @@ async function cmdAnalyze(): Promise<void> {
       ? llmText('AI 해석 완료', 'AI analysis done')
       : llmText('AI 해석 실패 — 해석 없는 정량 리포트로 생성합니다', 'AI analysis failed — generating a quantitative-only report'));
   }
-  const stats = report.stats as unknown as QuantitativeStats;
+  const stats: QuantitativeStats = report.stats;
 
+  const now = new Date();
+  const stamp = reportTimestamp(now);
   const reportsDir = join(outputDir, 'reports');
   await mkdir(reportsDir, { recursive: true });
-  const filepath = join(reportsDir, `${reportTimestamp()}.md`);
-  await writeFile(filepath, renderReportMarkdown(stats, report.summary, new Date(), llmAvailable), 'utf-8');
+  const filepath = join(reportsDir, `${stamp}.md`);
+  await writeFile(filepath, renderReportMarkdown(stats, report.summary, now, llmAvailable), 'utf-8');
   console.error(llmText(`리포트 저장: ${filepath}`, `Report saved: ${filepath}`));
+  // JSON 사이드카 — md와 같은 타임스탬프로 짝을 맞춘다
+  const sidecar: AnalysisReportJson = toReportJson(report, now);
+  const jsonpath = join(reportsDir, `${stamp}.json`);
+  await writeFile(jsonpath, JSON.stringify(sidecar, null, 2) + '\n', 'utf-8');
+  console.error(llmText(`JSON 저장: ${jsonpath}`, `JSON saved: ${jsonpath}`));
 }
 
 // ─── Main ────────────────────────────────────────────────────
