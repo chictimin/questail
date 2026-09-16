@@ -55,11 +55,11 @@ function cellFor(game: NormalizedGame, col: (typeof COLUMNS)[number]): string {
     case 'last_played':
       return game.lastPlayedAt !== undefined ? String(game.lastPlayedAt) : '';
     case 'genres':
-      return game.genres ? escapeCell(game.genres.join(', ')) : '';
+      return game.genres?.length ? escapeCell(JSON.stringify(game.genres)) : '';
     case 'developers':
-      return game.developers ? escapeCell(game.developers.join(', ')) : '';
+      return game.developers?.length ? escapeCell(JSON.stringify(game.developers)) : '';
     case 'publishers':
-      return game.publishers ? escapeCell(game.publishers.join(', ')) : '';
+      return game.publishers?.length ? escapeCell(JSON.stringify(game.publishers)) : '';
     case 'release_date':
       return game.releaseDate ? escapeCell(game.releaseDate) : '';
     case 'wishlisted':
@@ -70,6 +70,18 @@ function cellFor(game: NormalizedGame, col: (typeof COLUMNS)[number]): string {
 function splitList(cell: string): string[] | undefined {
   const v = unescapeCell(cell);
   if (v === '') return undefined;
+  // 새 JSON 형식 — `[`로 시작하면 JSON 배열로 파싱 (콤마 포함 값 보존용).
+  if (v.startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(v);
+      if (Array.isArray(parsed) && parsed.every(x => typeof x === 'string')) {
+        return parsed.length > 0 ? (parsed as string[]) : undefined;
+      }
+    } catch {
+      // JSON 파싱 실패 시 아래 레거시 경로로 폴백한다.
+    }
+  }
+  // 기존 파일 호환용 레거시 콤마 분리 — 언젠가 제거 가능.
   const items = v
     .split(',')
     .map(s => s.trim())

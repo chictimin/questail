@@ -74,12 +74,22 @@ function cachePath(appId: string): string {
   return join(resolveAppMetaCacheDir(), `${appId}.json`);
 }
 
+/**
+ * 캐시 스키마 버전. 파싱 규칙이 바뀌면(장르 제외 목록 등) 이 값을 올려
+ * 예전 포맷 캐시를 전부 스테일로 만든다. 캐시 디렉토리를 지우는 방식은
+ * 일반 사용자에게 적용이 안 되므로 버전 필드로 무효화한다.
+ * v는 디스크에만 있고 GameMeta 타입에는 속하지 않는다.
+ */
+const META_CACHE_VERSION = 1;
+
 async function readCache(appId: string): Promise<GameMeta | undefined> {
   try {
     const raw = await readFile(cachePath(appId), 'utf-8');
-    const parsed = JSON.parse(raw) as GameMeta;
-    if (parsed?.appId === appId) return parsed;
-    return undefined;
+    const parsed = JSON.parse(raw) as GameMeta & { v?: number };
+    if (parsed?.appId !== appId) return undefined;
+    if (parsed.v !== META_CACHE_VERSION) return undefined; // 구버전 → 다시 받는다
+    const { v: _dropped, ...meta } = parsed;
+    return meta;
   } catch {
     return undefined;
   }
@@ -88,7 +98,7 @@ async function readCache(appId: string): Promise<GameMeta | undefined> {
 async function writeCache(meta: GameMeta): Promise<void> {
   try {
     await mkdir(resolveAppMetaCacheDir(), { recursive: true });
-    await writeFile(cachePath(meta.appId), JSON.stringify(meta), 'utf-8');
+    await writeFile(cachePath(meta.appId), JSON.stringify({ ...meta, v: META_CACHE_VERSION }), 'utf-8');
   } catch {
     // 캐시 기록 실패는 치명적이지 않음 — API 결과는 그대로 반환
   }
@@ -101,7 +111,7 @@ interface AppDetailsRaw {
   data?: {
     name?: string;
     platforms?: { windows?: boolean; mac?: boolean; linux?: boolean };
-    genres?: Array<{ description?: string }>;
+    genres?: Array<{ id?: string; description?: string }>;
     categories?: Array<{ description?: string }>;
     developers?: string[];
     publishers?: string[];
@@ -114,6 +124,37 @@ type AppDetailsEnvelope = Record<string, AppDetailsRaw | undefined>;
 
 function descriptions(items?: Array<{ description?: string }>): string[] {
   return (items ?? []).map(i => i.description ?? '').filter(s => s.length > 0);
+}
+
+/**
+ * 장르가 아닌 Steam 분류 제외 목록 — 언어와 무관한 숫자 id 기준.
+ * description 문자열로 거르면 로케일마다 달라지므로(지금은 l=korean)
+ * 반드시 id로 판정한다. id가 없으면(구 API 응답 등) 걸러내지 않는다.
+ *
+ * 실측 기록 (appdetails raw 응답에서 직접 확인):
+ *   70 = Early Access (앞서 해보기) — Project Zomboid 108600 등
+ *   37 = Free to Play (무료 플레이) — Destiny 2 1085660, Unturned 304930
+ *   57 = Utilities (유틸리티) — 3DMark 223850
+ * 남긴 것: Massively Multiplayer(대규모 멀티플레이어)는 정당한 장르라 제외 안 함.
+ *
+ * 의도적으로 안 넣은 것:
+ * - 콘텐츠 표시(Violent·Gore·Nudity 등)는 genres[]가 아니라 응답의
+ *   content_descriptors에 들어 있어서 파서가 읽지 않는다. 걸러낼 게 없다.
+ * - Demo·소프트웨어 카테고리 id는 라이브러리에 해당 게임이 없어 실측
+ *   불가라 넣지 않았다. id 추측 금지 — 추가하려면 appdetails raw에서
+ *   id를 확인한 뒤 여기에 한 줄씩 추가해라.
+ */
+const EXCLUDED_GENRE_IDS = new Set<string>([
+  '70', // Early Access
+  '37', // Free to Play
+  '57', // Utilities
+]);
+
+function genreDescriptions(items?: Array<{ id?: string; description?: string }>): string[] {
+  return (items ?? [])
+    .filter(i => i.id === undefined || !EXCLUDED_GENRE_IDS.has(String(i.id)))
+    .map(i => i.description ?? '')
+    .filter(s => s.length > 0);
 }
 
 function fallbackMeta(appId: string): GameMeta {
@@ -189,7 +230,7 @@ export async function fetchAppMeta(appId: string): Promise<GameMeta> {
     appId,
     name: d.name,
     platforms: (['windows', 'mac', 'linux'] as const).filter(p => d.platforms?.[p] === true),
-    genres: descriptions(d.genres),
+    genres: genreDescriptions(d.genres),
     developers: (d.developers ?? []).filter(s => s.length > 0),
     publishers: (d.publishers ?? []).filter(s => s.length > 0),
     releaseDate: d.release_date?.date,
