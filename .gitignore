@@ -11,3 +11,4 @@ games/
 output/
 .cache/
 .backup/
+.agents/

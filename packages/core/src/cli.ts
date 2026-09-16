@@ -16,7 +16,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { fetchOwnedGames, fetchPlayerAchievements, resolveToSteamId, toAchievementInputs, type SteamConfig } from './connectors/steam.js';
+import { fetchOwnedGames, fetchPlayerAchievements, fetchWishlistAppIds, resolveToSteamId, toAchievementInputs, type SteamConfig } from './connectors/steam.js';
 import { normalizeSteamGame } from './normalize/index.js';
 import { appendHistoryLog, buildHistoryRecords, HISTORY_FILENAME, writeGameNote, writeLibraryIndex } from './storage/index.js';
 import { fetchAppMetaBatch } from './metadata/index.js';
@@ -366,6 +366,16 @@ async function cmdGatherSteam(): Promise<void> {
     console.error(_('error', e instanceof Error ? e.message : String(e)));
   }
 
+  // 위시리스트: appid 목록 조회 후 Set으로 매칭. 위시 없는 계정 등
+  // API 실패 시 빈 채로 계속 — gather 전체가 죽지 않는다.
+  const wishlistSet = new Set<string>();
+  try {
+    const wishlistAppIds = await fetchWishlistAppIds(config.apiKey, config.steamId);
+    for (const appId of wishlistAppIds) wishlistSet.add(String(appId));
+  } catch (e) {
+    console.error(_('error', e instanceof Error ? e.message : String(e)));
+  }
+
   // 업적: 게임당 1호출, 순차 조회(자연 스로틀). 비공개 프로필·미지원 게임은
   // SteamApiError를 던지므로 게임별 try/catch 후 업적 없이 normalize 폴백.
   let withAchievements = 0;
@@ -380,6 +390,7 @@ async function cmdGatherSteam(): Promise<void> {
       games.push(normalizeSteamGame(g, undefined, meta));
     }
   }
+  games.forEach(g => { if (wishlistSet.has(g.id)) g.wishlisted = true; });
   games.sort((a, b) => b.playtimeMinutes - a.playtimeMinutes);
 
   console.error(_('import_summary', String(games.length), outputDir));

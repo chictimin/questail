@@ -38,12 +38,17 @@ questail config get steam-api-key
 
 - SteamID accepts profile URLs (`https://steamcommunity.com/id/xxx`), vanity names, or numeric SteamID64 (auto-resolved via ResolveVanityURL API)
 - Saved to `~/.config/questail/.env` — skipped on subsequent runs
+- After the Steam setup, an LLM setup step follows: `1. OpenAI / 2. Local OpenAI-compatible (Ollama·LM Studio) / 3. Skip`. Your choice is stored as `QUESTAIL_LLM_BASE_URL` / `QUESTAIL_LLM_API_KEY` / `QUESTAIL_LLM_MODEL` in the same file (questail-namespaced so they don't collide with other tools sharing the global env file). Skipping means quantitative-only reports with no AI analysis.
 - Prompts whether to proceed with `gather steam` right after setup
 
-**`questail gather steam [<id>] [-o <dir>]`** — Fetches your Steam library.
+**`questail gather steam [<id>] [-o <dir>]`** — Fetches your Steam library and enriches it.
 
 - Omitting `<id>` uses the steam-id stored in config
 - `-o <dir>` output directory (default: `./games/`)
+- Game metadata (genres, developers, publishers, release date, cover image) is auto-enriched via Steam appdetails
+- Achievement completion rate is fetched per game — requires your Steam profile's "Game details" to be set to Public; otherwise it's silently skipped
+- Writes `library.md` (the canonical index of objective data) and appends a playtime snapshot to `history.jsonl` in the output directory
+- Re-running is non-destructive: objective fields in `games/*.md` are refreshed while subjective fields (ratings and notes, once added) are preserved
 
 **`questail config`** — Configuration management:
 
@@ -60,6 +65,9 @@ questail config get steam-api-key
 | `steam-api-key` | Steam Web API key | `ABCDEF1234567890` |
 | `steam-id` | SteamID64 (numeric) | `76561197960287930` |
 | `language` | Output language (`ko` / `en`) | `en` |
+| `QUESTAIL_LLM_BASE_URL` | LLM endpoint (set via `sniff`) | `https://api.openai.com/v1` |
+| `QUESTAIL_LLM_API_KEY` | LLM API key (optional for localhost) | `sk-...` |
+| `QUESTAIL_LLM_MODEL` | LLM model name (set via `sniff`) | `gpt-4o-mini` |
 
 ## Output Example
 
@@ -72,13 +80,21 @@ game_id: 1245620
 platform: steam
 source: auto
 playtime_minutes: 9840
+achievement_pct: 62
 last_played: 1712345678
+image: https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg
+genres: [RPG, Souls-like]
+developers: [FromSoftware Inc.]
+publishers: [FromSoftware Inc., Bandai Namco Entertainment]
+release_date: 24 Feb, 2022
 ---
 
 > Auto-imported from Steam.
 ```
 
 File naming: `{appId}-{title-slug}.md` (e.g. `1245620-elden-ring.md`)
+
+Enrichment fields (`achievement_pct`, `genres`, `developers`, `publishers`, `release_date`, `image`) appear only when the data is available. Re-running `gather` refreshes these objective fields; subjective fields (`rating`, `note`) are preserved once added.
 
 ## Project Structure
 
@@ -87,7 +103,10 @@ questail/
 ├── packages/
 │   └── core/                  # @questail/core
 │       ├── src/
+│       │   ├── config/        # Global LLM settings (QUESTAIL_LLM_*)
+│       │   ├── llm/           # LLM adapter (single endpoint + no-LLM fallback)
 │       │   ├── connectors/    # Platform adapters (Steam)
+│       │   ├── metadata/      # appdetails enrichment (cached)
 │       │   ├── normalize/     # Standard schema transformation
 │       │   ├── storage/       # Markdown serialization
 │       │   ├── i18n.ts        # Internationalization
