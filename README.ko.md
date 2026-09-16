@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" alt="QuestTail 로고 — 검은색 요크셔테리어풍 강아지 얼굴 실루엣" width="180">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
+    <img src="assets/logo-light.png" alt="QuestTail 로고 — 검은색 요크셔테리어풍 강아지 얼굴 실루엣" width="180">
+  </picture>
 </p>
 
 # QuestTail (퀘스테일)

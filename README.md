@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" alt="QuestTail logo — black Yorkshire Terrier-like dog face silhouette" width="180">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
+    <img src="assets/logo-light.png" alt="QuestTail logo — black Yorkshire Terrier-like dog face silhouette" width="180">
+  </picture>
 </p>
 
 # QuestTail
