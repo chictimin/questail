@@ -113,6 +113,85 @@ export async function fetchPlayerAchievements(
   return steamFetch<PlayerAchievementsResponse>(url, 'GetPlayerAchievements');
 }
 
+/** normalizeSteamGame의 achievements 인자와 호환되는 최소 입력 */
+export interface AchievementInput {
+  achieved: number;
+  unlocktime: number;
+}
+
+/**
+ * GetPlayerAchievements 응답 → normalizeSteamGame 입력으로 변환.
+ * cli 배선(W-conf)용 한 줄 헬퍼:
+ *   normalizeSteamGame(g, toAchievementInputs(await fetchPlayerAchievements(config, appid)))
+ * 비공개 프로필·미지원 게임은 steamFetch가 SteamApiError를 던지므로
+ * 호출 측에서 게임별 try/catch 후 achievements 없이 호출하면 된다.
+ */
+export function toAchievementInputs(res: PlayerAchievementsResponse): AchievementInput[] {
+  return (res.playerstats.achievements ?? [])
+    .map(a => ({ achieved: a.achieved, unlocktime: a.unlocktime }));
+}
+
+// ─── 위시리스트·보유게임 상세 (postie src/steamid.ts 승격) ──
+// resolveToSteamId는 이미 이 파일에 있으므로 승격 대상에서 제외.
+
+export interface OwnedGameDetail {
+  appid: number;
+  rtimeLastPlayed: number;
+}
+
+interface OwnedDetailResponse {
+  response: {
+    game_count?: number;
+    games?: Array<{ appid?: number; rtime_last_played?: number }>;
+  };
+}
+
+/**
+ * 보유 게임 상세(appId + 마지막 플레이 시각) 조회.
+ * postie fetchOwnedGamesDetail 승격. include_appinfo=false 경량 변형.
+ */
+export async function fetchOwnedGamesDetail(
+  apiKey: string,
+  steamId: string,
+): Promise<OwnedGameDetail[]> {
+  const url = `${STEAM_API_BASE}/IPlayerService/GetOwnedGames/v0001/`
+    + `?key=${apiKey}&steamid=${steamId}`
+    + `&format=json&include_appinfo=false&include_played_free_games=true`;
+
+  const data = await steamFetch<OwnedDetailResponse>(url, 'GetOwnedGames');
+  return (data.response.games ?? [])
+    .filter(g => Number.isInteger(g.appid))
+    .map(g => ({
+      appid: g.appid as number,
+      rtimeLastPlayed: Number(g.rtime_last_played ?? 0),
+    }));
+}
+
+interface WishlistResponse {
+  response?: {
+    items?: Array<{ appid?: number }>;
+  };
+}
+
+/**
+ * 위시리스트 appId 전수 조회.
+ * postie fetchWishlistAppIds 승격 (IWishlistService/GetWishlist/v1, 실측 51건).
+ * HTTP 실패는 steamFetch가 SteamApiError로 던진다 — 호출 측에서 폴백 결정.
+ * 반환된 목록은 normalize 단계에서 wishlisted 매칭용 (W-store 소유).
+ */
+export async function fetchWishlistAppIds(
+  apiKey: string,
+  steamId: string,
+): Promise<number[]> {
+  const url = `${STEAM_API_BASE}/IWishlistService/GetWishlist/v1/`
+    + `?key=${apiKey}&steamid=${steamId}&format=json`;
+
+  const data = await steamFetch<WishlistResponse>(url, 'GetWishlist');
+  return (data.response?.items ?? [])
+    .map(item => item.appid)
+    .filter((n): n is number => Number.isInteger(n));
+}
+
 // ─── SteamID 변환 유틸리티 ──────────────────────────────────
 
 export interface ResolveVanityUrlResponse {

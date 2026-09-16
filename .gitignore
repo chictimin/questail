@@ -9,3 +9,5 @@ dist/
 # CLI output (imported game data)
 games/
 output/
+.cache/
+.backup/
