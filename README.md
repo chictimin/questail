@@ -11,7 +11,7 @@
 
 > A personal-first tool that gathers game history scattered across platforms (Steam/PSN/Xbox) into Markdown archives and provides personal taste analysis via LLM.
 
-**Current phase: M1** — CLI that exports your Steam library to Markdown files.
+**Current phase: M2 (v0.2.0)** — CLI that exports your Steam library to Markdown files and generates a taste analysis report.
 
 ## Quick Start
 
@@ -34,7 +34,10 @@ questail sniff
 # 2. Gather your Steam library
 questail gather steam
 
-# 3. Manage configuration
+# 3. Analyze your taste
+questail analyze
+
+# 4. Manage configuration
 questail config set language en
 questail config get steam-api-key
 ```
@@ -53,9 +56,14 @@ questail config get steam-api-key
 - Omitting `<id>` uses the steam-id stored in config
 - `-o <dir>` output directory (default: `./games/`)
 - Game metadata (genres, developers, publishers, release date, cover image) is auto-enriched via Steam appdetails
-- Achievement completion rate is fetched per game — requires your Steam profile's "Game details" to be set to Public; otherwise it's silently skipped
+- Achievement completion rate is fetched per game — requires your Steam profile's "Game details" to be set to Public; otherwise it's silently skipped. Every game coming back achievement-less? Enable Steam → Settings → Privacy → Game details — that's an account setting, not a questail issue.
 - Writes `library.md` (the canonical index of objective data) and appends a playtime snapshot to `history.jsonl` in the output directory
 - Re-running is non-destructive: objective fields in `games/*.md` are refreshed while subjective fields (ratings and notes, once added) are preserved
+
+**`questail analyze [-o <dir>]`** — Builds a taste profile from `<outputDir>/library.md` and saves the report to `<outputDir>/reports/<YYYY-MM-DD-HHmm>.md`.
+
+- If `library.md` is missing, it tells you to run `gather` first and exits
+- Works without LLM setup: the quantitative report is always generated in full — only the AI interpretation section is left out. With LLM configured, an AI analysis is layered on top.
 
 **`questail config`** — Configuration management:
 
@@ -77,6 +85,13 @@ questail config get steam-api-key
 | `QUESTAIL_LLM_MODEL` | LLM model name (set via `sniff`) | `gpt-4o-mini` |
 
 ## Output Example
+
+`gather` + `analyze` produce four kinds of files under the output directory (default `./games/`):
+
+- `*.md` — per-game notes; re-running refreshes objective fields while subjective fields (`rating`, `note`) are preserved
+- `library.md` — every game × every axis in one index, the canonical source of objective data
+- `history.jsonl` — playtime snapshot log, appended on every run
+- `reports/<YYYY-MM-DD-HHmm>.md` — `analyze` output (report headings are in Korean regardless of locale)
 
 Each game is written as a Markdown file in `./games/`:
 
@@ -103,6 +118,28 @@ File naming: `{appId}-{title-slug}.md` (e.g. `1245620-elden-ring.md`)
 
 Enrichment fields (`achievement_pct`, `genres`, `developers`, `publishers`, `release_date`, `image`) appear only when the data is available. Re-running `gather` refreshes these objective fields; subjective fields (`rating`, `note`) are preserved once added.
 
+A report always carries the full quantitative section — total playtime, top 10 games by playtime, playtime-weighted genre distribution, playtime 5-number summary (hours), concentration (top 10/20/40 share), games per playtime bucket, achievement summary (when data exists), wishlist — plus an AI interpretation when LLM is configured. Excerpt below uses fictional data (illustrative example):
+
+```markdown
+# QuestTail 취향 리포트
+
+- 생성: 2026-09-16T09:00:00.000Z
+- 게임 수: 42개, 총 플레이타임: 1180시간
+
+## 플레이타임 상위 10
+
+| 순위 | 제목 | 시간 | 비중 |
+| --- | --- | --- | --- |
+| 1 | Monster Hunter Wilds | 214.5h | 18.2% |
+| 2 | Terraria | 96.0h | 8.1% |
+| 3 | Stardew Valley | 88.5h | 7.5% |
+| ... | ... | ... | ... |
+
+## AI 해석
+
+(...fictional interpretation omitted...)
+```
+
 ## Project Structure
 
 ```
@@ -116,6 +153,8 @@ questail/
 │       │   ├── metadata/      # appdetails enrichment (cached)
 │       │   ├── normalize/     # Standard schema transformation
 │       │   ├── storage/       # Markdown serialization
+│       │   ├── profile/       # Taste profile aggregation
+│       │   ├── analyze/       # Quantitative stats + LLM interpretation
 │       │   ├── i18n.ts        # Internationalization
 │       │   └── cli.ts         # CLI entry point
 │       └── package.json
@@ -128,8 +167,9 @@ questail/
 | Phase | Goal |
 |-------|------|
 | **M1** ✅ | Steam library → Markdown CLI |
-| M2 | AI taste analysis report CLI |
-| M3 | Rating input + Web demo UI |
+| **M2** ✅ | AI taste analysis report CLI (v0.2.0) |
+| M2.5 | Agent reinforcement loop |
+| M3 | Web UI + ratings |
 | M4+ | PSN/Xbox connectors, manual entries, advanced analytics |
 
 ## License

@@ -11,7 +11,7 @@
 
 > 여러 플랫폼(Steam/PSN/Xbox)에 흩어진 게임 이력을 모아 Markdown으로 아카이빙하고, LLM으로 개인 취향 분석을 받는 personal-first 도구.
 
-**현재 단계: M1** — Steam 라이브러리를 Markdown 파일로 추출하는 CLI.
+**현재 단계: M2 (v0.2.0)** — Steam 라이브러리를 Markdown 파일로 추출하고 취향 분석 리포트를 만드는 CLI.
 
 ## 설치
 
@@ -34,7 +34,10 @@ questail sniff
 # 2. Steam 라이브러리 수집
 questail gather steam
 
-# 3. 설정 관리
+# 3. 취향 분석
+questail analyze
+
+# 4. 설정 관리
 questail config set language en
 questail config get steam-api-key
 ```
@@ -53,9 +56,14 @@ questail config get steam-api-key
 - `<id>` 생략 시 config에 저장된 steam-id 사용
 - `-o <dir>` 출력 디렉토리 (기본: `./games/`)
 - Steam appdetails로 게임 메타(장르·개발사·퍼블리셔·출시일·커버 이미지)를 자동 보강합니다
-- 게임별 업적 달성률을 조회합니다 — Steam 프로필의 "게임 세부정보"가 공개 상태여야 동작하며, 비공개면 조용히 스킵됩니다
+- 게임별 업적 달성률을 조회합니다 — Steam 프로필의 "게임 세부정보"가 공개 상태여야 동작하며, 비공개면 조용히 스킵됩니다. 전 게임이 비어 있으면 Steam → 설정 → 개인정보 → 게임 세부정보를 켜세요 — 계정 설정 문제이지 questail 버그가 아닙니다.
 - 출력 디렉토리에 `library.md`(객관 데이터 정본 인덱스)를 생성하고 `history.jsonl`(플레이타임 스냅샷 로그)에 누적합니다
 - 재실행은 비파괴 방식입니다: `games/*.md`의 객관 필드는 최신화되고, 주관 필드(별점·한줄평 등, 추가되는 대로)는 보존됩니다
+
+**`questail analyze [-o <dir>]`** — `<outputDir>/library.md`에서 취향 프로필을 만들어 `<outputDir>/reports/<YYYY-MM-DD-HHmm>.md`로 저장합니다.
+
+- `library.md`가 없으면 먼저 `gather`를 실행하라고 안내하고 종료합니다
+- LLM 미설정이어도 정량 리포트는 온전히 생성됩니다(빈 리포트가 아닙니다) — AI 해석 섹션만 빠집니다. LLM이 설정돼 있으면 그 위에 AI 해석이 얹힙니다.
 
 **`questail config`** — 설정 관리:
 
@@ -77,6 +85,13 @@ questail config get steam-api-key
 | `QUESTAIL_LLM_MODEL` | LLM 모델명 (`sniff`로 설정) | `gpt-4o-mini` |
 
 ## 출력 예시
+
+`gather` + `analyze`는 출력 디렉토리(기본 `./games/`)에 네 종류의 파일을 만듭니다:
+
+- `*.md` — 게임별 노트. 재실행 시 객관 필드는 최신화되고 주관 필드(`rating`, `note`)는 보존됩니다
+- `library.md` — 전 게임 × 전 축을 담은 인덱스, 객관 데이터의 정본
+- `history.jsonl` — 실행마다 누적되는 플레이타임 스냅샷 로그
+- `reports/<YYYY-MM-DD-HHmm>.md` — `analyze` 산출물
 
 `./games/` 디렉토리에 게임별 md 파일이 생성됩니다:
 
@@ -103,6 +118,28 @@ release_date: 24 Feb, 2022
 
 보강 필드(`achievement_pct`, `genres`, `developers`, `publishers`, `release_date`, `image`)는 데이터가 있을 때만 기록됩니다. `gather`를 다시 실행하면 객관 필드가 최신화되고, 주관 필드(`rating`, `note`)는 추가된 이후부터 보존됩니다.
 
+리포트에는 정량 섹션이 항상 온전히 담깁니다 — 총 플레이타임, 플레이타임 상위 10 게임, 플레이타임 가중 장르 분포, 플레이타임 5수 요약(시간), 편중도(상위 10/20/40 비중), 플레이 구간별 게임 수, 업적 달성률 요약(데이터가 있을 때), 위시리스트 — LLM이 설정돼 있으면 AI 해석이 얹힙니다. 아래 발췌는 가공 데이터 예시입니다:
+
+```markdown
+# QuestTail 취향 리포트
+
+- 생성: 2026-09-16T09:00:00.000Z
+- 게임 수: 42개, 총 플레이타임: 1180시간
+
+## 플레이타임 상위 10
+
+| 순위 | 제목 | 시간 | 비중 |
+| --- | --- | --- | --- |
+| 1 | Monster Hunter Wilds | 214.5h | 18.2% |
+| 2 | Terraria | 96.0h | 8.1% |
+| 3 | Stardew Valley | 88.5h | 7.5% |
+| ... | ... | ... | ... |
+
+## AI 해석
+
+(...가공 해석 생략...)
+```
+
 ## 구조
 
 ```
@@ -116,6 +153,8 @@ questail/
 │       │   ├── metadata/      # appdetails 보강 (캐시)
 │       │   ├── normalize/     # 표준 스키마 변환
 │       │   ├── storage/       # Markdown 직렬화
+│       │   ├── profile/       # 취향 프로필 집계
+│       │   ├── analyze/       # 정량 지표 + LLM 해석
 │       │   ├── i18n.ts        # 다국어 지원
 │       │   └── cli.ts         # CLI 진입점
 │       └── package.json
@@ -128,8 +167,9 @@ questail/
 | 단계 | 목표 |
 |------|------|
 | **M1** ✅ | Steam 라이브러리 → Markdown CLI |
-| M2 | AI 취향 분석 리포트 CLI |
-| M3 | 별점 입력 + 웹 데모 UI |
+| **M2** ✅ | AI 취향 분석 리포트 CLI (v0.2.0) |
+| M2.5 | 에이전트 보강 루프 |
+| M3 | 웹 UI + 별점 |
 | M4+ | PSN/Xbox, 수기 추가, 분석 심화 |
 
 ## 라이선스
