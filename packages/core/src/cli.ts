@@ -359,10 +359,14 @@ async function cmdGatherSteam(): Promise<void> {
   try {
     const metas = await fetchAppMetaBatch(
       data.response.games.map(g => String(g.appid)),
-      (done, total, appId) => console.error(llmText(
-        `메타 수집 중 ${done}/${total} (app ${appId})`,
-        `Fetching metadata ${done}/${total} (app ${appId})`,
-      )),
+      {
+        // gather는 수동 아카이빙이라 전수 확보 우선 — 레이트리밋 시 대기 후 재개가 기본값
+        onRateLimit: 'wait',
+        onProgress: (done, total, appId) => console.error(llmText(
+          `메타 수집 중 ${done}/${total} (app ${appId})`,
+          `Fetching metadata ${done}/${total} (app ${appId})`,
+        )),
+      },
     );
     for (const m of metas) metaByAppId.set(m.appId, m);
   } catch (e) {

@@ -202,14 +202,29 @@ export async function fetchAppMeta(appId: string): Promise<GameMeta> {
 }
 
 /**
+ * fetchAppMetaBatch 호출 옵션.
+ */
+export interface FetchAppMetaBatchOptions {
+  onProgress?: (done: number, total: number, appId: string) => void;
+  /**
+   * 레이트리밋(429/403 또는 연속 소프트실패) 시 동작.
+   * 'wait' — 쿨다운만큼 기다렸다 같은 appId부터 재개. 전수 확보 우선 (기본값)
+   * 'stop' — 즉시 중단하고 그때까지 모은 결과만 반환. 지연 회피 우선
+   */
+  onRateLimit?: 'wait' | 'stop';
+}
+
+/**
  * 전수 조회용 순차 배치. Promise.all을 쓰지 않는다 — 1건씩 for 순회하며
- * fetchAppMeta 내부 스로틀이 간격을 보장한다. 쿨다운 에러가 나면 대기 후
- * 같은 appId부터 재개한다.
+ * fetchAppMeta 내부 스로틀이 간격을 보장한다. 쿨다운 에러가 나면
+ * onRateLimit에 따라 대기 후 같은 appId부터 재개('wait', 기본값)하거나
+ * 그때까지 모은 결과만 반환하고 끝낸다('stop' — throw하지 않는다).
  */
 export async function fetchAppMetaBatch(
   appIds: string[],
-  onProgress?: (done: number, total: number, appId: string) => void,
+  options?: FetchAppMetaBatchOptions,
 ): Promise<GameMeta[]> {
+  const onRateLimit = options?.onRateLimit ?? 'wait';
   const out: GameMeta[] = [];
   for (let i = 0; i < appIds.length; i++) {
     const id = appIds[i];
@@ -217,13 +232,14 @@ export async function fetchAppMetaBatch(
       out.push(await fetchAppMeta(id));
     } catch (e) {
       if (e instanceof AppMetaRateLimitedError) {
+        if (onRateLimit === 'stop') break;
         await sleep(e.retryAfterMs);
         out.push(await fetchAppMeta(id)); // 같은 appId부터 재개
       } else {
         throw e;
       }
     }
-    onProgress?.(i + 1, appIds.length, id);
+    options?.onProgress?.(i + 1, appIds.length, id);
   }
   return out;
 }
