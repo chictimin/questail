@@ -11,7 +11,7 @@
  * Local .env also loaded (higher priority)
  */
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -20,7 +20,8 @@ import { fetchOwnedGames, fetchPlayerAchievements, fetchWishlistAppIds, resolveT
 import { normalizeSteamGame } from './normalize/index.js';
 import { appendHistoryLog, buildHistoryRecords, HISTORY_FILENAME, writeGameNote, writeLibraryIndex, parseLibraryMarkdown } from './storage/index.js';
 import { buildTasteProfile } from './profile/index.js';
-import { analyzeLibrary, type AnalysisReportJson, type QuantitativeStats, toReportJson } from './analyze/index.js';
+import { analyzeLibrary, REPORT_SCHEMA_VERSION, type AnalysisReportJson, type QuantitativeStats, toReportJson } from './analyze/index.js';
+import { parseReportChart, renderReportMarkdown, type ReportChart } from './analyze/report.js';
 import { fetchAppMetaBatch } from './metadata/index.js';
 import { detectLocale, t, type Locale } from './i18n.js';
 import type { GameMeta, NormalizedGame } from './types.js';
@@ -472,87 +473,38 @@ function reportTimestamp(d: Date = new Date()): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
 }
 
-function escapeMdCell(value: string): string {
-  return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
+/**
+ * 리포트 mermaid 계층 종류. 전역 설정 QUESTAIL_REPORT_CHART로 고른다.
+ * `questail config set report-chart <none|pie|xychart>`로 바꾸면 파일에는
+ * `report-chart=`로 저장되고 프로세스에는 REPORT_CHART로 올라가므로
+ * 세 키를 순서대로 본다. 이상한 값은 parseReportChart가 기본값(pie)으로.
+ */
+function resolveReportChart(): ReportChart {
+  return parseReportChart(
+    process.env.QUESTAIL_REPORT_CHART ?? process.env.REPORT_CHART ?? process.env['report-chart'],
+  );
 }
 
-function renderReportMarkdown(
-  stats: QuantitativeStats,
-  summary: string | undefined,
-  generatedAt: Date = new Date(),
-  llmAttempted = false,
-): string {
-  const lines: string[] = [];
-  lines.push('# QuestTail 취향 리포트', '');
-  lines.push(`- 생성: ${generatedAt.toISOString()}`);
-  lines.push(`- 게임 수: ${stats.gameCount}개, 총 플레이타임: ${stats.totalPlaytimeHours}시간`, '');
-
-  lines.push('## 플레이타임 상위 10', '');
-  lines.push('| 순위 | 제목 | 시간 | 비중 |');
-  lines.push('| --- | --- | --- | --- |');
-  stats.topGames.forEach((g, i) => {
-    lines.push(`| ${i + 1} | ${escapeMdCell(g.title)} | ${g.playtimeHours}h | ${g.sharePercent}% |`);
-  });
-  lines.push('');
-
-  lines.push('## 장르 분포 (플레이타임 가중)', '');
-  if (stats.genreDistribution.length === 0) {
-    lines.push('(장르 정보 없음)', '');
-  } else {
-    lines.push('| 장르 | 비중 |');
-    lines.push('| --- | --- |');
-    for (const g of stats.genreDistribution) {
-      lines.push(`| ${escapeMdCell(g.genre)} | ${g.percent}% |`);
+/**
+ * reports/ 안의 가장 최근 JSON을 읽는다. 시계열 비교용.
+ * 파일 없음·파싱 실패·버전 불일치면 조용히 undefined — 섹션 생략이 정상 흐름이다.
+ */
+async function readPreviousReport(reportsDir: string): Promise<AnalysisReportJson | undefined> {
+  let files: string[];
+  try {
+    files = (await readdir(reportsDir)).filter((f) => f.endsWith('.json')).sort().reverse();
+  } catch {
+    return undefined;
+  }
+  for (const file of files) {
+    try {
+      const parsed = JSON.parse(await readFile(join(reportsDir, file), 'utf-8')) as AnalysisReportJson;
+      if (parsed?.schemaVersion === REPORT_SCHEMA_VERSION && parsed.stats) return parsed;
+    } catch {
+      // 깨진 파일은 건너뛰고 다음 후보로
     }
-    lines.push('');
   }
-
-  const h = stats.playtimeDistributionHours;
-  lines.push('## 플레이타임 분포 (시간, 5수 요약)', '');
-  lines.push(`| 최소 | Q1 | 중앙값 | Q3 | 최대 |`);
-  lines.push('| --- | --- | --- | --- | --- |');
-  lines.push(`| ${h.min} | ${h.q1} | ${h.median} | ${h.q3} | ${h.max} |`);
-  lines.push('');
-
-  const c = stats.concentration;
-  lines.push('## 편중도 (상위 게임이 총 플레이타임에서 차지하는 비중)', '');
-  lines.push(`| 상위 10개 | 상위 20개 | 상위 40개 |`);
-  lines.push('| --- | --- | --- |');
-  lines.push(`| ${c.top10SharePercent}% | ${c.top20SharePercent}% | ${c.top40SharePercent}% |`);
-  lines.push('');
-
-  const b = stats.playtimeBuckets;
-  lines.push('## 플레이 구간별 게임 수', '');
-  lines.push('| 미플레이 | 1시간 미만 | 1~10시간 | 10~100시간 | 100시간 이상 |');
-  lines.push('| --- | --- | --- | --- | --- |');
-  lines.push(`| ${b.unplayed} | ${b.under1h} | ${b.h1to10} | ${b.h10to100} | ${b.over100h} |`);
-  lines.push('');
-
-  if (stats.achievement) {
-    const a = stats.achievement;
-    lines.push('## 업적 달성률', '');
-    lines.push(`- 보유 게임: ${a.count}개, 평균 ${a.avgPercent}%, 중앙값 ${a.medianPercent}% (최소 ${a.minPercent}% / 최대 ${a.maxPercent}%)`);
-    lines.push('');
-  }
-
-  lines.push(`## 위시리스트: ${stats.wishlist.count}개`, '');
-  if (stats.wishlist.titles.length > 0) {
-    for (const title of stats.wishlist.titles) lines.push(`- ${escapeMdCell(title)}`);
-    lines.push('');
-  }
-
-  if (summary) {
-    lines.push('## AI 해석', '');
-    lines.push(summary.trim(), '');
-  } else if (llmAttempted) {
-    lines.push('## AI 해석', '');
-    lines.push('(LLM 호출 실패 — 해석 없는 정량 리포트)', '');
-  } else {
-    lines.push('## AI 해석', '');
-    lines.push('(LLM 미설정 — 해석 없는 정량 리포트)', '');
-  }
-
-  return lines.join('\n');
+  return undefined;
 }
 
 async function cmdAnalyze(): Promise<void> {
@@ -575,6 +527,17 @@ async function cmdAnalyze(): Promise<void> {
   const profile = buildTasteProfile(library);
   const llmOptions = getLlmOptions();
   const llmAvailable = canCallLlm(llmOptions);
+  const chart = resolveReportChart();
+
+  // 시계열 비교용 이전 리포트 — 없거나 깨졌으면 조용히 생략 (trend 섹션 없음)
+  const reportsDir = join(outputDir, 'reports');
+  const prevReport = await readPreviousReport(reportsDir);
+  if (prevReport) {
+    console.error(llmText(
+      `이전 리포트 발견 (${prevReport.generatedAt}) — 변화 지표를 계산합니다.`,
+      `Previous report found (${prevReport.generatedAt}) — computing changes.`,
+    ));
+  }
 
   let spinner: Spinner | undefined;
   if (!llmAvailable) {
@@ -588,7 +551,7 @@ async function cmdAnalyze(): Promise<void> {
     spinner = startSpinner(llmText(`AI 해석 요청 중 (${target})`, `Requesting AI analysis (${target})`));
   }
 
-  const report = await analyzeLibrary(library, profile, llmOptions);
+  const report = await analyzeLibrary(library, profile, llmOptions, locale, prevReport);
   if (spinner) {
     spinner.stop(report.summary
       ? llmText('AI 해석 완료', 'AI analysis done')
@@ -598,13 +561,12 @@ async function cmdAnalyze(): Promise<void> {
 
   const now = new Date();
   const stamp = reportTimestamp(now);
-  const reportsDir = join(outputDir, 'reports');
   await mkdir(reportsDir, { recursive: true });
   const filepath = join(reportsDir, `${stamp}.md`);
-  await writeFile(filepath, renderReportMarkdown(stats, report.summary, now, llmAvailable), 'utf-8');
+  await writeFile(filepath, renderReportMarkdown(stats, report.summary, now, llmAvailable, llmText, chart), 'utf-8');
   console.error(llmText(`리포트 저장: ${filepath}`, `Report saved: ${filepath}`));
   // JSON 사이드카 — md와 같은 타임스탬프로 짝을 맞춘다
-  const sidecar: AnalysisReportJson = toReportJson(report, now);
+  const sidecar: AnalysisReportJson = toReportJson(report, now, library);
   const jsonpath = join(reportsDir, `${stamp}.json`);
   await writeFile(jsonpath, JSON.stringify(sidecar, null, 2) + '\n', 'utf-8');
   console.error(llmText(`JSON 저장: ${jsonpath}`, `JSON saved: ${jsonpath}`));
