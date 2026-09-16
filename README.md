@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="QuestTail logo — black Yorkshire Terrier-like dog face silhouette" width="180">
+</p>
+
 # QuestTail
 
 > English · [한국어](./README.ko.md)

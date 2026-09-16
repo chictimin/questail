@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="QuestTail 로고 — 검은색 요크셔테리어풍 강아지 얼굴 실루엣" width="180">
+</p>
+
 # QuestTail (퀘스테일)
 
 > [English](./README.md) · 한국어
