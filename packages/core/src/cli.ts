@@ -421,6 +421,50 @@ async function cmdGatherSteam(): Promise<void> {
   console.error(_('import_done', String(count), outputDir));
 }
 
+// ─── Progress helpers ────────────────────────────────────────
+// Node 내장만 사용 (의존성 추가 금지 — core는 npm 배포 대상).
+// 지금은 analyze에만 배선하고, 나중에 gather의 메타 수집 진행 표시도
+// 같은 헬퍼로 바꿀 예정이다. gather는 이번에 건드리지 않는다.
+
+function formatElapsed(ms: number): string {
+  return `${Math.floor(ms / 1000)}s`;
+}
+
+interface Spinner {
+  /** 스피너를 멈추고 결과 한 줄을 남긴다 (경과 시간 자동 첨부) */
+  stop(finalLabel: string): void;
+}
+
+/**
+ * TTY면 프레임 스피너 + 경과 시간, TTY가 아니면(파이프·리다이렉트·CI)
+ * 커서 제어 문자 없이 평범한 시작 한 줄만 찍는다.
+ * 종료 시 스피너 줄을 지우고 결과 한 줄을 stderr에 남긴다.
+ */
+function startSpinner(label: string): Spinner {
+  if (!process.stderr.isTTY) {
+    console.error(label);
+    const startedAt = Date.now();
+    return {
+      stop: (finalLabel: string) => {
+        console.error(`${finalLabel} (${formatElapsed(Date.now() - startedAt)})`);
+      },
+    };
+  }
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  const startedAt = Date.now();
+  let i = 0;
+  const timer = setInterval(() => {
+    process.stderr.write(`\r${frames[i++ % frames.length]} ${label} (${formatElapsed(Date.now() - startedAt)})`);
+  }, 100);
+  return {
+    stop: (finalLabel: string) => {
+      clearInterval(timer);
+      process.stderr.write('\r\x1b[K');
+      console.error(`${finalLabel} (${formatElapsed(Date.now() - startedAt)})`);
+    },
+  };
+}
+
 // ─── Analyze Subcommand ──────────────────────────────────────
 
 function reportTimestamp(d: Date = new Date()): string {
@@ -523,22 +567,39 @@ async function cmdAnalyze(): Promise<void> {
   }
 
   const library = parseLibraryMarkdown(await readFile(libraryPath, 'utf-8'));
+  console.error(llmText(
+    `라이브러리 읽기 완료: ${library.games.length}개 게임`,
+    `Library loaded: ${library.games.length} games`,
+  ));
+  console.error(llmText('취향 프로필 계산 중...', 'Computing taste profile...'));
   const profile = buildTasteProfile(library);
   const llmOptions = getLlmOptions();
-  if (!canCallLlm(llmOptions)) {
+  const llmAvailable = canCallLlm(llmOptions);
+
+  let spinner: Spinner | undefined;
+  if (!llmAvailable) {
     console.error(llmText(
       'LLM 설정이 없습니다. 해석 없는 정량 리포트로 생성합니다.',
       'No LLM configured. Generating a quantitative-only report.',
     ));
+  } else {
+    // API 키는 절대 출력하지 않는다 — 엔드포인트·모델만 표시
+    const target = `${llmOptions.baseUrl ?? llmText('(미설정)', '(unset)')} / ${llmOptions.model || LLM_DEFAULT_MODEL}`;
+    spinner = startSpinner(llmText(`AI 해석 요청 중 (${target})`, `Requesting AI analysis (${target})`));
   }
 
   const report = await analyzeLibrary(library, profile, llmOptions);
+  if (spinner) {
+    spinner.stop(report.summary
+      ? llmText('AI 해석 완료', 'AI analysis done')
+      : llmText('AI 해석 실패 — 해석 없는 정량 리포트로 생성합니다', 'AI analysis failed — generating a quantitative-only report'));
+  }
   const stats = report.stats as unknown as QuantitativeStats;
 
   const reportsDir = join(outputDir, 'reports');
   await mkdir(reportsDir, { recursive: true });
   const filepath = join(reportsDir, `${reportTimestamp()}.md`);
-  await writeFile(filepath, renderReportMarkdown(stats, report.summary, new Date(), canCallLlm(llmOptions)), 'utf-8');
+  await writeFile(filepath, renderReportMarkdown(stats, report.summary, new Date(), llmAvailable), 'utf-8');
   console.error(llmText(`리포트 저장: ${filepath}`, `Report saved: ${filepath}`));
 }
 
