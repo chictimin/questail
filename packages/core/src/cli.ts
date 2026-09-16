@@ -18,7 +18,9 @@ import { resolve, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fetchOwnedGames, fetchPlayerAchievements, fetchWishlistAppIds, resolveToSteamId, toAchievementInputs, type SteamConfig } from './connectors/steam.js';
 import { normalizeSteamGame } from './normalize/index.js';
-import { appendHistoryLog, buildHistoryRecords, HISTORY_FILENAME, writeGameNote, writeLibraryIndex } from './storage/index.js';
+import { appendHistoryLog, buildHistoryRecords, HISTORY_FILENAME, writeGameNote, writeLibraryIndex, parseLibraryMarkdown } from './storage/index.js';
+import { buildTasteProfile } from './profile/index.js';
+import { analyzeLibrary, type QuantitativeStats } from './analyze/index.js';
 import { fetchAppMetaBatch } from './metadata/index.js';
 import { detectLocale, t, type Locale } from './i18n.js';
 import type { GameMeta, NormalizedGame } from './types.js';
@@ -33,6 +35,7 @@ import {
   LLM_DEFAULT_LOCAL_BASE_URL,
   LLM_DEFAULT_LOCAL_MODEL,
   LLM_DEFAULT_MODEL,
+  canCallLlm,
   isLocalhostUrl,
 } from './llm/index.js';
 
@@ -414,12 +417,134 @@ async function cmdGatherSteam(): Promise<void> {
   console.error(_('import_done', String(count), outputDir));
 }
 
+// ─── Analyze Subcommand ──────────────────────────────────────
+
+function reportTimestamp(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+function escapeMdCell(value: string): string {
+  return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
+}
+
+function renderReportMarkdown(
+  stats: QuantitativeStats,
+  summary: string | undefined,
+  generatedAt: Date = new Date(),
+  llmAttempted = false,
+): string {
+  const lines: string[] = [];
+  lines.push('# QuestTail 취향 리포트', '');
+  lines.push(`- 생성: ${generatedAt.toISOString()}`);
+  lines.push(`- 게임 수: ${stats.gameCount}개, 총 플레이타임: ${stats.totalPlaytimeHours}시간`, '');
+
+  lines.push('## 플레이타임 상위 10', '');
+  lines.push('| 순위 | 제목 | 시간 | 비중 |');
+  lines.push('| --- | --- | --- | --- |');
+  stats.topGames.forEach((g, i) => {
+    lines.push(`| ${i + 1} | ${escapeMdCell(g.title)} | ${g.playtimeHours}h | ${g.sharePercent}% |`);
+  });
+  lines.push('');
+
+  lines.push('## 장르 분포 (플레이타임 가중)', '');
+  if (stats.genreDistribution.length === 0) {
+    lines.push('(장르 정보 없음)', '');
+  } else {
+    lines.push('| 장르 | 비중 |');
+    lines.push('| --- | --- |');
+    for (const g of stats.genreDistribution) {
+      lines.push(`| ${escapeMdCell(g.genre)} | ${g.percent}% |`);
+    }
+    lines.push('');
+  }
+
+  const h = stats.playtimeDistributionHours;
+  lines.push('## 플레이타임 분포 (시간, 5수 요약)', '');
+  lines.push(`| 최소 | Q1 | 중앙값 | Q3 | 최대 |`);
+  lines.push('| --- | --- | --- | --- | --- |');
+  lines.push(`| ${h.min} | ${h.q1} | ${h.median} | ${h.q3} | ${h.max} |`);
+  lines.push('');
+
+  const c = stats.concentration;
+  lines.push('## 편중도 (상위 게임이 총 플레이타임에서 차지하는 비중)', '');
+  lines.push(`| 상위 10개 | 상위 20개 | 상위 40개 |`);
+  lines.push('| --- | --- | --- |');
+  lines.push(`| ${c.top10SharePercent}% | ${c.top20SharePercent}% | ${c.top40SharePercent}% |`);
+  lines.push('');
+
+  const b = stats.playtimeBuckets;
+  lines.push('## 플레이 구간별 게임 수', '');
+  lines.push('| 미플레이 | 1시간 미만 | 1~10시간 | 10~100시간 | 100시간 이상 |');
+  lines.push('| --- | --- | --- | --- | --- |');
+  lines.push(`| ${b.unplayed} | ${b.under1h} | ${b.h1to10} | ${b.h10to100} | ${b.over100h} |`);
+  lines.push('');
+
+  if (stats.achievement) {
+    const a = stats.achievement;
+    lines.push('## 업적 달성률', '');
+    lines.push(`- 보유 게임: ${a.count}개, 평균 ${a.avgPercent}%, 중앙값 ${a.medianPercent}% (최소 ${a.minPercent}% / 최대 ${a.maxPercent}%)`);
+    lines.push('');
+  }
+
+  lines.push(`## 위시리스트: ${stats.wishlist.count}개`, '');
+  if (stats.wishlist.titles.length > 0) {
+    for (const title of stats.wishlist.titles) lines.push(`- ${escapeMdCell(title)}`);
+    lines.push('');
+  }
+
+  if (summary) {
+    lines.push('## AI 해석', '');
+    lines.push(summary.trim(), '');
+  } else if (llmAttempted) {
+    lines.push('## AI 해석', '');
+    lines.push('(LLM 호출 실패 — 해석 없는 정량 리포트)', '');
+  } else {
+    lines.push('## AI 해석', '');
+    lines.push('(LLM 미설정 — 해석 없는 정량 리포트)', '');
+  }
+
+  return lines.join('\n');
+}
+
+async function cmdAnalyze(): Promise<void> {
+  const outputDir = parseOutputFlag();
+  const libraryPath = join(outputDir, 'library.md');
+  if (!existsSync(libraryPath)) {
+    console.error(llmText(
+      `library.md가 없습니다 (${libraryPath}). 먼저 \`questail gather steam\`을 실행하세요.`,
+      `library.md not found (${libraryPath}). Run \`questail gather steam\` first.`,
+    ));
+    process.exit(1);
+  }
+
+  const library = parseLibraryMarkdown(await readFile(libraryPath, 'utf-8'));
+  const profile = buildTasteProfile(library);
+  const llmOptions = getLlmOptions();
+  if (!canCallLlm(llmOptions)) {
+    console.error(llmText(
+      'LLM 설정이 없습니다. 해석 없는 정량 리포트로 생성합니다.',
+      'No LLM configured. Generating a quantitative-only report.',
+    ));
+  }
+
+  const report = await analyzeLibrary(library, profile, llmOptions);
+  const stats = report.stats as unknown as QuantitativeStats;
+
+  const reportsDir = join(outputDir, 'reports');
+  await mkdir(reportsDir, { recursive: true });
+  const filepath = join(reportsDir, `${reportTimestamp()}.md`);
+  await writeFile(filepath, renderReportMarkdown(stats, report.summary, new Date(), canCallLlm(llmOptions)), 'utf-8');
+  console.error(llmText(`리포트 저장: ${filepath}`, `Report saved: ${filepath}`));
+}
+
 // ─── Main ────────────────────────────────────────────────────
 
 function printUsage(): void {
   console.error(_('usage_header'));
   console.error(_('usage_login'));
   console.error(_('usage_import'));
+  console.error(llmText('  questail analyze [-o <dir>]', '  questail analyze [-o <dir>]'));
   console.error(_('usage_config_set'));
   console.error(_('usage_config_get'));
   console.error(_('usage_config_delete'));
@@ -443,6 +568,9 @@ function main(): void {
       break;
     case 'config':
       void cmdConfig().catch(e => { console.error(_('error', e.message)); process.exit(1); });
+      break;
+    case 'analyze':
+      void cmdAnalyze().catch(e => { console.error(_('error', e.message)); process.exit(1); });
       break;
     default:
       if (cmd === '--help' || cmd === '-h' || !cmd) {

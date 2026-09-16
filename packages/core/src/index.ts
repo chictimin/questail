@@ -3,3 +3,7 @@ export * from './normalize/index.js';
 export * from './storage/index.js';
 export * from './metadata/index.js';
 export * from './types.js';
+export * from './config/index.js';
+export * from './llm/index.js';
+export * from './profile/index.js';
+export * from './analyze/index.js';

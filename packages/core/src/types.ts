@@ -42,6 +42,10 @@ export interface NormalizedGame {
 /** appdetails 등 메타 소스에서 가져오는 원본 보강 데이터 (D5) */
 export interface GameMeta {
   appId: string;
+  /** 스토어 표시명 (위시 전용 게임의 제목 복원용 — GetOwnedGames에 없는 게임) */
+  name?: string;
+  /** 지원 플랫폼 (appdetails data.platforms에서 true인 키만, 예: ['windows','mac']) */
+  platforms?: string[];
   genres?: string[];
   developers?: string[];
   publishers?: string[];

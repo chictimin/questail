@@ -99,6 +99,8 @@ async function writeCache(meta: GameMeta): Promise<void> {
 interface AppDetailsRaw {
   success: boolean;
   data?: {
+    name?: string;
+    platforms?: { windows?: boolean; mac?: boolean; linux?: boolean };
     genres?: Array<{ description?: string }>;
     categories?: Array<{ description?: string }>;
     developers?: string[];
@@ -185,6 +187,8 @@ export async function fetchAppMeta(appId: string): Promise<GameMeta> {
   const d = entry.data;
   const meta: GameMeta = {
     appId,
+    name: d.name,
+    platforms: (['windows', 'mac', 'linux'] as const).filter(p => d.platforms?.[p] === true),
     genres: descriptions(d.genres),
     developers: (d.developers ?? []).filter(s => s.length > 0),
     publishers: (d.publishers ?? []).filter(s => s.length > 0),
