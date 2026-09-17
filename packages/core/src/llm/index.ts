@@ -99,12 +99,20 @@ export async function callLlm(options: LlmOptions, prompt: string): Promise<stri
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
+      // 기본 헤더 + options.headers 병합. authorization·content-type은
+      // 대소문자 무관하게 보호한다 (호출자가 실수로 덮어쓰는 것 방지).
+      const headers: Record<string, string> = {
+        'content-type': 'application/json',
+        authorization: `Bearer ${effectiveApiKey(options.apiKey)}`,
+      };
+      for (const [key, value] of Object.entries(options.headers ?? {})) {
+        const lower = key.toLowerCase();
+        if (lower === 'authorization' || lower === 'content-type') continue;
+        headers[key] = value;
+      }
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${effectiveApiKey(options.apiKey)}`,
-        },
+        headers,
         body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }),
         signal: ctrl.signal,
       });

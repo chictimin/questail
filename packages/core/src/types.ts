@@ -101,4 +101,10 @@ export interface LlmOptions {
   apiKey?: string;
   model?: string;
   timeoutMs?: number;
+  /**
+   * 추가 HTTP 헤더 (예: 게이트웨이 라우팅·캐싱용 식별자).
+   * callLlm이 기본 헤더에 병합하되 authorization·content-type은 덮어쓰지 않는다.
+   * 옵셔널이라 미지정 시 기존 동작 그대로다.
+   */
+  headers?: Record<string, string>;
 }
