@@ -107,4 +107,10 @@ export interface LlmOptions {
    * 옵셔널이라 미지정 시 기존 동작 그대로다.
    */
   headers?: Record<string, string>;
+  /**
+   * 샘플링 온도 (예: 0 = 결정적 출력).
+   * 지정된 경우에만 요청 바디에 실린다.
+   * 옵셔널이라 미지정 시 기존 동작 그대로다.
+   */
+  temperature?: number;
 }

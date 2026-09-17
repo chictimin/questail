@@ -110,10 +110,15 @@ export async function callLlm(options: LlmOptions, prompt: string): Promise<stri
         if (lower === 'authorization' || lower === 'content-type') continue;
         headers[key] = value;
       }
+      const body: Record<string, unknown> = {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+      };
+      if (options.temperature !== undefined) body.temperature = options.temperature;
       const res = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify(body),
         signal: ctrl.signal,
       });
       if (!res.ok) {
