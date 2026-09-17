@@ -25,6 +25,16 @@ pnpm build
 pnpm link --global
 ```
 
+## `@questail/core` 라이브러리 사용
+
+`@questail/core`는 아직 npm 레지스트리에 없습니다. GitHub Release에 첨부된 빌드 tarball을 URL로 설치합니다:
+
+```bash
+pnpm add https://github.com/chictimin/questail/releases/download/v0.2.0/questail-core-0.2.0.tgz
+```
+
+tarball에 빌드된 `dist/`가 들어 있어 소비자 측 빌드가 필요 없습니다. 업그레이드는 URL의 버전만 바꾸고 `pnpm install` 합니다. npm 배포 전까지는 git 태그가 버전의 정본입니다.
+
 ## 사용법
 
 ```bash

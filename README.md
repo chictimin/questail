@@ -25,6 +25,16 @@ pnpm build
 pnpm link --global
 ```
 
+## Consuming `@questail/core` as a library
+
+`@questail/core` is not on the npm registry yet. Pinned builds are attached to GitHub Releases — install by URL:
+
+```bash
+pnpm add https://github.com/chictimin/questail/releases/download/v0.2.0/questail-core-0.2.0.tgz
+```
+
+The tarball contains the built `dist/`, so no build step is needed on the consumer side. To upgrade, replace the version in the URL and run `pnpm install`. Until an npm publish happens, the git tag is the source of truth for versions.
+
 ## Usage
 
 ```bash
