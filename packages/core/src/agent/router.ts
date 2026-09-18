@@ -33,6 +33,7 @@ import type {
   QueryCategory,
   ToolName,
 } from './types.js';
+import { detectLocale } from '../i18n.js';
 
 export interface RoutedCall { tool: ToolName; args: Record<string, unknown>; }
 
@@ -219,16 +220,39 @@ function selectPrimary(
 
 // ── 라우터 본체 ─────────────────────────────────────────────────────────────
 
+let enLocaleWarned = false;
+
+/**
+ * ko-only 가드. LANG 기반 로케일이 en이면 첫 호출 1회만 경고한다.
+ * routeQuestion은 문항마다 불리므로 매번 찍지 않는다.
+ * core는 라이브러리이므로 throw하지 않고 console.warn으로 끝낸다.
+ */
+function warnOnceIfEnglish(): void {
+  if (enLocaleWarned || detectLocale() !== 'en') return;
+  enLocaleWarned = true;
+  console.warn(
+    '[questail] agent router is Korean-only — English questions do not error but silently route worse (no ranking, schema fallback, or direct escalate). See tools/eval/README.md.',
+  );
+}
+
 /**
  * 결정적 도구 라우터. LLM을 부르지 않는다.
  * 게임명은 classify가 준 gameTitles 후보를 인덱스로 검증해 쓰고 (계약 v3),
  * 검증에 실패하면 기존 문자열 매칭으로 폴백한다.
+ *
+ * 한국어 질의 전용이다. 규칙 조건이 한국어 키워드 substring 매칭이라
+ * 영어 질문은 에러 없이 조용히 나빠진다:
+ * - 방향어 부재 → playtimeOrderOf null → 순위 조회 탈락
+ * - 필드명 부재 → coverageFieldOf null → search_docs 폴백
+ * - 가격 키워드 불일치 → OUT_OF_SCOPE에서 escalate 직행
+ * en 로케일에서는 첫 호출 1회만 console.warn한다 (throw하지 않는다).
  */
 export async function routeQuestion(
   question: string,
   classify: ClassifyResult,
   deps: AgentDeps,
 ): Promise<RoutedCall[]> {
+  warnOnceIfEnglish();
   const category = classify.category;
   if (category === 'OUT_OF_SCOPE') {
     const calls: RoutedCall[] = [];

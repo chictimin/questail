@@ -35,6 +35,8 @@ pnpm add https://github.com/chictimin/questail/releases/download/v0.2.0/questail
 
 tarball에 빌드된 `dist/`가 들어 있어 소비자 측 빌드가 필요 없습니다. 업그레이드는 URL의 버전만 바꾸고 `pnpm install` 합니다. npm 배포 전까지는 git 태그가 버전의 정본입니다.
 
+> 참고: 에이전트 계층(`packages/core/src/agent`, 결정적 도구 라우터)은 한국어 질의 전용입니다 — 영어 질문은 에러 없이 조용히 라우팅 품질이 떨어집니다(순위 탈락·스키마 폴백·escalate 직행). [tools/eval/README.md](./tools/eval/README.md)를 보세요.
+
 ## 사용법
 
 ```bash

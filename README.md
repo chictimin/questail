@@ -35,6 +35,8 @@ pnpm add https://github.com/chictimin/questail/releases/download/v0.2.0/questail
 
 The tarball contains the built `dist/`, so no build step is needed on the consumer side. To upgrade, replace the version in the URL and run `pnpm install`. Until an npm publish happens, the git tag is the source of truth for versions.
 
+> Note: the agent layer (`packages/core/src/agent`, deterministic tool router) is Korean-only — English questions don't error but silently route worse (no ranking, schema fallback, or direct escalate). See [tools/eval/README.md](./tools/eval/README.md).
+
 ## Usage
 
 ```bash
