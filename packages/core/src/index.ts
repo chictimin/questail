@@ -7,3 +7,7 @@ export * from './config/index.js';
 export * from './llm/index.js';
 export * from './profile/index.js';
 export * from './analyze/index.js';
+export * from './agent/types.js';
+export * from './agent/tools.js';
+export * from './agent/router.js';
+export * from './agent/verify.js';
