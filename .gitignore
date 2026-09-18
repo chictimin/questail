@@ -6,8 +6,8 @@ dist/
 .env.local
 .DS_Store
 
-# CLI output (imported game data)
-games/
+# CLI output (imported game data) — 루트 한정. tools/eval 픽스처의 games/ 는 추적한다
+/games/
 output/
 .cache/
 .backup/
