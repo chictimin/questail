@@ -7,9 +7,14 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r dev",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "eval": "tsx tools/eval/dryrun.ts"
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  },
+  "type": "module"
 }
