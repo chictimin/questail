@@ -20,6 +20,7 @@ import {
   type QuantitativeStats,
   type TrendStats,
 } from './index.js';
+import type { VerifyResult } from '../agent/types.js';
 
 /** 리포트 문구 언어 선택자 — cli.ts의 llmText를 그대로 넘겨받는다 */
 export type ReportText = (ko: string, en: string) => string;
@@ -396,6 +397,21 @@ function renderSummary(summary: string | undefined, llmAttempted: boolean, t: Re
 
 // ─── 조립 ────────────────────────────────────────────────────
 
+/**
+ * 근거 이탈 검사 결과 한 줄 — 위반이 있을 때만 출력, 없으면 아무것도 내지 않는다.
+ * analyzeLibrary가 UNKNOWN_GAME 위반만 남기므로, 이 줄이 있으면
+ * 라이브러리에 없는 게임명을 summary가 인용한 것이다.
+ */
+export function renderVerifyNote(verify: VerifyResult | undefined, t: ReportText): string[] {
+  const violations = verify?.violations ?? [];
+  if (violations.length === 0) return [];
+  const details = violations.map((v) => v.detail).join('; ');
+  return [
+    `- ${t(`근거 검사: ${details}`, `Evidence check: ${details}`)}`,
+    '',
+  ];
+}
+
 export function renderReportMarkdown(
   stats: QuantitativeStats,
   summary: string | undefined,
@@ -403,6 +419,7 @@ export function renderReportMarkdown(
   llmAttempted = false,
   t: ReportText = (ko) => ko,
   chart: ReportChart = DEFAULT_REPORT_CHART,
+  verify?: VerifyResult,
 ): string {
   const lines: string[] = [];
   lines.push(`# ${t('QuestTail 취향 리포트', 'QuestTail taste report')}`, '');
@@ -421,6 +438,7 @@ export function renderReportMarkdown(
   lines.push(...renderWishlist(stats, t));
   if (stats.trend) lines.push(...renderTrend(stats.trend, t));
   lines.push(...renderSummary(summary, llmAttempted, t));
+  lines.push(...renderVerifyNote(verify, t));
 
   return lines.join('\n');
 }

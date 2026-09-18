@@ -13,6 +13,8 @@
  */
 
 import type { LibraryIndex, LlmOptions, TasteProfile } from '../types.js';
+import type { EvidenceChunk, VerifyResult } from '../agent/types.js';
+import { verifyAnswer } from '../agent/verify.js';
 import { callLlm, canCallLlm, warnFallback } from '../llm/index.js';
 
 export * from './report.js';
@@ -22,6 +24,11 @@ export interface AnalysisReport {
   summary?: string;
   /** 정량 지표 — LLM 유무와 무관하게 항상 채워짐 */
   stats: QuantitativeStats;
+  /**
+   * summary에 대한 근거 이탈 검사 결과.
+   * 무LLM 폴백(summary 없음) 시 키 자체를 생략한다.
+   */
+  verify?: VerifyResult;
 }
 
 /** 플레이타임 상위 게임 1개 */
@@ -340,7 +347,7 @@ export function computeStats(library: LibraryIndex, profile: TasteProfile): Quan
 }
 
 /** 정량 지표를 LLM 프롬프트에 담는다. 출력 언어는 lang을 따른다. */
-function buildPrompt(stats: QuantitativeStats, lang: ReportLang): string {
+export function buildPrompt(stats: QuantitativeStats, lang: ReportLang): string {
   const topLines = stats.topGames
     .map((g, i) => `${i + 1}. ${g.title} — ${g.playtimeHours}시간 (${g.sharePercent}%)`)
     .join('\n');
@@ -390,7 +397,7 @@ function buildPrompt(stats: QuantitativeStats, lang: ReportLang): string {
     ach,
     stats.wishlist.count > 0 ? `위시리스트 ${stats.wishlist.count}개: ${stats.wishlist.titles.join(', ')}` : '위시리스트 없음',
     '',
-    '요청: 좋아하는 장르·플레이 성향(몰입형 vs 탐색형, 장시간 정착 vs 짧게 다양하게)을 5~10문장 한국어 문단으로 서술하세요. 숫자를 그대로 나열하지 말고 해석을 곁들이세요.',
+    '요청: 좋아하는 장르·플레이 성향(몰입형 vs 탐색형, 장시간 정착 vs 짧게 다양하게)을 5~10문장 한국어 문단으로 서술하세요. 숫자를 그대로 나열하지 말고 해석을 곁들이세요. 게임 제목을 언급할 때는 큰따옴표로 감싸세요(예: "몬스터 헌터 와일즈").',
   ];
   const en = [
     'You are an expert who reads Steam library data and analyzes a person\'s gaming taste.',
@@ -413,7 +420,7 @@ function buildPrompt(stats: QuantitativeStats, lang: ReportLang): string {
     ach,
     stats.wishlist.count > 0 ? `Wishlist ${stats.wishlist.count}: ${stats.wishlist.titles.join(', ')}` : 'No wishlist',
     '',
-    'Request: describe their favorite genres and play style (immersive vs exploratory, long-term settling vs short varied sessions) in 5-10 English sentences. Interpret the numbers instead of just listing them.',
+    'Request: describe their favorite genres and play style (immersive vs exploratory, long-term settling vs short varied sessions) in 5-10 English sentences. Interpret the numbers instead of just listing them. Wrap game titles in double quotes (e.g. "Monster Hunter Wilds").',
   ];
   return (lang === 'en' ? en : ko).join('\n');
 }
@@ -435,8 +442,21 @@ export async function analyzeLibrary(
     return { summary: undefined, stats };
   }
   try {
-    const summary = await callLlm(options, buildPrompt(stats, lang));
-    return { summary, stats };
+    // 근거는 LLM이 본 것과 동일한 문자열이어야 한다 — buildPrompt를 다시
+    // 만들지 말고 위 prompt를 재사용한다 (복제하면 둘이 어긋난다).
+    const prompt = buildPrompt(stats, lang);
+    const summary = await callLlm(options, prompt);
+    const evidence: EvidenceChunk[] = [
+      { id: 'analyze-prompt', docId: 'analyze-prompt', categories: ['TASTE'], heading: '정량 지표', text: prompt },
+    ];
+    const raw = verifyAnswer(summary, 'TASTE', evidence, library);
+    // UNKNOWN_GAME 위반만 남긴다. UNGROUNDED_NUMBER는 파생 수치(반올림·합산 등)
+    // 오탐이 실측 확인됐고, 그 소음이 게임명 환각이라는 진짜 신호를 덮는다.
+    // CITED_WHILE_OUT_OF_SCOPE는 카테고리 'TASTE'에서 발동할 수 없어 버린다.
+    const violations = raw.violations.filter((v) => v.rule === 'UNKNOWN_GAME');
+    // 검증 실패해도 summary를 버리거나 재생성하지 않는다 — 리포트는 그대로
+    // 반환하고 verify 필드만 채운다.
+    return { summary, stats, verify: { passed: violations.length === 0, violations } };
   } catch (err) {
     warnFallback('analyze', err);
     return { summary: undefined, stats };

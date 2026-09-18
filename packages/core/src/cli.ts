@@ -563,7 +563,7 @@ async function cmdAnalyze(): Promise<void> {
   const stamp = reportTimestamp(now);
   await mkdir(reportsDir, { recursive: true });
   const filepath = join(reportsDir, `${stamp}.md`);
-  await writeFile(filepath, renderReportMarkdown(stats, report.summary, now, llmAvailable, llmText, chart), 'utf-8');
+  await writeFile(filepath, renderReportMarkdown(stats, report.summary, now, llmAvailable, llmText, chart, report.verify), 'utf-8');
   console.error(llmText(`리포트 저장: ${filepath}`, `Report saved: ${filepath}`));
   // JSON 사이드카 — md와 같은 타임스탬프로 짝을 맞춘다
   const sidecar: AnalysisReportJson = toReportJson(report, now, library);
