@@ -11,7 +11,10 @@
  *   들어가고 AppMetaRateLimitedError를 던진다. 배치 호출자는 대기 후
  *   같은 appId부터 재개하면 된다.
  *
- * 디스크 캐시: <프로젝트 루트>/.cache/appdetails/<appid>.json.
+ * 디스크 캐시: <프로젝트 루트>/.cache/appdetails/<appid>.json (스키마 v2).
+ * v2는 appdetails 원문(raw en+ko)을 그대로 보존하고, 호출자에게는
+ * deriveGameMeta로 파생한 GameMeta를 반환한다. 파생 규칙이 바뀌면
+ * 재수집 없이 캐시 raw에서 다시 파생할 수 있다.
  * packages/core 안에 두지 않는다 — 캐시는 라이브러리 코드가 아니라
  * 실행 시점 프로젝트의 런타임 데이터이기 때문이다.
  * QUESTAIL_CACHE_DIR 환경변수로 루트 변경 가능 (기본값: process.cwd()).
@@ -75,30 +78,43 @@ function cachePath(appId: string): string {
 }
 
 /**
- * 캐시 스키마 버전. 파싱 규칙이 바뀌면(장르 제외 목록 등) 이 값을 올려
- * 예전 포맷 캐시를 전부 스테일로 만든다. 캐시 디렉토리를 지우는 방식은
- * 일반 사용자에게 적용이 안 되므로 버전 필드로 무효화한다.
- * v는 디스크에만 있고 GameMeta 타입에는 속하지 않는다.
+ * 캐시 스키마 버전. v2부터 파싱된 GameMeta가 아니라 appdetails 원문
+ * (raw en+ko)을 보존한다. 버전을 올리면 예전 포맷 캐시가 전부
+ * 스테일로 처리되므로 파일을 지우는 코드를 따로 쓰지 않는다.
+ * v·fetchedAt·notFound·raw는 디스크에만 있고 GameMeta 타입에는 속하지 않는다.
  */
-const META_CACHE_VERSION = 1;
+const META_CACHE_VERSION = 2;
+
+/** 디스크 캐시 1건 (v2). raw는 appdetails data 원문 그대로 — 가공 금지. */
+interface AppMetaCacheV2 {
+  v: number;
+  appId: string;
+  fetchedAt: number;
+  /** success:false 확정 실패면 true, raw는 둘 다 null */
+  notFound: boolean;
+  raw: { en: unknown; ko: unknown };
+}
 
 async function readCache(appId: string): Promise<GameMeta | undefined> {
   try {
-    const raw = await readFile(cachePath(appId), 'utf-8');
-    const parsed = JSON.parse(raw) as GameMeta & { v?: number };
+    const rawText = await readFile(cachePath(appId), 'utf-8');
+    const parsed = JSON.parse(rawText) as Partial<AppMetaCacheV2>;
     if (parsed?.appId !== appId) return undefined;
     if (parsed.v !== META_CACHE_VERSION) return undefined; // 구버전 → 다시 받는다
-    const { v: _dropped, ...meta } = parsed;
-    return meta;
+    if (parsed.notFound) return fallbackMeta(appId);
+    const r = parsed.raw as { en?: unknown; ko?: unknown } | undefined;
+    const en = (r?.en ?? null) as AppDetailsData | null;
+    const ko = (r?.ko ?? null) as AppDetailsData | null;
+    return deriveGameMeta({ en, ko }, appId);
   } catch {
     return undefined;
   }
 }
 
-async function writeCache(meta: GameMeta): Promise<void> {
+async function writeCache(entry: AppMetaCacheV2): Promise<void> {
   try {
     await mkdir(resolveAppMetaCacheDir(), { recursive: true });
-    await writeFile(cachePath(meta.appId), JSON.stringify({ ...meta, v: META_CACHE_VERSION }), 'utf-8');
+    await writeFile(cachePath(entry.appId), JSON.stringify(entry), 'utf-8');
   } catch {
     // 캐시 기록 실패는 치명적이지 않음 — API 결과는 그대로 반환
   }
@@ -106,29 +122,28 @@ async function writeCache(meta: GameMeta): Promise<void> {
 
 // ─── appdetails 파싱 ─────────────────────────────────────────
 
+/** appdetails data 원문. 캐시 raw에 그대로 보존되는 대상이다. */
+export interface AppDetailsData {
+  name?: string;
+  platforms?: { windows?: boolean; mac?: boolean; linux?: boolean };
+  genres?: Array<{ id?: string | number; description?: string }>;
+  categories?: Array<{ id?: string | number; description?: string }>;
+  developers?: string[];
+  publishers?: string[];
+  release_date?: { coming_soon?: boolean; date?: string };
+  header_image?: string;
+}
+
 interface AppDetailsRaw {
   success: boolean;
-  data?: {
-    name?: string;
-    platforms?: { windows?: boolean; mac?: boolean; linux?: boolean };
-    genres?: Array<{ id?: string; description?: string }>;
-    categories?: Array<{ description?: string }>;
-    developers?: string[];
-    publishers?: string[];
-    release_date?: { coming_soon?: boolean; date?: string };
-    header_image?: string;
-  };
+  data?: AppDetailsData;
 }
 
 type AppDetailsEnvelope = Record<string, AppDetailsRaw | undefined>;
 
-function descriptions(items?: Array<{ description?: string }>): string[] {
-  return (items ?? []).map(i => i.description ?? '').filter(s => s.length > 0);
-}
-
 /**
  * 장르가 아닌 Steam 분류 제외 목록 — 언어와 무관한 숫자 id 기준.
- * description 문자열로 거르면 로케일마다 달라지므로(지금은 l=korean)
+ * description 문자열로 거르면 로케일마다 달라지므로(en 정본 + ko 별도 호출)
  * 반드시 id로 판정한다. id가 없으면(구 API 응답 등) 걸러내지 않는다.
  *
  * 실측 기록 (appdetails raw 응답에서 직접 확인):
@@ -150,32 +165,84 @@ const EXCLUDED_GENRE_IDS = new Set<string>([
   '57', // Utilities
 ]);
 
-function genreDescriptions(items?: Array<{ id?: string; description?: string }>): string[] {
-  return (items ?? [])
-    .filter(i => i.id === undefined || !EXCLUDED_GENRE_IDS.has(String(i.id)))
-    .map(i => i.description ?? '')
-    .filter(s => s.length > 0);
+function fallbackMeta(appId: string): GameMeta {
+  return { appId, genres: [] };
 }
 
-function fallbackMeta(appId: string): GameMeta {
-  return { appId, genres: [], keywords: [] };
+/** 영어 월명 → 월 번호. en 응답 날짜(미국식 "Feb 24, 2022")의 ISO 변환용. */
+const EN_MONTH_NUMBERS: Record<string, string> = {
+  january: '01', february: '02', march: '03', april: '04',
+  may: '05', june: '06', july: '07', august: '08',
+  september: '09', october: '10', november: '11', december: '12',
+};
+
+/**
+ * en 응답 날짜 문자열 → ISO(YYYY-MM-DD). 월·일·연이 다 갖춰진
+ * 미국식 표기("<월명> D, YYYY")만 변환한다. 월만 있거나
+ * "Coming soon" 같은 값은 undefined를 반환하고 호출 측이
+ * releaseDate를 비운 채 releaseDateRaw만 채운다.
+ */
+function toIsoDate(enDate?: string): string | undefined {
+  if (!enDate) return undefined;
+  const m = /^\s*([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s*$/.exec(enDate);
+  if (!m) return undefined;
+  const mon = EN_MONTH_NUMBERS[m[1].toLowerCase()];
+  if (!mon) return undefined;
+  const day = Number(m[2]);
+  if (day < 1 || day > 31) return undefined;
+  return `${m[3]}-${mon}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * 캐시 raw(en+ko 원문) → GameMeta 파생. 재수집 없이 파생만 다시
+ * 돌릴 수 있도록 fetchAppMeta와 분리되어 있다.
+ * categoryAxes는 축 사전 확정(P2) 전까지 채우지 않고 undefined로 둔다.
+ */
+export function deriveGameMeta(
+  raw: { en: AppDetailsData | null; ko: AppDetailsData | null },
+  appId: string,
+): GameMeta {
+  const en = raw.en;
+  if (!en) return fallbackMeta(appId);
+
+  const genres = (en.genres ?? [])
+    .filter(g => g.id === undefined || !EXCLUDED_GENRE_IDS.has(String(g.id)))
+    .map(g => ({
+      id: g.id !== undefined ? String(g.id) : '',
+      name: g.description ?? '',
+    }))
+    .filter(g => g.name.length > 0);
+
+  // ko 응답 name에 한글이 실제로 있을 때만 nameKo를 채운다.
+  // Steam이 번역을 빠뜨려 영어를 그대로 주는 경우가 많다.
+  const koName = raw.ko?.name;
+  const nameKo = koName && /[가-힣]/.test(koName) ? koName : undefined;
+
+  const releaseDateRaw = en.release_date?.date;
+  const releaseDate = toIsoDate(releaseDateRaw);
+
+  const meta: GameMeta = {
+    appId,
+    name: en.name,
+    platforms: (['windows', 'mac', 'linux'] as const).filter(p => en.platforms?.[p] === true),
+    genres,
+    developers: (en.developers ?? []).filter(s => s.length > 0),
+    publishers: (en.publishers ?? []).filter(s => s.length > 0),
+    headerImage: en.header_image,
+  };
+  if (nameKo !== undefined) meta.nameKo = nameKo;
+  if (releaseDate !== undefined) meta.releaseDate = releaseDate;
+  if (releaseDateRaw !== undefined) meta.releaseDateRaw = releaseDateRaw;
+  return meta;
 }
 
 // ─── 공개 API (시그니처 고정 — fetchAppMeta(appId: string)) ──
 
 /**
- * 게임 1건의 메타 조회. 캐시 히트면 API 호출 없이 반환한다.
- * 호출 전 1.5초 간격을 강제하고, 쿨다운 중이면 즉시
- * AppMetaRateLimitedError를 던진다. 일시 오류 시 빈 폴백을 반환한다.
+ * 쿨다운 확인 → 1.5초 간격 강제 → fetch 1회.
+ * 쿨다운 중이면 AppMetaRateLimitedError를 던진다.
  */
-export async function fetchAppMeta(appId: string): Promise<GameMeta> {
-  if (!/^\d+$/.test(appId)) {
-    throw new Error(`유효하지 않은 appId: ${appId}`);
-  }
-
-  const cached = await readCache(appId);
-  if (cached) return cached;
-
+async function throttledFetch(url: string): Promise<Response> {
   const now = Date.now();
   if (now < cooldownUntil) {
     throw new AppMetaRateLimitedError(cooldownUntil - now);
@@ -187,26 +254,47 @@ export async function fetchAppMeta(appId: string): Promise<GameMeta> {
   }
   lastRequestAt = Date.now();
 
-  let res: Response;
+  return fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+}
+
+function enterCooldown(): void {
+  cooldownUntil = Date.now() + COOLDOWN_MS;
+}
+
+/**
+ * 게임 1건의 메타 조회. 캐시 히트면 API 호출 없이 raw에서 파생해 반환한다.
+ * en → ko 순으로 호출한다. en이 실패하면 ko를 호출하지 않는다.
+ * ko 호출만 실패하면 정상 취급한다(raw.ko = null, nameKo 미설정).
+ * 시그니처와 반환 타입(Promise<GameMeta>)은 바꾸지 않는다.
+ */
+export async function fetchAppMeta(appId: string): Promise<GameMeta> {
+  if (!/^\d+$/.test(appId)) {
+    throw new Error(`유효하지 않은 appId: ${appId}`);
+  }
+
+  const cached = await readCache(appId);
+  if (cached) return cached;
+
+  // ── en (정본) ──
+  let enRes: Response;
   try {
-    res = await fetch(`${APPDETAILS_BASE}?appids=${appId}&l=korean`, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-  } catch {
+    enRes = await throttledFetch(`${APPDETAILS_BASE}?appids=${appId}&l=english`);
+  } catch (e) {
+    if (e instanceof AppMetaRateLimitedError) throw e;
     return fallbackMeta(appId); // 네트워크·타임아웃: 캐시 없이 폴백
   }
 
-  if (res.status === 429 || res.status === 403) {
-    cooldownUntil = Date.now() + COOLDOWN_MS;
+  if (enRes.status === 429 || enRes.status === 403) {
+    enterCooldown();
     throw new AppMetaRateLimitedError(COOLDOWN_MS);
   }
-  if (!res.ok) {
+  if (!enRes.ok) {
     return fallbackMeta(appId); // 5xx 등 일시 오류: 캐시 없이 폴백
   }
 
   let envelope: AppDetailsEnvelope;
   try {
-    envelope = (await res.json()) as AppDetailsEnvelope;
+    envelope = (await enRes.json()) as AppDetailsEnvelope;
   } catch {
     return fallbackMeta(appId);
   }
@@ -214,32 +302,40 @@ export async function fetchAppMeta(appId: string): Promise<GameMeta> {
   const entry = envelope[appId];
   if (!entry?.success || !entry.data) {
     consecutiveSoftFail += 1;
-    const meta = fallbackMeta(appId);
-    await writeCache(meta); // 확정 실패(미출시·삭제·비공개 app)는 캐시
+    // 확정 실패(미출시·삭제·비공개 app)는 캐시 — ko는 호출하지 않는다
+    await writeCache({ v: META_CACHE_VERSION, appId, fetchedAt: Date.now(), notFound: true, raw: { en: null, ko: null } });
     if (consecutiveSoftFail >= SOFT_FAIL_THRESHOLD) {
       consecutiveSoftFail = 0;
-      cooldownUntil = Date.now() + COOLDOWN_MS;
+      enterCooldown();
       // 다음 호출부터 AppMetaRateLimitedError — 배치는 대기 후 재개
     }
-    return meta;
+    return fallbackMeta(appId);
   }
 
   consecutiveSoftFail = 0;
-  const d = entry.data;
-  const meta: GameMeta = {
-    appId,
-    name: d.name,
-    platforms: (['windows', 'mac', 'linux'] as const).filter(p => d.platforms?.[p] === true),
-    genres: genreDescriptions(d.genres),
-    developers: (d.developers ?? []).filter(s => s.length > 0),
-    publishers: (d.publishers ?? []).filter(s => s.length > 0),
-    releaseDate: d.release_date?.date,
-    headerImage: d.header_image,
-    keywords: descriptions(d.categories),
-  };
-  // 빈 배열·undefined는 GameMeta 선택 필드 그대로 둔다 (호출 측에서 판단)
-  await writeCache(meta);
-  return meta;
+  const rawEn: AppDetailsData = entry.data;
+
+  // ── ko (nameKo 복원용 선택 정보) ──
+  let rawKo: AppDetailsData | null = null;
+  try {
+    const koRes = await throttledFetch(`${APPDETAILS_BASE}?appids=${appId}&l=korean`);
+    if (koRes.status === 429 || koRes.status === 403) {
+      enterCooldown(); // 이번 호출은 정상 취급, 다음 호출부터 쿨다운 적용
+    } else if (koRes.ok) {
+      try {
+        const koEnvelope = (await koRes.json()) as AppDetailsEnvelope;
+        const koEntry = koEnvelope[appId];
+        if (koEntry?.success && koEntry.data) rawKo = koEntry.data;
+      } catch {
+        // ko 파싱 실패 → null로 정상 취급
+      }
+    }
+  } catch {
+    // ko 네트워크 실패·쿨다운 → null로 정상 취급
+  }
+
+  await writeCache({ v: META_CACHE_VERSION, appId, fetchedAt: Date.now(), notFound: false, raw: { en: rawEn, ko: rawKo } });
+  return deriveGameMeta({ en: rawEn, ko: rawKo }, appId);
 }
 
 /**

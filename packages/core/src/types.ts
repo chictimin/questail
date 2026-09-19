@@ -39,19 +39,35 @@ export interface NormalizedGame {
   wishlisted?: boolean;
 }
 
-/** appdetails 등 메타 소스에서 가져오는 원본 보강 데이터 (D5) */
+/** appdetails 등 메타 소스에서 가져오는 원본 보강 데이터 (D5·D9·D10·D11) */
 export interface GameMeta {
   appId: string;
-  /** 스토어 표시명 (위시 전용 게임의 제목 복원용 — GetOwnedGames에 없는 게임) */
+  /** 스토어 표시명 — 영어 정본 (D9) */
   name?: string;
-  /** 지원 플랫폼 (appdetails data.platforms에서 true인 키만, 예: ['windows','mac']) */
+  /** 한국어 표시명. ko 응답 name에 한글이 있을 때만 채운다 (D9 title_ko, 실측 19/120건) */
+  nameKo?: string;
+  /** 지원 플랫폼 (appdetails data.platforms에서 true인 키만) */
   platforms?: string[];
-  genres?: string[];
+  /** 장르 — 영문 정본 + 로케일 무관 id (D9). id는 ko 매핑표의 키다 */
+  genres?: { id: string; name: string }[];
   developers?: string[];
   publishers?: string[];
+  /** ISO 8601 날짜 (D9). 파싱 실패 시 undefined */
   releaseDate?: string;
+  /** 스토어 원문 날짜 문자열 (en). 파싱 실패 진단용 */
+  releaseDateRaw?: string;
   headerImage?: string;
-  keywords?: string[];
+  /** categories 3축 분해 (D11). 축에 속하지 않는 값은 파생에서 버린다 */
+  categoryAxes?: {
+    /** 플레이 형태 — 싱글·멀티·협동·PvP 등 */
+    playMode: string[];
+    /** 입력 방식 — 컨트롤러 지원 수준·VR 등 */
+    input: string[];
+    /** 기기/원격 — Remote Play·클라우드 등 */
+    device: string[];
+  };
+  /** SteamSpy 유저 태그 상위 10 + 투표 수 (D10). 캐시 전용, 픽스처 커밋 금지 */
+  userTags?: { tag: string; votes: number }[];
 }
 
 /**
