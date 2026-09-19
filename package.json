@@ -9,7 +9,9 @@
     "dev": "pnpm -r dev",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "eval": "tsx tools/eval/dryrun.ts"
+    "eval": "tsx tools/eval/dryrun.ts",
+    "eval:baseline": "pnpm --silent eval > /tmp/questail-eval.log 2>&1; code=$?; cat /tmp/questail-eval.log; grep -qF \"[dryrun] 총점 26/27 (tool)\" /tmp/questail-eval.log && grep -qF -- \"- C2-05 \" /tmp/questail-eval.log && test \"$code\" -eq 1 && echo \"[release] eval baseline OK: 26/27, C2-05 only, exit 1\"",
+    "release:check": "pnpm typecheck && pnpm build && pnpm --filter @questail/core pack --dry-run && pnpm eval:baseline"
   },
   "engines": {
     "node": ">=18"

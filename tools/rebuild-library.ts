@@ -73,9 +73,9 @@ function assembleNote(fm: Record<string, unknown>, filepath: string): { game?: N
   if (ach !== undefined) game.achievementPercent = ach;
   const lp = num(fm.last_played);
   if (lp !== undefined) game.lastPlayedAt = lp;
-  // image는 조립하지 않는다 — 현행 writeLibraryIndex COLUMNS에 image 열이 없어
-  // 출력에서 버려지므로, 조립하면 changedRows만 거짓 양성으로 나온다.
-  // (노트는 image를 들고 library 스키마에는 image 열이 없는 불일치 — 범위 밖 발견으로 보고만 남긴다.)
+  // image는 노트 frontmatter.image를 그대로 조립한다 — library 스키마에 image 열이 있어 재생성에서 보존된다.
+  const img = str(fm.image);
+  if (img !== undefined) game.imageUrl = img;
   const genres = strArr(fm.genres);
   if (genres) game.genres = [...genres];
   const devs = strArr(fm.developers);

@@ -14,7 +14,7 @@ import { splitFrontmatterDoc, formatFrontmatter } from './frontmatter.js';
 
 export const LIBRARY_FILENAME = 'library.md';
 
-/** 테이블 컬럼 순서 (전 축: 플레이타임·업적률·장르·플랫폼 + D5 승격 필드). */
+/** 테이블 컬럼 순서 (전 축: 플레이타임·업적률·장르·플랫폼 + D5 승격 필드 + 커버 이미지). */
 const COLUMNS = [
   'title',
   'game_id',
@@ -28,7 +28,11 @@ const COLUMNS = [
   'publishers',
   'release_date',
   'wishlisted',
+  'image',
 ] as const;
+
+/** image 컬럼 추가 전 구 스키마(12열) 파일도 파싱한다 — 하위 호환. */
+const LEGACY_COLUMN_COUNT = COLUMNS.length - 1;
 
 function escapeCell(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
@@ -64,6 +68,8 @@ function cellFor(game: NormalizedGame, col: (typeof COLUMNS)[number]): string {
       return game.releaseDate ? escapeCell(game.releaseDate) : '';
     case 'wishlisted':
       return game.wishlisted !== undefined ? String(game.wishlisted) : '';
+    case 'image':
+      return game.imageUrl ? escapeCell(game.imageUrl) : '';
   }
 }
 
@@ -157,7 +163,8 @@ export function parseLibraryMarkdown(content: string): LibraryIndex {
       continue;
     }
     if (cells.every(c => /^-+$/.test(c))) continue;
-    if (cells.length !== COLUMNS.length) continue;
+    // 구 스키마(12열, image 없음) 파일도 읽는다 — image만 비워 둔다.
+    if (cells.length !== COLUMNS.length && cells.length !== LEGACY_COLUMN_COUNT) continue;
 
     const [
       title,
@@ -172,6 +179,7 @@ export function parseLibraryMarkdown(content: string): LibraryIndex {
       publishers,
       releaseDate,
       wishlisted,
+      image,
     ] = cells as string[];
 
     if (platform !== 'steam' && platform !== 'psn' && platform !== 'xbox' && platform !== 'manual') continue;
@@ -200,6 +208,8 @@ export function parseLibraryMarkdown(content: string): LibraryIndex {
     const w = (wishlisted ?? '').trim();
     if (w === 'true') game.wishlisted = true;
     else if (w === 'false') game.wishlisted = false;
+    const img = unescapeCell(image ?? '');
+    if (img !== '') game.imageUrl = img;
 
     games.push(game);
   }

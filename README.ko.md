@@ -11,7 +11,7 @@
 
 > 여러 플랫폼(Steam/PSN/Xbox)에 흩어진 게임 이력을 모아 Markdown으로 아카이빙하고, LLM으로 개인 취향 분석을 받는 personal-first 도구.
 
-**현재 단계: M2 (v0.2.0)** — Steam 라이브러리를 Markdown 파일로 추출하고 취향 분석 리포트를 만드는 CLI.
+**현재 단계: M2 (v0.3.0)** — Steam 라이브러리를 Markdown 파일로 추출하고 취향 분석 리포트를 만드는 CLI.
 
 ## 설치
 
@@ -30,7 +30,7 @@ pnpm link --global
 `@questail/core`는 아직 npm 레지스트리에 없습니다. GitHub Release에 첨부된 빌드 tarball을 URL로 설치합니다:
 
 ```bash
-pnpm add https://github.com/chictimin/questail/releases/download/v0.2.0/questail-core-0.2.0.tgz
+pnpm add https://github.com/chictimin/questail/releases/download/v0.3.0/questail-core-0.3.0.tgz
 ```
 
 tarball에 빌드된 `dist/`가 들어 있어 소비자 측 빌드가 필요 없습니다. 업그레이드는 URL의 버전만 바꾸고 `pnpm install` 합니다. npm 배포 전까지는 git 태그가 버전의 정본입니다.

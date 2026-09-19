@@ -101,11 +101,14 @@ async function saveConfig(key: string, value: string): Promise<void> {
   if (idx !== -1) {
     lines[idx] = entry;
   } else {
+    // 새 키는 항상 새 행으로 추가한다. 파일 끝 개행으로 생긴 빈 조각이 있으면
+    // 그 자리에 써서 빈 줄을 남기지 않고, 아니면 맨 뒤에 추가한다.
+    // (기존 마지막 설정 행을 덮어쓰던 버그 수정 — 기존 키 갱신 분기는 그대로)
     const last = lines.at(-1)?.trim() ?? '';
-    if (last === '' || lines.length === 0) {
-      lines.push(entry);
-    } else {
+    if (lines.length > 0 && last === '') {
       lines[lines.length - 1] = entry;
+    } else {
+      lines.push(entry);
     }
   }
   await writeFile(CONFIG_FILE, lines.join('\n').trimEnd() + '\n', 'utf-8');
