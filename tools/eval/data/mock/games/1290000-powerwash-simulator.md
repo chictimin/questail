@@ -7,9 +7,9 @@ playtime_minutes: 69
 last_played: 1763421437
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1290000/header.jpg
 genres:
-  - 캐주얼
-  - 인디
-  - 시뮬레이션
+  - Casual
+  - Indie
+  - Simulation
 rating: 2
 note: 기대 이하의 완성도였음
 status: playing

@@ -7,8 +7,8 @@ playtime_minutes: 8
 last_played: 1770457616
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/945360/header.jpg
 genres:
-  - 캐주얼
-  - 인디
+  - Casual
+  - Indie
 dislike_reasons:
   - 최적화 문제로 플레이 중단
 status: dropped

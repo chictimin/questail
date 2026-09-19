@@ -7,7 +7,7 @@ playtime_minutes: 10887
 last_played: 1786538683
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1466860/header.jpg
 genres:
-  - 전략
+  - Strategy
 status: playing
 ---
 

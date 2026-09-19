@@ -8,7 +8,7 @@ last_played: 1765376859
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1158310/header.jpg
 genres:
   - RPG
-  - 전략
+  - Strategy
 status: playing
 ---
 

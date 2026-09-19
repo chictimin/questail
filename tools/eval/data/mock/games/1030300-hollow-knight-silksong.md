@@ -6,9 +6,9 @@ source: manual
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1030300/header.jpg
 genres:
-  - 액션
-  - 어드벤처
-  - 인디
+  - Action
+  - Adventure
+  - Indie
 wishlisted: true
 status: wishlist
 ---

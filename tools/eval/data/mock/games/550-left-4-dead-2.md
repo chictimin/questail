@@ -7,7 +7,7 @@ playtime_minutes: 304
 last_played: 1734686461
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/550/header.jpg
 genres:
-  - 액션
+  - Action
 status: playing
 ---
 

@@ -1,15 +1,15 @@
 {
   "topGenres": [
     {
-      "genre": "액션",
+      "genre": "Action",
       "weight": 0.212
     },
     {
-      "genre": "어드벤처",
+      "genre": "Adventure",
       "weight": 0.19
     },
     {
-      "genre": "인디",
+      "genre": "Indie",
       "weight": 0.177
     },
     {
@@ -17,34 +17,34 @@
       "weight": 0.165
     },
     {
-      "genre": "전략",
+      "genre": "Strategy",
       "weight": 0.091
     },
     {
-      "genre": "시뮬레이션",
+      "genre": "Simulation",
       "weight": 0.069
     },
     {
-      "genre": "캐주얼",
+      "genre": "Casual",
       "weight": 0.048
     },
     {
-      "genre": "대규모 멀티플레이어",
+      "genre": "Massively Multiplayer",
       "weight": 0.017
     },
     {
-      "genre": "스포츠",
+      "genre": "Sports",
       "weight": 0.017
     },
     {
-      "genre": "레이싱",
+      "genre": "Racing",
       "weight": 0.013
     }
   ],
   "dislikedGenres": [
-    "액션",
-    "어드벤처",
-    "인디"
+    "Action",
+    "Adventure",
+    "Indie"
   ],
   "playtimeDistribution": {
     "min": 0,

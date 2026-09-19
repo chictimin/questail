@@ -6,8 +6,8 @@ source: auto
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2225070/header.jpg
 genres:
-  - 레이싱
-  - 스포츠
+  - Racing
+  - Sports
 dislike_reasons:
   - 구매만 하고 실행하지 못함
 status: dropped

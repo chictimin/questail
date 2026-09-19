@@ -63,6 +63,18 @@ function genreOf(question: string, deps: AgentDeps): string | null {
   for (const g of deps.profile.topGenres) {
     if (g.genre !== '' && question.includes(g.genre)) return g.genre;
   }
+  // D9 영문화 이후: canonical 직접 매칭이 실패하면 주입 별칭(한국어)으로 연결한다.
+  // topGenres에 있는 canonical의 별칭만 본다 — 인덱스에 없는 대응은 만들지 않는다.
+  const aliases = deps.genreAliases;
+  if (!aliases) return null;
+  for (const g of deps.profile.topGenres) {
+    if (g.genre === '') continue;
+    const list = aliases[g.genre];
+    if (!list) continue;
+    for (const a of list) {
+      if (a !== '' && question.includes(a)) return g.genre;
+    }
+  }
   return null;
 }
 

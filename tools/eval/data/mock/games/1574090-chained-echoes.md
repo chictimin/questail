@@ -7,7 +7,7 @@ playtime_minutes: 1638
 last_played: 1786739392
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1574090/header.jpg
 genres:
-  - 인디
+  - Indie
   - RPG
 status: completed
 ---

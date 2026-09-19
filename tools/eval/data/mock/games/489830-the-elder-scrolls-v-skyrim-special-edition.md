@@ -7,7 +7,7 @@ playtime_minutes: 1193
 last_played: 1758226727
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/489830/header.jpg
 genres:
-  - 어드벤처
+  - Adventure
   - RPG
 status: completed
 ---

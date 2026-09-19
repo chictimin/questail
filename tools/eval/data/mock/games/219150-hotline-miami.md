@@ -7,8 +7,8 @@ playtime_minutes: 2161
 last_played: 1755951710
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/219150/header.jpg
 genres:
-  - 액션
-  - 인디
+  - Action
+  - Indie
 rating: 4
 note: 아트 스타일이 취향에 맞음
 status: completed

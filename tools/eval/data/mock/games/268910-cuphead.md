@@ -7,8 +7,8 @@ playtime_minutes: 118
 last_played: 1708207096
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/268910/header.jpg
 genres:
-  - 액션
-  - 인디
+  - Action
+  - Indie
 status: playing
 ---
 

@@ -7,9 +7,9 @@ playtime_minutes: 1919
 last_played: 1749268687
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1382070/header.jpg
 genres:
-  - 어드벤처
-  - 캐주얼
-  - 인디
+  - Adventure
+  - Casual
+  - Indie
 status: completed
 ---
 

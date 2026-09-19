@@ -6,9 +6,9 @@ source: manual
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1172710/header.jpg
 genres:
-  - 액션
-  - 어드벤처
-  - 대규모 멀티플레이어
+  - Action
+  - Adventure
+  - Massively Multiplayer
 wishlisted: true
 status: wishlist
 ---

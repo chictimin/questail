@@ -7,8 +7,8 @@ playtime_minutes: 396
 last_played: 1764303142
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/header.jpg
 genres:
-  - 액션
-  - 어드벤처
+  - Action
+  - Adventure
   - RPG
 rating: 4
 note: 아트 스타일이 취향에 맞음

@@ -7,9 +7,9 @@ playtime_minutes: 22
 last_played: 1737018290
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/105600/header.jpg
 genres:
-  - 액션
-  - 어드벤처
-  - 인디
+  - Action
+  - Adventure
+  - Indie
   - RPG
 dislike_reasons:
   - 최적화 문제로 플레이 중단

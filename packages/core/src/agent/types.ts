@@ -151,4 +151,11 @@ export interface AgentDeps {
   chunks: EvidenceChunk[];
   /** 게임별 주관 노트 전량. 앱이 읽어서 넣는다 */
   notes: NoteEntry[];
+  /**
+   * canonical 영문 장르명 → 한국어 별칭 목록 (D9 영문화 이후 한국어 질의 연결용).
+   * 앱이 `tools/genre-ko.json` 단일 정본에서 조립해 주입한다.
+   * core는 JSON·파일시스템을 직접 읽지 않는다.
+   * 없으면 canonical 직접 매칭만 한다(하위 호환).
+   */
+  genreAliases?: Record<string, string[]>;
 }

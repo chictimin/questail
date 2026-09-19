@@ -7,7 +7,7 @@ playtime_minutes: 75
 last_played: 1755176070
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1237970/header.jpg
 genres:
-  - 액션
+  - Action
 rating: 3
 note: OST 들으려고 켤 때도 있음
 status: playing

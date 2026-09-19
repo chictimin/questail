@@ -7,8 +7,8 @@ playtime_minutes: 1398
 last_played: 1786492457
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/227300/header.jpg
 genres:
-  - 인디
-  - 시뮬레이션
+  - Indie
+  - Simulation
 status: completed
 ---
 

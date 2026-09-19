@@ -6,8 +6,8 @@ source: manual
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1601580/header.jpg
 genres:
-  - 시뮬레이션
-  - 전략
+  - Simulation
+  - Strategy
 wishlisted: true
 status: wishlist
 ---

@@ -6,8 +6,8 @@ source: auto
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1426210/header.jpg
 genres:
-  - 액션
-  - 어드벤처
+  - Action
+  - Adventure
 dislike_reasons:
   - 구매만 하고 실행하지 못함
 status: dropped

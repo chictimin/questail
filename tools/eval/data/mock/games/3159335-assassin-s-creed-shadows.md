@@ -6,8 +6,8 @@ source: manual
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3159335/header.jpg
 genres:
-  - 액션
-  - 어드벤처
+  - Action
+  - Adventure
   - RPG
 wishlisted: true
 status: wishlist

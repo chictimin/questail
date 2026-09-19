@@ -7,7 +7,7 @@ playtime_minutes: 2634
 last_played: 1756492310
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/391540/header.jpg
 genres:
-  - 인디
+  - Indie
   - RPG
 rating: 3.5
 note: 킬링타임용으로 최고

@@ -6,7 +6,7 @@ source: manual
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2022950/header.jpg
 genres:
-  - 전략
+  - Strategy
 wishlisted: true
 status: wishlist
 ---

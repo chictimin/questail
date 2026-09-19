@@ -169,7 +169,7 @@ function fallbackMeta(appId: string): GameMeta {
   return { appId, genres: [] };
 }
 
-/** 영어 월명 → 월 번호. en 응답 날짜(미국식 "Feb 24, 2022")의 ISO 변환용. */
+/** 영어 월명(풀네임) → 월 번호. 미국식 "February 24, 2022"의 ISO 변환용. */
 const EN_MONTH_NUMBERS: Record<string, string> = {
   january: '01', february: '02', march: '03', april: '04',
   may: '05', june: '06', july: '07', august: '08',
@@ -177,26 +177,83 @@ const EN_MONTH_NUMBERS: Record<string, string> = {
 };
 
 /**
- * en 응답 날짜 문자열 → ISO(YYYY-MM-DD). 월·일·연이 다 갖춰진
- * 미국식 표기("<월명> D, YYYY")만 변환한다. 월만 있거나
- * "Coming soon" 같은 값은 undefined를 반환하고 호출 측이
- * releaseDate를 비운 채 releaseDateRaw만 채운다.
+ * 영어 월 약어 → 월 번호. 영국식 "26 Feb, 2016"의 ISO 변환용.
+ * P2 실측 116건에서 출현한 12종 표준 약어만 둔다. 실측 없는 표기는 넣지 않는다.
+ */
+const EN_MONTH_ABBR_NUMBERS: Record<string, string> = {
+  jan: '01', feb: '02', mar: '03', apr: '04',
+  may: '05', jun: '06', jul: '07', aug: '08',
+  sep: '09', oct: '10', nov: '11', dec: '12',
+};
+
+/**
+ * en 응답 날짜 문자열 → ISO(YYYY-MM-DD). 실측된 두 형식만 변환한다:
+ * 미국식 "<월명> D, YYYY"와 영국식 "D <월 약어>, YYYY".
+ * 빈 문자열·월만 있거나 "Coming soon" 같은 값은 undefined를 반환하고
+ * 호출 측이 releaseDate를 비운 채 releaseDateRaw만 채운다.
  */
 function toIsoDate(enDate?: string): string | undefined {
   if (!enDate) return undefined;
-  const m = /^\s*([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s*$/.exec(enDate);
-  if (!m) return undefined;
-  const mon = EN_MONTH_NUMBERS[m[1].toLowerCase()];
-  if (!mon) return undefined;
-  const day = Number(m[2]);
-  if (day < 1 || day > 31) return undefined;
-  return `${m[3]}-${mon}-${String(day).padStart(2, '0')}`;
+  const us = /^\s*([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s*$/.exec(enDate);
+  if (us) {
+    // 풀네임 우선, 실측된 약어("Jul 7, 2017")도 받는다. 둘 다 실측 범위 안이다.
+    const mon = EN_MONTH_NUMBERS[us[1].toLowerCase()] ?? EN_MONTH_ABBR_NUMBERS[us[1].toLowerCase()];
+    if (!mon) return undefined;
+    const day = Number(us[2]);
+    if (day < 1 || day > 31) return undefined;
+    return `${us[3]}-${mon}-${String(day).padStart(2, '0')}`;
+  }
+  const uk = /^\s*(\d{1,2})\s+([A-Za-z]+),\s*(\d{4})\s*$/.exec(enDate);
+  if (uk) {
+    const mon = EN_MONTH_ABBR_NUMBERS[uk[2].toLowerCase()];
+    if (!mon) return undefined;
+    const day = Number(uk[1]);
+    if (day < 1 || day > 31) return undefined;
+    return `${uk[3]}-${mon}-${String(day).padStart(2, '0')}`;
+  }
+  return undefined;
+}
+
+/**
+ * categories 3축 사전 (D11, P2 실측 확정). 판정은 반드시 id 기준 —
+ * description 문자열로 거르면 안 된다(55/56·57/58이 바이트 동일 description을 쓴다).
+ * 축에 속하지 않는 관측 id는 파생에서 버리고 raw에만 남긴다.
+ */
+const PLAY_MODE_IDS = new Set<string>([
+  '1', '2', '9', '20', '24', '27', '36', '37', '38', '39', '44', '47', '48', '49',
+]);
+
+const INPUT_IDS = new Set<string>([
+  '18', '28', '31', '52', '53', '55', '56', '57', '58', '59', '60', '75', '76', '77',
+]);
+
+const DEVICE_IDS = new Set<string>(['23', '41', '42', '43', '61']);
+
+/**
+ * 축 id 집합에 속한 categories의 영어 description을 순서대로 모은다.
+ * 동일 description이 한 게임에 함께 있으면(55/56, 57/58) 중복 제거한다.
+ * description이 없는 항목은 파생할 문자열이 없으므로 버린다.
+ */
+function axisValues(
+  categories: AppDetailsData['categories'],
+  ids: Set<string>,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const c of categories ?? []) {
+    if (c.id === undefined || !ids.has(String(c.id))) continue;
+    const name = c.description ?? '';
+    if (name.length === 0 || seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
 }
 
 /**
  * 캐시 raw(en+ko 원문) → GameMeta 파생. 재수집 없이 파생만 다시
  * 돌릴 수 있도록 fetchAppMeta와 분리되어 있다.
- * categoryAxes는 축 사전 확정(P2) 전까지 채우지 않고 undefined로 둔다.
+ * categoryAxes는 P2 축 사전으로 채운다. en이 없으면 폴백이라 축도 없다.
  */
 export function deriveGameMeta(
   raw: { en: AppDetailsData | null; ko: AppDetailsData | null },
@@ -229,6 +286,11 @@ export function deriveGameMeta(
     developers: (en.developers ?? []).filter(s => s.length > 0),
     publishers: (en.publishers ?? []).filter(s => s.length > 0),
     headerImage: en.header_image,
+    categoryAxes: {
+      playMode: axisValues(en.categories, PLAY_MODE_IDS),
+      input: axisValues(en.categories, INPUT_IDS),
+      device: axisValues(en.categories, DEVICE_IDS),
+    },
   };
   if (nameKo !== undefined) meta.nameKo = nameKo;
   if (releaseDate !== undefined) meta.releaseDate = releaseDate;

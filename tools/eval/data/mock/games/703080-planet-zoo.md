@@ -7,8 +7,8 @@ playtime_minutes: 19837
 last_played: 1777928500
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/703080/header.jpg
 genres:
-  - 시뮬레이션
-  - 전략
+  - Simulation
+  - Strategy
 rating: 5
 note: 가끔 생각날 때 켜는 게임
 status: playing

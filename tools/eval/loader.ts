@@ -30,6 +30,8 @@ const EVAL_DIR = dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = join(EVAL_DIR, 'docs');
 const MOCK_DIR = join(EVAL_DIR, 'data', 'mock');
 const GAMES_DIR = join(MOCK_DIR, 'games');
+/** D9 ko 장르 매핑표 단일 정본 (id → {en, ko}) */
+const GENRE_KO_PATH = join(EVAL_DIR, '..', 'genre-ko.json');
 
 const POLICY_FILE: Record<string, string> = {
   'D-D': 'policy-collection.md',
@@ -195,14 +197,49 @@ export async function loadLibraryAndProfile(): Promise<{ library: LibraryIndex; 
   return { library, profile };
 }
 
+/**
+ * tools/genre-ko.json(id → {en, ko})을 canonical 영문명 → 별칭 배열로 뒤집는다.
+ * core는 JSON·파일시스템을 직접 읽지 않으므로 여기서 조립해 AgentDeps에 주입한다.
+ * en과 ko가 같은 항목(RPG)은 별칭이 직접 매칭과 겹치므로 제외한다.
+ */
+export async function loadGenreAliases(): Promise<Record<string, string[]>> {
+  let text: string;
+  try {
+    text = await readFile(GENRE_KO_PATH, 'utf-8');
+  } catch {
+    throw new Error(`[eval-loader] 장르 매핑표가 없다: ${GENRE_KO_PATH}`);
+  }
+  const parsed: unknown = JSON.parse(text);
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('[eval-loader] genre-ko.json: 최상위가 객체가 아니다');
+  }
+  const out: Record<string, string[]> = {};
+  for (const [id, v] of Object.entries(parsed)) {
+    if (typeof v !== 'object' || v === null) {
+      throw new Error(`[eval-loader] genre-ko.json: id ${id} 항목이 {en, ko}가 아니다`);
+    }
+    const rec = v as Record<string, unknown>;
+    if (typeof rec.en !== 'string' || rec.en === '' || typeof rec.ko !== 'string' || rec.ko === '') {
+      throw new Error(`[eval-loader] genre-ko.json: id ${id} 항목의 en/ko가 비어 있다`);
+    }
+    if (rec.ko !== rec.en) {
+      const arr = out[rec.en] ?? [];
+      arr.push(rec.ko);
+      out[rec.en] = arr;
+    }
+  }
+  return out;
+}
+
 /** 픽스처만으로 AgentDeps 를 조립한다. LLM·네트워크를 쓰지 않는다. */
 export async function loadAgentDeps(): Promise<AgentDeps> {
-  const [chunks, notes, { library, profile }] = await Promise.all([
+  const [chunks, notes, { library, profile }, genreAliases] = await Promise.all([
     loadChunks(),
     loadNotes(),
     loadLibraryAndProfile(),
+    loadGenreAliases(),
   ]);
-  return { library, profile, chunks, notes };
+  return { library, profile, chunks, notes, genreAliases };
 }
 
 const IS_ENTRY =
@@ -214,6 +251,7 @@ if (IS_ENTRY) {
     console.log(`[eval-loader] library 게임 수: ${deps.library.games.length}`);
     console.log(`[eval-loader] notes 건수: ${deps.notes.length}`);
     console.log(`[eval-loader] chunks 수: ${deps.chunks.length}`);
+    console.log(`[eval-loader] genreAliases: ${Object.keys(deps.genreAliases ?? {}).length}건`);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;

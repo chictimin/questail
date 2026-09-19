@@ -17,6 +17,8 @@ export interface NormalizedGame {
   platform: Platform;
   /** 게임 제목 */
   title: string;
+  /** 한국어 표시명. games 노트의 title_ko 파생 사본으로만 저장한다 (D9) */
+  titleKo?: string;
   /** 데이터 출처 */
   source: GameSource;
   /** 총 플레이타임 (분) */

@@ -7,7 +7,7 @@ playtime_minutes: 219
 last_played: 1730490149
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/319630/header.jpg
 genres:
-  - 어드벤처
+  - Adventure
 rating: 3
 note: 주말마다 조금씩 하는 중
 status: playing

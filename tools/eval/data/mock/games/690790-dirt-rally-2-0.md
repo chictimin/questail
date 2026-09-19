@@ -7,8 +7,8 @@ playtime_minutes: 2434
 last_played: 1782846141
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/690790/header.jpg
 genres:
-  - 레이싱
-  - 스포츠
+  - Racing
+  - Sports
 rating: 4.5
 note: 난이도는 높은데 중독성이 있음
 status: completed

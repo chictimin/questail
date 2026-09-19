@@ -7,9 +7,9 @@ playtime_minutes: 26
 last_played: 1765319851
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg
 genres:
-  - 액션
-  - 어드벤처
-  - 인디
+  - Action
+  - Adventure
+  - Indie
 dislike_reasons:
   - 아트 스타일이 취향과 다름
 status: dropped

@@ -23,6 +23,7 @@ import { buildTasteProfile } from './profile/index.js';
 import { analyzeLibrary, REPORT_SCHEMA_VERSION, type AnalysisReportJson, type QuantitativeStats, toReportJson } from './analyze/index.js';
 import { parseReportChart, renderReportMarkdown, type ReportChart } from './analyze/report.js';
 import { fetchAppMetaBatch } from './metadata/index.js';
+import { fetchSteamSpyUserTags } from './connectors/steamspy.js';
 import { detectLocale, t, type Locale } from './i18n.js';
 import type { GameMeta, NormalizedGame } from './types.js';
 import {
@@ -372,6 +373,16 @@ async function cmdGatherSteam(): Promise<void> {
     for (const m of metas) metaByAppId.set(m.appId, m);
   } catch (e) {
     console.error(_('error', e instanceof Error ? e.message : String(e)));
+  }
+
+  // 태그: SteamSpy 유저 태그를 호출 측에서 주입해 meta.userTags에 붙인다.
+  // appdetails 배치의 wait/retry가 끝난 뒤이므로 appdetails 정책과 간섭 없다.
+  // SteamSpy 1req/sec 모듈 스로틀을 깨뜨리지 않게 순차 for 순회 — Promise.all 금지.
+  // 실패는 빈 배열이라 미설정으로 둔다(다음 실행이 캐시 미스로 재시도한다).
+  // userTags는 캐시 전용이라 normalize에 전달하지 않는다 — library/노트로 내려가지 않는다.
+  for (const [appId, meta] of metaByAppId) {
+    const tags = await fetchSteamSpyUserTags(appId);
+    if (tags.length > 0) meta.userTags = tags;
   }
 
   // 위시리스트: appid 목록 조회 후 Set으로 매칭. 위시 없는 계정 등

@@ -7,9 +7,9 @@ playtime_minutes: 4348
 last_played: 1728714201
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/294100/header.jpg
 genres:
-  - 인디
-  - 시뮬레이션
-  - 전략
+  - Indie
+  - Simulation
+  - Strategy
 rating: 4.5
 note: 초반은 별로였는데 뒤로 갈수록 재밌어짐
 status: completed

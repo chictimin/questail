@@ -7,7 +7,7 @@ playtime_minutes: 347
 last_played: 1786690148
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg
 genres:
-  - 액션
+  - Action
   - RPG
 rating: 3.5
 note: DLC까지 포함해 완주

@@ -7,8 +7,8 @@ playtime_minutes: 3211
 last_played: 1771081054
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/427520/header.jpg
 genres:
-  - 인디
-  - 전략
+  - Indie
+  - Strategy
 status: completed
 ---
 

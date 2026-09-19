@@ -25,6 +25,7 @@ export interface GameNote {
 /** 객관 필드 키 — 이 키들은 재동기화 때 항상 최신값으로 교체된다. */
 export const OBJECTIVE_KEYS = [
   'title',
+  'title_ko',
   'game_id',
   'platform',
   'source',
@@ -61,10 +62,17 @@ export function gameNoteFilename(game: NormalizedGame): string {
 /**
  * 게임 1개를 md 노트로 직렬화 (객관 필드만 — 주관 필드는 mergeGameNote가 채운다).
  * @param prevSubjective  기존 파일에서 보존한 주관 필드 (없으면 생략)
+ * @param prevTitleKo     기존 파일의 title_ko. game.titleKo가 undefined일 때만 보존한다.
+ *   둘 다 없으면 키를 만들지 않는다 — 없는 게임에 키를 지어내지 않는다.
  */
-export function serializeGameNote(game: NormalizedGame, prevSubjective?: SubjectiveGameFields): GameNote {
+export function serializeGameNote(game: NormalizedGame, prevSubjective?: SubjectiveGameFields, prevTitleKo?: string): GameNote {
   const frontmatter: Record<string, unknown> = {
     title: game.title,
+    ...(game.titleKo !== undefined
+      ? { title_ko: game.titleKo }
+      : prevTitleKo !== undefined
+        ? { title_ko: prevTitleKo }
+        : {}),
     // 기존 118개 파일이 game_id를 bare number로 저장하므로 숫자형 id는 숫자로 쓴다
     // (문자열로 쓰면 전 파일에 따옴표 diff가 생긴다). 비숫자 id는 문자열 유지.
     game_id: /^\d+$/.test(game.id) && Number.isSafeInteger(Number(game.id)) ? Number(game.id) : game.id,
@@ -148,12 +156,16 @@ export function extractSubjectiveFields(note: GameNote): SubjectiveGameFields {
 /**
  * 기존 노트와 최신 객관 데이터를 병합한다.
  * - 객관 필드: game 값으로 교체 (game에 없는 선택 필드는 키 자체를 제거 — 낡은 사본 잔류 방지)
+ * - 예외: title_ko는 incoming titleKo가 undefined인데 기존 값이 있으면 보존한다.
+ *   ko 일시 실패·미번역이 기존 한글 표기를 지우면 안 되기 때문이다.
  * - 주관 필드: 기존 값 보존 (없으면 생략)
  * - 본문: 기존 본문이 있으면 유지, 없으면(새 파일) 기본 본문 사용
  */
 export function mergeGameNote(existing: GameNote | null, game: NormalizedGame): GameNote {
   const prevSubjective = existing ? extractSubjectiveFields(existing) : undefined;
-  const fresh = serializeGameNote(game, prevSubjective);
+  const prevTitleKo =
+    existing && typeof existing.frontmatter.title_ko === 'string' ? existing.frontmatter.title_ko : undefined;
+  const fresh = serializeGameNote(game, prevSubjective, prevTitleKo);
 
   if (existing && existing.body.trim() !== '') {
     fresh.body = existing.body.endsWith('\n') ? existing.body : existing.body + '\n';

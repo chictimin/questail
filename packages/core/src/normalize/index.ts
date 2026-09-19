@@ -32,6 +32,7 @@ export function normalizeSteamGame(game: SteamApiGame, achievements?: { achieved
   };
 
   if (meta?.genres && meta.genres.length > 0) out.genres = meta.genres.map(g => g.name);
+  if (meta?.nameKo !== undefined) out.titleKo = meta.nameKo;
   if (meta?.developers && meta.developers.length > 0) out.developers = [...meta.developers];
   if (meta?.publishers && meta.publishers.length > 0) out.publishers = [...meta.publishers];
   if (meta?.releaseDate !== undefined) out.releaseDate = meta.releaseDate;

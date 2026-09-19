@@ -7,8 +7,8 @@ playtime_minutes: 1513
 last_played: 1784462333
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2252570/header.jpg
 genres:
-  - 스포츠
-  - 전략
+  - Sports
+  - Strategy
 status: completed
 ---
 

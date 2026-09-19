@@ -7,8 +7,8 @@ playtime_minutes: 8479
 last_played: 1747973249
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/323190/header.jpg
 genres:
-  - 시뮬레이션
-  - 전략
+  - Simulation
+  - Strategy
 status: playing
 ---
 

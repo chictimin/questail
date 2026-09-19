@@ -7,8 +7,8 @@ playtime_minutes: 234
 last_played: 1778839899
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/311690/header.jpg
 genres:
-  - 액션
-  - 인디
+  - Action
+  - Indie
 rating: 2.5
 note: 친구와 합방용으로 산 게임
 status: playing

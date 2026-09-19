@@ -7,7 +7,7 @@ playtime_minutes: 11
 last_played: 1742957791
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1172470/header.jpg
 genres:
-  - 액션
+  - Action
 dislike_reasons:
   - 반복 플레이에 피로감을 느낌
 status: dropped

@@ -7,7 +7,7 @@ playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2429640/header.jpg
 genres:
   - RPG
-  - 대규모 멀티플레이어
+  - Massively Multiplayer
 wishlisted: true
 status: wishlist
 ---

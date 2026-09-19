@@ -7,7 +7,7 @@ playtime_minutes: 1292
 last_played: 1732115992
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/440/header.jpg
 genres:
-  - 액션
+  - Action
 rating: 3
 note: DLC까지 포함해 완주
 status: completed

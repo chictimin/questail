@@ -7,9 +7,9 @@ playtime_minutes: 142
 last_played: 1752969941
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/230410/header.jpg
 genres:
-  - 액션
+  - Action
   - RPG
-  - 대규모 멀티플레이어
+  - Massively Multiplayer
 rating: 2.5
 note: 2회차 진행 중
 status: playing

@@ -7,8 +7,8 @@ playtime_minutes: 14
 last_played: 1762346265
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1244090/header.jpg
 genres:
-  - 어드벤처
-  - 인디
+  - Adventure
+  - Indie
   - RPG
 dislike_reasons:
   - 멀미가 심함

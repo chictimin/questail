@@ -7,8 +7,8 @@ playtime_minutes: 1455
 last_played: 1768290963
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1659040/header.jpg
 genres:
-  - 액션
-  - 어드벤처
+  - Action
+  - Adventure
 rating: 3.5
 note: DLC까지 포함해 완주
 status: completed

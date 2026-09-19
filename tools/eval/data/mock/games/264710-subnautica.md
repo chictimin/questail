@@ -7,8 +7,8 @@ playtime_minutes: 45
 last_played: 1786658887
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/264710/header.jpg
 genres:
-  - 어드벤처
-  - 인디
+  - Adventure
+  - Indie
 rating: 2
 note: 기대 이하의 완성도였음
 status: playing

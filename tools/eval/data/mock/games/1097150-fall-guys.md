@@ -7,9 +7,9 @@ playtime_minutes: 2077
 last_played: 1759506032
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1097150/header.jpg
 genres:
-  - 캐주얼
-  - 대규모 멀티플레이어
-  - 스포츠
+  - Casual
+  - Massively Multiplayer
+  - Sports
 rating: 4
 note: 초반은 별로였는데 뒤로 갈수록 재밌어짐
 status: completed

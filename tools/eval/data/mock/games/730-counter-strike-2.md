@@ -6,7 +6,7 @@ source: auto
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/header.jpg
 genres:
-  - 액션
+  - Action
 dislike_reasons:
   - 구매만 하고 실행하지 못함
 status: dropped

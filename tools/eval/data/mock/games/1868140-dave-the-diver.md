@@ -7,8 +7,8 @@ playtime_minutes: 3616
 last_played: 1696891492
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1868140/header.jpg
 genres:
-  - 어드벤처
-  - 캐주얼
+  - Adventure
+  - Casual
   - RPG
 rating: 4.5
 note: 난이도는 높은데 중독성이 있음

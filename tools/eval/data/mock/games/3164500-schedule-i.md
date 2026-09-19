@@ -6,9 +6,9 @@ source: manual
 playtime_minutes: 0
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3164500/header.jpg
 genres:
-  - 어드벤처
-  - 인디
-  - 시뮬레이션
+  - Adventure
+  - Indie
+  - Simulation
 wishlisted: true
 status: wishlist
 ---

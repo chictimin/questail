@@ -7,7 +7,7 @@ playtime_minutes: 8065
 last_played: 1786913070
 image: https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/289070/header.jpg
 genres:
-  - 전략
+  - Strategy
 rating: 4
 note: 확장팩 기다리는 중
 status: playing
