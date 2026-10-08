@@ -13,3 +13,6 @@ output/
 .backup/
 .agents/
 AGENTS.md
+
+# 에이전트 로스터 원장 (로컬 전용)
+.roster/
