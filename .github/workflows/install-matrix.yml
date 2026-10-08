@@ -1,0 +1,191 @@
+# X1 클린 설치 매트릭스 — R1 DB 스택(better-sqlite3 13.x + drizzle-orm 0.45.3)이
+# "로컬에 Node 앱을 설치할 수 있는 Steam 유저" 환경에서 추가 조작 없이
+# 설치·로드되는지 측정한다. 아직 apps/web이 없으므로 각 잡이 임시 디렉터리에
+# 최소 프로젝트를 만들어 측정한다.
+#
+# Steam API·appdetails 호출 금지 — IP 기준 쿼터를 CI 러너끼리 공유하므로.
+# 시크릿 사용 0. 빌드 도구 설치 단계 없음 — 없이 설치되는지가 측정 대상이다.
+name: X1 install matrix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/install-matrix.yml
+
+jobs:
+  install:
+    name: install (${{ matrix.os }}, node ${{ matrix.node }}, ${{ matrix.pm }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest # linux x64
+          - ubuntu-24.04-arm # linux arm64
+          - macos-latest # macOS arm64
+          - macos-13 # macOS x64
+          - windows-latest # Windows x64
+          - windows-11-arm # Windows arm64
+        node: ['22', '24']
+        pm: ['pnpm', 'npm']
+    defaults:
+      run:
+        shell: bash
+    env:
+      PROBE_DIR: ${{ runner.temp }}/x1-probe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm 10
+        if: matrix.pm == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Scaffold minimal project
+        run: |
+          rm -rf "$PROBE_DIR"
+          mkdir -p "$PROBE_DIR"
+          cd "$PROBE_DIR"
+          if [ "${{ matrix.pm }}" = "pnpm" ]; then pnpm init; else npm init -y; fi
+          node --version
+
+      - name: Install R1 DB stack (no build tools)
+        run: |
+          cd "$PROBE_DIR"
+          START=$(date +%s)
+          if [ "${{ matrix.pm }}" = "pnpm" ]; then
+            pnpm add better-sqlite3@13 drizzle-orm@0.45.3
+          else
+            npm install better-sqlite3@13 drizzle-orm@0.45.3
+          fi
+          END=$(date +%s)
+          echo "INSTALL_SECONDS=$((END - START))" >> "$GITHUB_ENV"
+
+      - name: Smoke test (raw + drizzle-orm driver)
+        run: |
+          cd "$PROBE_DIR"
+          cat > check.cjs <<'EOF'
+          const Database = require('better-sqlite3');
+          const { drizzle } = require('drizzle-orm/better-sqlite3');
+          const { sqliteTable, integer, text } = require('drizzle-orm/sqlite-core');
+
+          const db = new Database('smoke.db'); // 1. DB 파일 생성
+          db.exec('CREATE TABLE IF NOT EXISTS smoke (id INTEGER PRIMARY KEY, name TEXT)');
+          db.exec('DELETE FROM smoke');
+          db.prepare('INSERT INTO smoke (name) VALUES (?)').run('questail'); // 2. insert
+          const raw = db.prepare('SELECT * FROM smoke').all(); // 2. select
+
+          const smoke = sqliteTable('smoke', { id: integer('id'), name: text('name') });
+          const viaOrm = drizzle(db).select().from(smoke).all(); // 3. drizzle 경유 select
+
+          const match = JSON.stringify(raw) === JSON.stringify(viaOrm);
+          if (!match || raw.length !== 1) {
+            console.error(`SMOKE FAIL: match=${match} raw.length=${raw.length}`);
+            process.exit(1);
+          }
+          console.log(JSON.stringify({ // 4. 결과 + 환경
+            raw,
+            viaOrm,
+            match,
+            arch: process.arch,
+            platform: process.platform,
+            node: process.version,
+            nodeSqlite: process.versions.sqlite ?? null,
+            installSeconds: Number(process.env.INSTALL_SECONDS ?? -1),
+          }, null, 2));
+          EOF
+          node check.cjs
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## X1 install result"
+            echo ""
+            echo "| os | node | pm | status | install_s |"
+            echo "| --- | --- | --- | --- | --- |"
+            echo "| ${{ matrix.os }} | ${{ matrix.node }} | ${{ matrix.pm }} | ${{ job.status }} | ${INSTALL_SECONDS:-n/a} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  install-alpine-musl:
+    name: install (alpine musl, node 22, npm)
+    runs-on: ubuntu-latest
+    container:
+      image: node:22-alpine
+    defaults:
+      run:
+        shell: sh
+    env:
+      PROBE_DIR: /tmp/x1-probe
+    steps:
+      # node:22-alpine 이미지에 Node가 이미 있어 setup-node를 생략한다.
+      # git이 없어 checkout도 생략한다 — 임시 프로젝트만으로 측정한다.
+      - name: Scaffold minimal project
+        run: |
+          rm -rf "$PROBE_DIR"
+          mkdir -p "$PROBE_DIR"
+          cd "$PROBE_DIR"
+          npm init -y
+          node --version
+          ldd --version 2>&1 | head -n 1
+
+      - name: Install R1 DB stack (no build tools)
+        run: |
+          cd "$PROBE_DIR"
+          START=$(date +%s)
+          npm install better-sqlite3@13 drizzle-orm@0.45.3
+          END=$(date +%s)
+          echo "INSTALL_SECONDS=$((END - START))" >> "$GITHUB_ENV"
+
+      - name: Smoke test (raw + drizzle-orm driver)
+        run: |
+          cd "$PROBE_DIR"
+          cat > check.cjs <<'EOF'
+          const Database = require('better-sqlite3');
+          const { drizzle } = require('drizzle-orm/better-sqlite3');
+          const { sqliteTable, integer, text } = require('drizzle-orm/sqlite-core');
+
+          const db = new Database('smoke.db'); // 1. DB 파일 생성
+          db.exec('CREATE TABLE IF NOT EXISTS smoke (id INTEGER PRIMARY KEY, name TEXT)');
+          db.exec('DELETE FROM smoke');
+          db.prepare('INSERT INTO smoke (name) VALUES (?)').run('questail'); // 2. insert
+          const raw = db.prepare('SELECT * FROM smoke').all(); // 2. select
+
+          const smoke = sqliteTable('smoke', { id: integer('id'), name: text('name') });
+          const viaOrm = drizzle(db).select().from(smoke).all(); // 3. drizzle 경유 select
+
+          const match = JSON.stringify(raw) === JSON.stringify(viaOrm);
+          if (!match || raw.length !== 1) {
+            console.error(`SMOKE FAIL: match=${match} raw.length=${raw.length}`);
+            process.exit(1);
+          }
+          console.log(JSON.stringify({ // 4. 결과 + 환경
+            raw,
+            viaOrm,
+            match,
+            arch: process.arch,
+            platform: process.platform,
+            node: process.version,
+            nodeSqlite: process.versions.sqlite ?? null,
+            installSeconds: Number(process.env.INSTALL_SECONDS ?? -1),
+          }, null, 2));
+          EOF
+          node check.cjs
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## X1 install result (musl)"
+            echo ""
+            echo "| os | node | pm | status | install_s |"
+            echo "| --- | --- | --- | --- | --- |"
+            echo "| alpine (musl) | 22 | npm | ${{ job.status }} | ${INSTALL_SECONDS:-n/a} |"
+          } >> "$GITHUB_STEP_SUMMARY"
