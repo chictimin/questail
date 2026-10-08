@@ -24,7 +24,7 @@ jobs:
           - ubuntu-latest # linux x64
           - ubuntu-24.04-arm # linux arm64
           - macos-latest # macOS arm64
-          - macos-13 # macOS x64
+          # macos-13 제외 — 러너 배정 불가로 Intel Mac 미측정
           - windows-latest # Windows x64
           - windows-11-arm # Windows arm64
         node: ['22', '24']
@@ -40,8 +40,7 @@ jobs:
       - name: Setup pnpm 10
         if: matrix.pm == 'pnpm'
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        # with.version 생략 — package.json의 packageManager(pnpm@10.28.2)를 쓴다. 둘을 같이 쓰면 Multiple versions of pnpm specified로 실패한다.
 
       - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v4
