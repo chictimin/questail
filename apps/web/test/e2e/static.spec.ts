@@ -40,7 +40,7 @@ test.describe('로케일 전환', () => {
   test('ko에서 반대 언어 문자열 0', async ({ page }) => {
     await gotoRoute(page, '/library');
     await expect(page.locator('h1')).toContainText('라이브러리');
-    expect(await page.content()).not.toContain('Ratings');
+    expect(await page.content()).not.toContain('Library');
   });
 });
 
@@ -49,6 +49,6 @@ test.describe('로케일 전환 en', () => {
   test('en에서 반대 언어 문자열 0', async ({ page }) => {
     await gotoRoute(page, '/library');
     await expect(page.locator('h1')).toContainText('Library');
-    expect(await page.content()).not.toContain('별점 리스트');
+    expect(await page.content()).not.toContain('라이브러리');
   });
 });

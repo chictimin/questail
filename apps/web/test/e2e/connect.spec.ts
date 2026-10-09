@@ -56,8 +56,10 @@ test.afterAll(async () => {
 
 test('형태 오류 키 제출 → 원인 문구 표시', async ({ page }) => {
   await page.goto(`http://127.0.0.1:${started.port}/connect`);
-  await page.getByLabel('API 키').fill('not-a-key');
+  await page.getByLabel('Steam Web API 키').fill('not-a-key');
   await page.getByLabel('Steam ID').fill('76561198000000001');
-  await page.getByRole('button', { name: '연동하기' }).click();
-  await expect(page.getByRole('alert')).toHaveText('키가 올바르지 않다');
+  await page.getByRole('button', { name: '연결하고 물어오기' }).click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Steam이 이 키를 받지 않았어요. 키 페이지에서 다시 복사해 붙여 넣거나 새로 발급해 주세요.',
+  );
 });

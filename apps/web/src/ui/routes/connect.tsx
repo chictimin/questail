@@ -88,11 +88,7 @@ export function ConnectPage(): React.JSX.Element {
         setKeyText('');
         statusRef.current?.focus();
       } else if (typeof body.code === 'string') {
-        setErrorKey(
-          body.code === 'CONNECT_IN_PROGRESS'
-            ? 'connect.inProgress'
-            : (`error.${body.code}` as TextKey),
-        );
+        setErrorKey(`error.${body.code}` as TextKey);
       } else {
         setErrorKey('connect.submitFailed');
       }

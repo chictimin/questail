@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { SyncErrorCode } from '@questail/core';
+import type { RequestErrorCode } from '../../src/server/request-errors.js';
 import { flatKeys } from '../../src/ui/i18n/index.js';
 
 /** i18n 키 전체 — t('...') 인자는 UI 문구가 아니라 검사 제외. */
@@ -39,8 +40,8 @@ describe('i18n 키 정합', () => {
     expect(flatKeys('ko')).toEqual(flatKeys('en'));
   });
 
-  it('error.* 11키 × 2언어 (동결본 C-3 SyncErrorCode에서 파생)', () => {
-    // core에 코드가 늘면 아래 satisfies와 누락 검사가 typecheck를 깨뜨린다.
+  it('error.* = SyncErrorCode + RequestErrorCode × 2언어', () => {
+    // core·서버에 코드가 늘면 아래 satisfies와 누락 검사가 typecheck를 깨뜨린다.
     const ERROR_CODES = [
       'ACCESS_PRIVATE',
       'AUTH_ID_MISMATCH',
@@ -58,11 +59,27 @@ describe('i18n 키 정합', () => {
     type Missing = Exclude<SyncErrorCode, (typeof ERROR_CODES)[number]>;
     const missingCheck: Missing extends never ? true : never = true;
     expect(missingCheck).toBe(true);
-    const expected = ERROR_CODES.map((c) => `error.${c}`).sort();
-    // 서버 RequestErrorCode 표시용(error.*) — SyncErrorCode 파생이 아님.
-    // paru W5-F1 누락 검사 대상이라 유지한다.
-    expected.push('error.GAME_NOT_FOUND');
-    expected.sort();
+    // 요청 오류 코드가 늘면 아래 satisfies와 누락 검사가 typecheck를 깨뜨린다.
+    // GAME_NOT_FOUND(W7 추가분)도 여기에 포함한다.
+    const REQUEST_CODES = [
+      'CONNECT_IN_PROGRESS',
+      'EXPORT_FAILED',
+      'GAME_NOT_FOUND',
+      'INTERNAL',
+      'INVALID_BODY',
+      'INVALID_HOST',
+      'INVALID_ORIGIN',
+    ] as const satisfies readonly RequestErrorCode[];
+    type RequestMissing = Exclude<
+      RequestErrorCode,
+      (typeof REQUEST_CODES)[number]
+    >;
+    const requestMissingCheck: RequestMissing extends never ? true : never =
+      true;
+    expect(requestMissingCheck).toBe(true);
+    const expected = [...ERROR_CODES, ...REQUEST_CODES]
+      .map((c) => `error.${c}`)
+      .sort();
     expect(flatKeys('ko').filter((k) => k.startsWith('error.'))).toEqual(
       expected,
     );
@@ -100,7 +117,6 @@ describe('UI 하드코딩 문자열 0', () => {
     'password', // input 타입
     'polite', // aria-live 값
     'alert', // role 값
-    'CONNECT_IN_PROGRESS', // 서버 코드 분기(화면 미노출)
     'string', // typeof 검사(화면 미노출)
     'https://steamcommunity.com/dev/apikey', // Steam 링크 상수(번역 대상 아님)
     'https://steamcommunity.com/dev/apiterms', // Steam 링크 상수(번역 대상 아님)
