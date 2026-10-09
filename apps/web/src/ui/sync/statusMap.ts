@@ -9,7 +9,13 @@ export type TextKey = `sync.${string}` | `error.${string}` | `nav.${string}`;
 /** 행 본문 — 진행 막대 / 원인 문장 / 없음(U3b 데이터가 채움). */
 export type RowBody =
   | { kind: 'progress' }
-  | { kind: 'cause'; key: TextKey; params?: Record<string, string | number> }
+  | {
+      kind: 'cause';
+      key: TextKey;
+      params?: Record<string, string | number>;
+      /** U3b [2]: 업적 비공개 행의 공개 설정 링크 자리. */
+      link?: { href: string; label: TextKey };
+    }
   | { kind: 'none' };
 
 export interface RowDisplay {

@@ -40,15 +40,12 @@ export function SyncStatus({
   rows,
   review,
   reviewDefaultOpen = false,
-  updatedAt,
 }: {
   /** h 키 거절 시에만 alert. */
   alert: boolean;
   rows: SyncRowModel[];
   review: ReviewItem[];
   reviewDefaultOpen?: boolean;
-  /** 마지막 전체 수집 시각(ISO 표기) 또는 null. */
-  updatedAt: string | null;
 }): React.JSX.Element {
   const { text } = useLocale();
   return (
@@ -71,9 +68,6 @@ export function SyncStatus({
         ))}
         <ReviewQueue items={review} defaultOpen={reviewDefaultOpen} />
       </div>
-      {updatedAt === null ? null : (
-        <p className="sync-note">{text('sync.sub', { t: updatedAt })}</p>
-      )}
       <p className="sync-foot">{text('sync.stFoot')}</p>
     </div>
   );

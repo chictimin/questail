@@ -216,8 +216,9 @@ ownership_status: "owned"
     backupEmpty: '아직 자동 백업이 없어요',
     sizeUnit: 'MB',  },
   sync: {
-    sub: '마지막 전체 수집 {t}',
+    sub: '마지막 수집 {t}',
     localeNote: '게임 정보는 현재 표시 언어로만 받아요.',
+    collectAll: '전체 다시 수집',
     sourceOwned: '보유 게임',
     sourceInfo: '게임 정보',
     sourceWish: '찜 목록',
@@ -230,6 +231,7 @@ ownership_status: "owned"
     pillFail: '실패',
     pillOff: '꺼짐',
     retry: '이것만 다시 수집',
+    achOpenLink: '공개 설정 열기',
     causeOwned: 'Steam이 보유 목록을 보내지 않았어요. 잠시 뒤 이것만 다시 수집해 주세요.',
     causeHeldZero: '0개로 왔어요. 지난번엔 {prev}개라 반영하지 않았어요.',
     causeHeldTime: '목록은 반영했어요. 플레이타임이 줄어든 {n}개는 반영을 보류하고 검토 대기에 두었어요.',

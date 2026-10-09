@@ -216,6 +216,15 @@ describe('UI 하드코딩 문자열 0', () => {
     'loading', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'ready', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'failed', // 로드 상태 식별자(ui 내부) — 화면 미노출
+    '/api/sync/status', // API 경로 — 화면 미노출
+    'achievements', // 수집 소스 계약값 — 화면 미노출
+    'ok', // 수집 상태 계약값 — 화면 미노출
+    'running', // 수집 상태 계약값 — 화면 미노출
+    'source', // 수집 상태 필드명 — 화면 미노출
+    'https://steamcommunity.com/my/edit/settings', // 공개 설정 링크 상수 — 화면 미노출
+    '/api/sync', // API 경로 — 화면 미노출
+    '_blank', // 링크 타깃 — 화면 미노출
+    'noopener noreferrer', // 링크 rel — 화면 미노출
     'fixed_id', // 계약 params.reason 값(v1.5.4 384행) — 화면 미노출
     'key', // 에러 자리 식별자(ui 내부) — 화면 미노출
     'steamId', // 에러 자리 식별자(ui 내부) — 화면 미노출

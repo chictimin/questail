@@ -64,6 +64,15 @@ export function SourceRow(props: SourceRowProps): React.JSX.Element {
           >
             <CauseIcon error={props.pill === 'fail'} />
             <span>{text(props.body.key, props.body.params)}</span>
+            {props.body.link === undefined ? null : (
+              <a
+                href={props.body.link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {text(props.body.link.label)}
+              </a>
+            )}
           </div>
         ) : null}
       </div>

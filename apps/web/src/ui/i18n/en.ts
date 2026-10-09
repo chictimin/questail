@@ -217,8 +217,9 @@ ownership_status: "owned"
     sizeUnit: 'MB',
   },
   sync: {
-    sub: 'Last full collection {t}',
+    sub: 'Last collected {t}',
     localeNote: 'Game info is only fetched in the current display language.',
+    collectAll: 'Collect everything again',
     sourceOwned: 'Owned games',
     sourceInfo: 'Game info',
     sourceWish: 'Wishlist',
@@ -231,6 +232,7 @@ ownership_status: "owned"
     pillFail: 'Failed',
     pillOff: 'Off',
     retry: 'Retry this one',
+    achOpenLink: 'Open privacy settings',
     causeOwned: 'Steam didn’t send your owned games. Retry this one in a moment.',
     causeHeldZero: 'Steam returned 0 games. Last time it was {prev}, so nothing was applied.',
     causeHeldTime: 'The list was applied. Playtime for {n} games went down, so those are on hold for review.',
