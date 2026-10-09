@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Hono } from 'hono';
+import { connect } from 'node:net';
+import { Hono } from 'hono';
 import {
   boot,
   findRepoRoot,
@@ -47,7 +48,18 @@ function stubDeps(calls: string[]): BootDeps {
     },
     listen: async () => {
       calls.push('listen');
-      return { server: undefined as never, port: 0 };
+      return {
+        server: {
+          close: (callback: (error?: Error) => void) => {
+            calls.push('server-close');
+            callback();
+          },
+          closeIdleConnections: () => {
+            calls.push('close-idle');
+          },
+        } as never,
+        port: 0,
+      };
     },
   };
 }
@@ -187,6 +199,18 @@ describe('boot 백그라운드', () => {
 });
 
 describe('boot 종료', () => {
+  it('shutdown → server-close → unregister → close 순서', async () => {
+    const calls: string[] = [];
+    const booted = await boot(stubDeps(calls));
+    await booted.background;
+    await booted.shutdown();
+    expect(calls).toContain('server-close');
+    expect(calls.indexOf('server-close')).toBeLessThan(
+      calls.indexOf('unregister'),
+    );
+    expect(calls.indexOf('unregister')).toBeLessThan(calls.indexOf('close'));
+  });
+
   it('shutdown → unregister + close', async () => {
     const calls: string[] = [];
     const booted = await boot(stubDeps(calls));
@@ -196,14 +220,82 @@ describe('boot 종료', () => {
     expect(calls).toContain('close');
   });
 
-  it('shutdown 2회 → unregister·close 각 1회', async () => {
+  it('shutdown 2회 → server-close·unregister·close 각 1회', async () => {
     const calls: string[] = [];
     const booted = await boot(stubDeps(calls));
     await booted.background;
     await booted.shutdown();
     await booted.shutdown();
+    expect(calls.filter((c) => c === 'server-close')).toHaveLength(1);
     expect(calls.filter((c) => c === 'unregister')).toHaveLength(1);
     expect(calls.filter((c) => c === 'close')).toHaveLength(1);
+  });
+
+  it('shutdown 후 /api/health 새 연결이 거부된다(실제 리스너)', async () => {
+    const calls: string[] = [];
+    const deps = stubDeps(calls);
+    deps.createApp = () => createServerApp();
+    deps.listen = (app: Hono) => startServer(app, 0);
+    const booted = await boot(deps);
+    await booted.background;
+    // 종료 전에는 200. 본문을 끝까지 읽어 소켓을 풀의 유휴 상태로 둔다.
+    const before = await fetch(
+      `http://127.0.0.1:${booted.port}${HEALTH_PATH}`,
+    );
+    expect(before.status).toBe(200);
+    await before.text();
+    await booted.shutdown();
+    // 새 TCP 연결은 거부된다.
+    await new Promise<void>((resolve, reject) => {
+      const socket = connect(booted.port, '127.0.0.1');
+      socket.on('connect', () => {
+        socket.destroy();
+        reject(new Error('shutdown 후에도 연결이 맺어짐'));
+      });
+      socket.on('error', (error: unknown) => {
+        socket.destroy();
+        if ((error as NodeJS.ErrnoException).code === 'ECONNREFUSED') {
+          resolve();
+        } else {
+          reject(error);
+        }
+      });
+    });
+    // 풀에 남아 있던 keep-alive 재사용 시도도 실패한다.
+    await expect(
+      fetch(`http://127.0.0.1:${booted.port}${HEALTH_PATH}`),
+    ).rejects.toThrow();
+  });
+
+  it('응답을 붙잡힌 채 shutdown → 유예 후 강제 절단 + stderr 1줄 + DB close', async () => {
+    const calls: string[] = [];
+    const deps = stubDeps(calls);
+    deps.shutdownGraceMs = 50;
+    deps.createApp = () => {
+      const app = new Hono();
+      app.get('/hang', () => new Promise<Response>(() => {}));
+      return app;
+    };
+    deps.listen = (app: Hono) => startServer(app, 0);
+    const booted = await boot(deps);
+    await booted.background;
+    // 응답을 끝내지 않는 요청을 걸어 연결을 붙잡아 둔다.
+    const hanging = fetch(`http://127.0.0.1:${booted.port}/hang`).then(
+      () => 'responded' as const,
+      () => 'cut' as const,
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 150));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await booted.shutdown();
+      expect(await hanging).toBe('cut');
+      expect(calls).toContain('close');
+      expect(errSpy).toHaveBeenCalledTimes(1);
+      expect(errSpy.mock.calls[0]).toHaveLength(1);
+      expect(String(errSpy.mock.calls[0][0])).toContain('강제 절단');
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 });
 

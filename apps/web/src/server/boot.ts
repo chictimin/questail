@@ -56,6 +56,9 @@ export type Cancellable = { cancel: () => void | Promise<void> };
 export type CronHandle = { unregister: () => void };
 export type BootDatabase = { close: () => Promise<void> };
 
+/** 리스너 close 유예 — 안에 끝나지 않으면 강제 절단한다(PM #62944). */
+export const SHUTDOWN_GRACE_MS = 5000;
+
 export type BootDeps = {
   backupDatabase: (dataDir: string) => Promise<void>;
   migrateDatabase: (dataDir: string) => Promise<BootDatabase>;
@@ -66,6 +69,8 @@ export type BootDeps = {
   createApp?: () => Hono;
   listen?: (app: Hono, port: number) => Promise<StartedServer>;
   env?: NodeJS.ProcessEnv;
+  /** B 소유 — 리스너 close 유예(ms) 오버라이드, 테스트용. 미지정 시 SHUTDOWN_GRACE_MS. */
+  shutdownGraceMs?: number;
 };
 
 export type BootedServer = {
@@ -73,7 +78,10 @@ export type BootedServer = {
   port: number;
   /** 5단계 — 느리거나 throw해도 listen·반환은 완료한다. */
   background: Promise<void>;
-  /** abort → background 정착 대기 → cron 해제 → DB close. 두 번 호출해도 1회만. */
+  /**
+   * ① HTTP 리스너 close(새 연결 거부) → ② abort → ③ background 정착 대기
+   * → ④ 확보된 cron 해제 → ⑤ DB close. 두 번 호출해도 각 단계 1회만.
+   */
   shutdown: () => Promise<void>;
 };
 
@@ -121,11 +129,44 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
       return shutdownOnce;
     }
     shutdownOnce = (async (): Promise<void> => {
+      // ① 리스너 close — 새 TCP 연결은 즉시 거부된다. close() 콜백은 열린
+      // 연결이 끊기길 기다리느라 늦어질 수 있어, 유휴 연결을 먼저 끊고
+      // 유예 안에 끝나지 않으면 전 연결을 강제 절단한다(PM #62944).
+      const graceMs = deps.shutdownGraceMs ?? SHUTDOWN_GRACE_MS;
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          (
+            server as unknown as { closeAllConnections?: () => void }
+          ).closeAllConnections?.();
+          console.error(
+            `[web] shutdown: 리스너 close가 ${graceMs}ms 안에 끝나지 않아 연결 강제 절단`,
+          );
+          resolve();
+        }, graceMs);
+        server.close(() => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          clearTimeout(timer);
+          resolve();
+        });
+        (
+          server as unknown as { closeIdleConnections?: () => void }
+        ).closeIdleConnections?.();
+      });
+      // ② abort → ③ background 정착 대기.
       controller.abort();
       await background.then(
         () => undefined,
         () => undefined,
       );
+      // ④ 확보된 cron 해제 → ⑤ DB close.
       state.cron?.unregister();
       state.cron = undefined;
       await db.close();
