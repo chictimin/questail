@@ -1,0 +1,132 @@
+import { describe, expect, it } from 'vitest';
+import {
+  SORT_OPTIONS,
+  compareGames,
+  displayNameOf,
+  ratedAtOf,
+  sortGames,
+  type SortableGame,
+} from '../../src/ui/library/sort.js';
+
+/** W7 정렬 단위 테스트. 합성 GameFacts로 11조합·2차·맨뒤·P-4를 확인한다. */
+function makeGame(overrides?: Partial<SortableGame>): SortableGame {
+  return {
+    key: { platform: 'steam', externalId: '100' },
+    name: 'Store Name',
+    titleKo: null,
+    developerRaw: null,
+    releaseDate: null,
+    releaseDateText: null,
+    genres: [],
+    coverUrl: null,
+    hidden: false,
+    libraryAddedAt: null,
+    confirmedMinutes: 0,
+    lastPlayed: null,
+    snapshots: [],
+    deltas: [],
+    coverage: { firstObservedAt: null, lastObservedAt: null, gapDays: [], isBaseline: false },
+    ownership: [],
+    wishlist: [],
+    tags: [],
+    tagStatus: 'not_collected',
+    achievements: [],
+    achievementState: 'not_collected',
+    latestScore: null,
+    ratingEvents: [],
+    syncRunRefs: [],
+    ...overrides,
+  };
+}
+
+function ids(games: SortableGame[]): string[] {
+  return games.map((game) => game.key.externalId);
+}
+
+describe('SORT_OPTIONS', () => {
+  it('11조합', () => {
+    expect(SORT_OPTIONS).toHaveLength(11);
+  });
+});
+
+describe('값 없음은 방향과 무관하게 맨 뒤', () => {
+  it('rating desc·asc', () => {
+    const rated = makeGame({ key: { platform: 'steam', externalId: '5' }, latestScore: 8 });
+    const unrated = makeGame({ key: { platform: 'steam', externalId: '6' }, latestScore: null });
+    expect(ids(sortGames([unrated, rated], 'ko', { sortKey: 'rating', direction: 'desc' }))).toEqual(['5', '6']);
+    expect(ids(sortGames([unrated, rated], 'ko', { sortKey: 'rating', direction: 'asc' }))).toEqual(['5', '6']);
+  });
+
+  it('lastPlayed null은 맨 뒤', () => {
+    const played = makeGame({ key: { platform: 'steam', externalId: '7' }, lastPlayed: 1700100000 });
+    const never = makeGame({ key: { platform: 'steam', externalId: '8' }, lastPlayed: null });
+    expect(ids(sortGames([never, played], 'ko', { sortKey: 'lastPlayed', direction: 'desc' }))).toEqual(['7', '8']);
+  });
+});
+
+describe('방향', () => {
+  it('playtime 많은 순·적은 순', () => {
+    const low = makeGame({ key: { platform: 'steam', externalId: '1' }, confirmedMinutes: 10 });
+    const high = makeGame({ key: { platform: 'steam', externalId: '2' }, confirmedMinutes: 90 });
+    expect(ids(sortGames([low, high], 'ko', { sortKey: 'playtime', direction: 'desc' }))).toEqual(['2', '1']);
+    expect(ids(sortGames([low, high], 'ko', { sortKey: 'playtime', direction: 'asc' }))).toEqual(['1', '2']);
+  });
+
+  it('동점 2차 이름 → externalId 숫자 오름', () => {
+    const b = makeGame({ key: { platform: 'steam', externalId: '20' }, name: 'Same', confirmedMinutes: 5 });
+    const a = makeGame({ key: { platform: 'steam', externalId: '3' }, name: 'Same', confirmedMinutes: 5 });
+    expect(ids(sortGames([b, a], 'ko', { sortKey: 'playtime', direction: 'desc' }))).toEqual(['3', '20']);
+  });
+});
+
+describe('ratedAt', () => {
+  it('현재 점수의 최신 at (취소 후 재평가 포함)', () => {
+    const facts = makeGame({
+      latestScore: 9,
+      ratingEvents: [
+        { id: 1, before: null, after: 8, at: 1700200000 },
+        { id: 2, before: 8, after: null, at: 1700300000 },
+        { id: 3, before: null, after: 9, at: 1700400000 },
+      ],
+    });
+    expect(ratedAtOf(facts)).toBe(1700400000);
+    expect(ratedAtOf(makeGame({ latestScore: null }))).toBeNull();
+  });
+});
+
+describe('P-4 이름 규칙', () => {
+  it('둘 다 없으면 맨 뒤 + externalId 숫자 오름', () => {
+    const nameless200 = makeGame({ key: { platform: 'steam', externalId: '200' }, name: null, titleKo: null });
+    const nameless30 = makeGame({ key: { platform: 'steam', externalId: '30' }, name: null, titleKo: null });
+    const named = makeGame({ key: { platform: 'steam', externalId: '999' }, name: '가', titleKo: null });
+    expect(ids(sortGames([nameless200, named, nameless30], 'ko', { sortKey: 'name', direction: 'asc' }))).toEqual([
+      '999',
+      '30',
+      '200',
+    ]);
+  });
+
+  it('titleKo 있으면 표시 이름, 대체 문구는 정렬 키 아님', () => {
+    const game = makeGame({ name: 'Store', titleKo: '한글' });
+    expect(displayNameOf(game)).toBe('한글');
+    expect(displayNameOf(makeGame({ name: null, titleKo: null }))).toBeNull();
+  });
+
+  it('이름 정렬은 Collator, 입력 배열 불변', () => {
+    const games = [
+      makeGame({ key: { platform: 'steam', externalId: '1' }, name: '나' }),
+      makeGame({ key: { platform: 'steam', externalId: '2' }, name: '가' }),
+    ];
+    const sorted = sortGames(games, 'ko', { sortKey: 'name', direction: 'asc' });
+    expect(ids(sorted)).toEqual(['2', '1']);
+    expect(ids(games)).toEqual(['1', '2']);
+  });
+});
+
+describe('compareGames', () => {
+  it('같은 표시 이름이면 platform으로 결정적 순서', () => {
+    const a = makeGame({ key: { platform: 'b', externalId: '1' }, name: 'Same', confirmedMinutes: 5 });
+    const b = makeGame({ key: { platform: 'a', externalId: '1' }, name: 'Same', confirmedMinutes: 5 });
+    expect(compareGames('ko', { sortKey: 'playtime', direction: 'desc' })(a, b)).toBeGreaterThan(0);
+  });
+});

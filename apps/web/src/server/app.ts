@@ -5,8 +5,12 @@
  */
 import type Database from 'better-sqlite3';
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { createLogger } from './logging.js';
 import { readExportGames } from '../data/export.js';
+import { listLibrary } from '../data/library.js';
+import { setRating, type ScoreValue } from '../data/ratings.js';
+import { getPrefs, setPrefs } from '../data/viewState.js';
 import type { Locale } from '../ui/i18n/index.js';
 import { hostCheck } from './middleware/host.js';
 import type { RequestDeniedBody } from './request-errors.js';
@@ -22,6 +26,8 @@ import { parseJsonBody, type BodyGuard } from './validate.js';
 
 export const HEALTH_PATH = '/api/health';
 export const EXPORT_PATH = '/api/export';
+export const LIBRARY_PATH = '/api/library';
+export const PREFS_PATH = '/api/prefs';
 
 /** 내보내기 의존 — boot가 마이그레이션 후 가진 핸들과 데이터 디렉터리에서 준다. */
 export type ExportDeps = {
@@ -52,6 +58,112 @@ const exportBodyGuard: BodyGuard<ExportRequest> = (unknownBody) => {
   }
   return { ok: true, value: { locale } };
 };
+
+type RatingRequest = { score: ScoreValue | null };
+
+function isScoreValue(value: unknown): value is ScoreValue {
+  return (
+    typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10
+  );
+}
+
+const ratingBodyGuard: BodyGuard<RatingRequest> = (unknownBody) => {
+  if (typeof unknownBody !== 'object' || unknownBody === null) {
+    return { ok: false, params: { reason: 'score' } };
+  }
+  const score = (unknownBody as { score?: unknown }).score;
+  if (score !== null && !isScoreValue(score)) {
+    return { ok: false, params: { reason: 'score' } };
+  }
+  return { ok: true, value: { score } };
+};
+
+type PrefsPatch = {
+  locale?: Locale;
+  hidden?: { platform: string; externalId: string }[];
+  sortPerFilter?: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
+};
+
+function isGameKey(value: unknown): value is { platform: string; externalId: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { platform?: unknown }).platform === 'string' &&
+    typeof (value as { externalId?: unknown }).externalId === 'string'
+  );
+}
+
+function isSortEntry(value: unknown): value is NonNullable<PrefsPatch['sortPerFilter']>[number] {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { filterKey?: unknown }).filterKey === 'string' &&
+    typeof (value as { sortKey?: unknown }).sortKey === 'string' &&
+    ((value as { direction?: unknown }).direction === 'asc' ||
+      (value as { direction?: unknown }).direction === 'desc')
+  );
+}
+
+const prefsBodyGuard: BodyGuard<PrefsPatch> = (unknownBody) => {
+  if (typeof unknownBody !== 'object' || unknownBody === null) {
+    return { ok: false, params: { reason: 'prefs' } };
+  }
+  const body = unknownBody as Record<string, unknown>;
+  if (body['locale'] !== undefined && body['locale'] !== 'ko' && body['locale'] !== 'en') {
+    return { ok: false, params: { reason: 'locale' } };
+  }
+  if (
+    body['hidden'] !== undefined &&
+    (!Array.isArray(body['hidden']) || !body['hidden'].every(isGameKey))
+  ) {
+    return { ok: false, params: { reason: 'hidden' } };
+  }
+  if (
+    body['sortPerFilter'] !== undefined &&
+    (!Array.isArray(body['sortPerFilter']) || !body['sortPerFilter'].every(isSortEntry))
+  ) {
+    return { ok: false, params: { reason: 'sortPerFilter' } };
+  }
+  return {
+    ok: true,
+    value: {
+      ...(body['locale'] === undefined
+        ? {}
+        : { locale: body['locale'] as Locale }),
+      ...(body['hidden'] === undefined
+        ? {}
+        : { hidden: body['hidden'] as PrefsPatch['hidden'] }),
+      ...(body['sortPerFilter'] === undefined
+        ? {}
+        : { sortPerFilter: body['sortPerFilter'] as PrefsPatch['sortPerFilter'] }),
+    },
+  };
+};
+
+/** ?fallback=ko|en 필수 query (P-1). 없거나 잘못되면 null이다. */
+function parseFallback(c: Context): Locale | null {
+  const raw = c.req.query('fallback');
+  return raw === 'ko' || raw === 'en' ? raw : null;
+}
+
+function invalidBody(c: Context, reason: string): Response {
+  const body: RequestDeniedBody = { code: 'INVALID_BODY', params: { reason } };
+  return c.json(body, 400);
+}
+
+function internalError(c: Context): Response {
+  const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
+  return c.json(body, 500);
+}
+
+/** better-sqlite3 FK 위반 — 게임 행 없는 키로의 쓰기다(Q1). */
+function isForeignKeyError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'SQLITE_CONSTRAINT_FOREIGNKEY'
+  );
+}
 
 /** bare 앱 — 라우트만. 테스트·합성의 재료다. */
 export function createApp(exportDeps?: ExportDeps, connectDeps?: ConnectDeps): Hono {
@@ -94,6 +206,71 @@ export function createServerApp(opts?: {
 function registerRoutes(app: Hono, exportDeps?: ExportDeps, connectDeps?: ConnectDeps): void {
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
   registerConnectRoutes(app, connectDeps);
+  app.get(LIBRARY_PATH, (c) => {
+    if (exportDeps === undefined) {
+      return internalError(c);
+    }
+    const raw = c.req.query('includeEnded');
+    if (raw !== undefined && raw !== 'true' && raw !== 'false') {
+      return invalidBody(c, 'includeEnded');
+    }
+    return c.json(
+      listLibrary(exportDeps.db, { includeEnded: raw === 'true' }),
+    );
+  });
+  app.put('/api/ratings/:platform/:externalId', async (c) => {
+    const parsed = await parseJsonBody(c, ratingBodyGuard);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (exportDeps === undefined) {
+      return internalError(c);
+    }
+    try {
+      return c.json(
+        setRating(
+          exportDeps.db,
+          {
+            platform: c.req.param('platform'),
+            externalId: c.req.param('externalId'),
+          },
+          parsed.value.score,
+        ),
+      );
+    } catch (error) {
+      // 게임 행 없는 키 — B는 존재를 따로 조회하지 않고 FK 실패로 판정한다(Q1).
+      if (isForeignKeyError(error)) {
+        const body: RequestDeniedBody = { code: 'GAME_NOT_FOUND', params: {} };
+        return c.json(body, 404);
+      }
+      throw error;
+    }
+  });
+  app.get(PREFS_PATH, (c) => {
+    const fallback = parseFallback(c);
+    if (fallback === null) {
+      return invalidBody(c, 'fallback');
+    }
+    if (exportDeps === undefined) {
+      return internalError(c);
+    }
+    return c.json(getPrefs(exportDeps.db, fallback));
+  });
+  app.put(PREFS_PATH, async (c) => {
+    const fallback = parseFallback(c);
+    if (fallback === null) {
+      return invalidBody(c, 'fallback');
+    }
+    const parsed = await parseJsonBody(c, prefsBodyGuard);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (exportDeps === undefined) {
+      return internalError(c);
+    }
+    setPrefs(exportDeps.db, parsed.value);
+    return c.json(getPrefs(exportDeps.db, fallback));
+  });
   app.post(EXPORT_PATH, async (c) => {
     const parsed = await parseJsonBody(c, exportBodyGuard);
     if (!parsed.ok) {

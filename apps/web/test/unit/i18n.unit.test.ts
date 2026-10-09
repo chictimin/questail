@@ -59,6 +59,10 @@ describe('i18n 키 정합', () => {
     const missingCheck: Missing extends never ? true : never = true;
     expect(missingCheck).toBe(true);
     const expected = ERROR_CODES.map((c) => `error.${c}`).sort();
+    // 서버 RequestErrorCode 표시용(error.*) — SyncErrorCode 파생이 아님.
+    // paru W5-F1 누락 검사 대상이라 유지한다.
+    expected.push('error.GAME_NOT_FOUND');
+    expected.sort();
     expect(flatKeys('ko').filter((k) => k.startsWith('error.'))).toEqual(
       expected,
     );
@@ -101,6 +105,68 @@ describe('UI 하드코딩 문자열 0', () => {
     'https://steamcommunity.com/dev/apikey', // Steam 링크 상수(번역 대상 아님)
     'https://steamcommunity.com/dev/apiterms', // Steam 링크 상수(번역 대상 아님)
     'https://help.steampowered.com/en/faqs/view/71D3-35C2-AD96-AA3A', // Steam 링크 상수(번역 대상 아님)
+    'library', // i18n 섹션 식별자
+    'game', // i18n 섹션 식별자
+    'all', // DB 화면 상태 어휘 filter_key(계약 M-7) — 화면 미노출
+    'unrated', // DB 화면 상태 어휘 filter_key(계약 M-7) — 화면 미노출
+    'byRating', // DB 화면 상태 어휘 filter_key(계약 M-7) — 화면 미노출
+    'hidden', // DB 화면 상태 어휘 filter_key(계약 M-7) — 화면 미노출
+    'playtime', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'lastPlayed', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'rating', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'ratedAt', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'addedAt', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'releaseDate', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'name', // DB 화면 상태 어휘 sort_key(계약 M-7) — 화면 미노출
+    'asc', // DB 화면 상태 어휘 direction(계약 M-7) — 화면 미노출
+    'desc', // DB 화면 상태 어휘 direction(계약 M-7) — 화면 미노출
+    'numeric', // Intl 옵션 식별자 — 화면 미노출
+    'short', // Intl 옵션 식별자 — 화면 미노출
+    'auto', // Intl 옵션 식별자 — 화면 미노출
+    'second', // Intl 단위 식별자 — 화면 미노출
+    'minute', // Intl 단위 식별자 — 화면 미노출
+    'hour', // Intl 단위 식별자 — 화면 미노출
+    'day', // Intl 단위 식별자 — 화면 미노출
+    'button', // HTML 속성값 — 화면 미노출
+    'group', // ARIA role — 화면 미노출
+    'checkbox', // HTML 속성값 — 화면 미노출
+    'slider', // ARIA role — 화면 미노출
+    'ArrowLeft', // DOM 키 식별자 — 화면 미노출
+    'ArrowRight', // DOM 키 식별자 — 화면 미노출
+    'Backspace', // DOM 키 식별자 — 화면 미노출
+    'Delete', // DOM 키 식별자 — 화면 미노출
+    'Enter', // DOM 키 식별자 — 화면 미노출
+    'Escape', // DOM 키 식별자 — 화면 미노출
+    'left', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'right', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'enter', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'space', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'delete', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'backspace', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'escape', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'blur', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'leave', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'digit', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'hover', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
+    'object', // typeof 판정 — 화면 미노출
+    'steam', // platform 계약값 — 화면 미노출
+    'https://store.steampowered.com/app', // ui 상수 URL(Q5 승인) — 화면 미노출
+    'missing', // 행 뱃지 타입 식별자(표시는 문구 키) — 화면 미노출
+    'filling', // 행 뱃지 타입 식별자(표시는 문구 키) — 화면 미노출
+    'ArrowUp', // DOM 키 식별자 — 화면 미노출
+    'ArrowDown', // DOM 키 식별자 — 화면 미노출
+    'PUT', // HTTP 메서드 — 화면 미노출
+    '[data-game-key]', // DOM 셀렉터 — 화면 미노출
+    '[role=', // DOM 셀렉터 조각 — 화면 미노출
+    'absolute', // 가상 스크롤 위치 지정 — 화면 미노출
+    'relative', // 가상 스크롤 위치 지정 — 화면 미노출
+    'alert', // ARIA role — 화면 미노출
+    'status', // ARIA role — 화면 미노출
+    'application/json', // HTTP 헤더값 — 화면 미노출
+    'content-type', // HTTP 헤더명 — 화면 미노출
+    'loading', // 로드 상태 식별자(ui 내부) — 화면 미노출
+    'ready', // 로드 상태 식별자(ui 내부) — 화면 미노출
+    'failed', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
   ]);

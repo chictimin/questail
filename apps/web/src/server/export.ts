@@ -8,6 +8,7 @@
 import { existsSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { GameFacts } from '../data/library.js';
+import { latestRatedAt } from '../shared/ratedAt.js';
 import { t, type Locale } from '../ui/i18n/index.js';
 
 export interface ExportFile {
@@ -82,22 +83,11 @@ function developerValue(raw: string | null): string {
 }
 
 /**
- * 현재 점수가 된 최신 실변경 at. 미평가면 null이다.
- * rating 행과 마지막 events 행의 after가 항상 일치하므로
- * "after가 현재 점수와 같은 행 중 최대 at"은 최신 실변경과 같은 값이다.
+ * 현재 점수가 된 최신 실변경 at. 미평가면 null이다(data getLatestRatedAt과 같은 값).
+ * 정의는 shared/ratedAt.ts 1곳에만 있다.
  */
 export function exportRatedAt(facts: GameFacts): number | null {
-  if (facts.latestScore === null) return null;
-  let latest: number | null = null;
-  for (const event of facts.ratingEvents) {
-    if (
-      event.after === facts.latestScore &&
-      (latest === null || event.at > latest)
-    ) {
-      latest = event.at;
-    }
-  }
-  return latest;
+  return latestRatedAt(facts);
 }
 
 export function renderExportFile(

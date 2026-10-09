@@ -8,7 +8,8 @@ export type RequestErrorCode =
   | 'INVALID_BODY'
   | 'INTERNAL'
   | 'EXPORT_FAILED'
-  | 'CONNECT_IN_PROGRESS';
+  | 'CONNECT_IN_PROGRESS'
+  | 'GAME_NOT_FOUND';
 
 export type RequestDeniedBody = {
   code: RequestErrorCode;

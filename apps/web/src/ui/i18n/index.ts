@@ -13,9 +13,11 @@ export type DictKey =
   | keyof typeof ko.nav
   | keyof typeof ko.error
   | keyof typeof ko.export
-  | keyof typeof ko.connect;
+  | keyof typeof ko.connect
+  | keyof typeof ko.library
+  | keyof typeof ko.game;
 
-type Section = 'nav' | 'error' | 'export' | 'connect';
+type Section = 'nav' | 'error' | 'export' | 'connect' | 'library' | 'game';
 
 /** 'nav.connect'·'error.AUTH_INVALID_KEY' 형태 키를 푼다. */
 export function t(
@@ -42,6 +44,8 @@ export function flatKeys(locale: Locale): string[] {
     ...Object.keys(dict.error).map((k) => `error.${k}`),
     ...Object.keys(dict.export).map((k) => `export.${k}`),
     ...Object.keys(dict.connect).map((k) => `connect.${k}`),
+    ...Object.keys(dict.library).map((k) => `library.${k}`),
+    ...Object.keys(dict.game).map((k) => `game.${k}`),
   ].sort();
 }
 
