@@ -1,0 +1,10 @@
+/**
+ * W7-F4 별점 리스트 스크롤 컨테이너 — 기능상 필요한 높이 상한만.
+ * 시각 디자인 홀딩이라 색·간격·서체는 만지지 않는다.
+ * ui/styles.css(lido 연동 UI 묶음과 충돌 가능)는 건드리지 않고 이 파일에 둔다.
+ */
+.library-list {
+  --library-list-max-height: 100vh;
+  overflow-y: auto;
+  max-height: var(--library-list-max-height);
+}

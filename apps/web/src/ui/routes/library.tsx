@@ -11,6 +11,7 @@ import { detectLocale, t } from '../i18n/index.js';
 import { useLocale } from '../i18n/context.js';
 import { filterGames, filterKeyOf, type FilterKey } from '../library/filter.js';
 import { GameRow, type RowGame } from '../library/GameRow.js';
+import '../library/library.css';
 import { LibraryToolbar } from '../library/LibraryToolbar.js';
 import { sortGames, type Direction, type SortKey, type SortSpec } from '../library/sort.js';
 
@@ -90,6 +91,9 @@ export function LibraryPage(): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
   const [reloadTick, setReloadTick] = useState(0);
+  // 토스트 되돌리기가 생성 시점 prefs를 잡지 않게 최신값 미러.
+  const prefsRef = useRef<Prefs | null>(null);
+  prefsRef.current = prefs;
 
   useEffect(() => {
     const generation = (generationRef.current += 1);
@@ -187,7 +191,7 @@ export function LibraryPage(): React.JSX.Element {
 
   async function toggleHide(game: RowGame): Promise<void> {
     const hidden = new Set(
-      prefs?.hidden.map((entry) => `${entry.platform}/${entry.externalId}`) ?? [],
+      prefsRef.current?.hidden.map((entry) => `${entry.platform}/${entry.externalId}`) ?? [],
     );
     const id = filterKeyOf(game);
     if (hidden.has(id)) {
@@ -337,7 +341,7 @@ export function LibraryPage(): React.JSX.Element {
           )}
           <div
             ref={listRef}
-            style={{ overflowY: 'auto' }}
+            className="library-list"
             onKeyDown={(event) => {
               if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
               const row = (event.target as HTMLElement).closest('[data-game-key]');
@@ -367,7 +371,8 @@ export function LibraryPage(): React.JSX.Element {
                       top: 0,
                       left: 0,
                       width: '100%',
-                      height: `${item.size}px`,
+                      // 고정 height는 measureElement 실측을 막아 행이 겹친다. 바닥만 둔다.
+                      minHeight: `${item.size}px`,
                       transform: `translateY(${item.start}px)`,
                     }}
                   >

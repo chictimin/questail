@@ -112,13 +112,12 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     rmSync(seededDir, { recursive: true, force: true });
   });
 
-  // 가상 행이 겹쳐 포인터가 가로막히면 evaluate 클릭(가상 스크롤 측정 artifact, 제품 동작 아님).
   test('숨기기 → 탭 건수·행·토스트 갱신', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
     await expect(page.getByRole('button', { name: '전체 2' })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-100' });
-    await row.getByText('행 메뉴').evaluate((el) => (el as HTMLElement).click());
-    await row.getByRole('button', { name: '숨기기' }).evaluate((el) => (el as HTMLElement).click());
+    await row.getByText('행 메뉴').click();
+    await row.getByRole('button', { name: '숨기기' }).click();
     await expect(page.getByRole('status')).toContainText('숨겼어요');
     await expect(
       page.getByRole('button', { name: '숨긴 항목 1' }),
@@ -132,18 +131,106 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
     await expect(page.getByRole('button', { name: '전체 2' })).toBeVisible();
     const all = page.locator('article', { hasText: 'game-100' });
-    await all.getByText('행 메뉴').evaluate((el) => (el as HTMLElement).click());
-    await all.getByRole('button', { name: '숨기기' }).evaluate((el) => (el as HTMLElement).click());
+    await all.getByText('행 메뉴').click();
+    await all.getByRole('button', { name: '숨기기' }).click();
     await expect(page.getByRole('button', { name: '숨긴 항목 1' })).toBeVisible();
     await page.getByRole('button', { name: '숨긴 항목 1' }).click();
     const hidden = page.locator('article', { hasText: 'game-100' });
-    await hidden.getByText('행 메뉴').evaluate((el) => (el as HTMLElement).click());
-    await hidden.getByRole('button', { name: '다시 보이기' }).evaluate((el) => (el as HTMLElement).click());
+    await hidden.getByText('행 메뉴').click();
+    await hidden.getByRole('button', { name: '다시 보이기' }).click();
     await expect(page.getByRole('status')).toContainText('다시 보이게 했어요');
     await expect(
       page.getByRole('button', { name: '숨긴 항목 0' }),
     ).toBeVisible();
     await page.getByRole('button', { name: '전체 2' }).click();
     await expect(page.getByText('game-100')).toBeVisible();
+  });
+
+  test('되돌리기 → 탭·행 복원 + DB hidden 해제', async ({ page, request }) => {
+    await page.goto(`http://127.0.0.1:${seeded.port}/library`);
+    await expect(page.getByRole('button', { name: '전체 2' })).toBeVisible();
+    const row = page.locator('article', { hasText: 'game-100' });
+    await row.getByText('행 메뉴').click();
+    await row.getByRole('button', { name: '숨기기' }).click();
+    await expect(page.getByRole('button', { name: '숨긴 항목 1' })).toBeVisible();
+    await page.getByRole('button', { name: '되돌리기' }).click();
+    await expect(page.getByRole('button', { name: '전체 2' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '숨긴 항목 0' }),
+    ).toBeVisible();
+    await expect(page.getByText('game-100')).toBeVisible();
+    const prefs = await request.get(
+      `http://127.0.0.1:${seeded.port}/api/prefs?fallback=ko`,
+    );
+    expect(prefs.ok()).toBe(true);
+    expect(((await prefs.json()) as { hidden: unknown[] }).hidden).toEqual([]);
+  });
+});
+
+test.describe('가상 스크롤 렌더 상한', () => {
+  test.use({ locale: 'ko-KR', viewport: { width: 1280, height: 720 } });
+  let capped: StartedServer;
+  let cappedDb: Database.Database;
+  let cappedDir: string;
+
+  test.beforeEach(async () => {
+    cappedDir = mkdtempSync(join(tmpdir(), 'questail-w7f4e2e-'));
+    const setup = new Database(join(cappedDir, 'questail.db'));
+    try {
+      const journal = JSON.parse(
+        readFileSync(join(WEB, 'drizzle', 'meta', '_journal.json'), 'utf8'),
+      ) as { entries: { tag: string }[] };
+      for (const entry of journal.entries) {
+        setup.exec(readFileSync(join(WEB, 'drizzle', `${entry.tag}.sql`), 'utf8'));
+      }
+      const insertGame = setup.prepare(
+        'INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)',
+      );
+      const insertSpan = setup.prepare(
+        'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
+      );
+      for (let i = 0; i < 300; i += 1) {
+        const externalId = String(1000 + i);
+        insertGame.run('steam', externalId, `game-${externalId}`);
+        insertSpan.run('steam', externalId, 'observed', 1700000000, 0, 0);
+      }
+    } finally {
+      setup.close();
+    }
+    cappedDb = new Database(join(cappedDir, 'questail.db'));
+    capped = await startServer(
+      createServerApp({
+        staticRoot: uiDistDir(),
+        exportDeps: { db: cappedDb, exportDir: join(cappedDir, 'export') },
+      }),
+      0,
+    );
+  });
+
+  test.afterEach(async () => {
+    await new Promise<void>((resolve, reject) => {
+      capped.server.close((error: Error | undefined) =>
+        error ? reject(error) : resolve(),
+      );
+    });
+    cappedDb.close();
+    rmSync(cappedDir, { recursive: true, force: true });
+  });
+
+  test('300건 중 렌더 행 ≤ 화면 행 + 60', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${capped.port}/library`);
+    await expect(page.getByRole('button', { name: '전체 300' })).toBeVisible();
+    const rendered = await page.locator('main[data-route="library"] article').count();
+    expect(rendered).toBeLessThan(300);
+    // 720px / 행 72px = 화면 10행 + 60
+    expect(rendered).toBeLessThanOrEqual(70);
+  });
+
+  test('상한 후 행 메뉴 일반 클릭 가능', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${capped.port}/library`);
+    await expect(page.getByRole('button', { name: '전체 300' })).toBeVisible();
+    const row = page.locator('article', { hasText: 'game-1000' }).first();
+    await row.getByText('행 메뉴').click();
+    await expect(row.getByRole('button', { name: '숨기기' })).toBeVisible();
   });
 });

@@ -105,6 +105,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'library', // data-route 식별자
     'settings', // data-route 식별자
     'root', // DOM id
+    'library-list', // CSS 클래스 식별자(화면 미노출)
     'ko', // 로케일 코드
     'en', // 로케일 코드
     'nav', // i18n 섹션 식별자
