@@ -11,7 +11,7 @@
     "typecheck": "pnpm --filter @questail/core build && pnpm -r typecheck && pnpm --filter @questail/web exec tsc --noEmit -p ../../tools/tsconfig.json",
     "test": "pnpm --filter @questail/core build && pnpm -r test",
     "eval": "tsx tools/eval/dryrun.ts",
-    "eval:baseline": "pnpm --silent eval > /tmp/questail-eval.log 2>&1; code=$?; cat /tmp/questail-eval.log; grep -qF \"[dryrun] 총점 26/27 (tool)\" /tmp/questail-eval.log && grep -qF -- \"- C2-05 \" /tmp/questail-eval.log && test \"$code\" -eq 1 && echo \"[release] eval baseline OK: 26/27, C2-05 only, exit 1\"",
+    "eval:baseline": "f=$(mktemp -t questail-eval); pnpm --silent eval > \"$f\" 2>&1; code=$?; cat \"$f\"; grep -qF \"[dryrun] 총점 26/27 (tool)\" \"$f\" && grep -qF -- \"- C2-05 \" \"$f\" && test \"$code\" -eq 1 && echo \"[release] eval baseline OK: 26/27, C2-05 only, exit 1\"; rc=$?; rm -f \"$f\"; exit $rc",
     "release:check": "pnpm typecheck && pnpm build && pnpm --filter @questail/core pack --dry-run && pnpm eval:baseline",
     "start": "pnpm --filter @questail/core build && pnpm --filter @questail/web build && pnpm --filter @questail/web build:ui && node apps/web/dist/src/server/run.js"
   },
