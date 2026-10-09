@@ -11,6 +11,9 @@ dist/
 output/
 .cache/
 .backup/
+
+# 로컬 데이터 디렉터리 (루트 data/, 커밋 금지 — W3)
+/data/
 .agents/
 AGENTS.md
 
