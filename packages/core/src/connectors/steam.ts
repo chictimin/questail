@@ -427,3 +427,138 @@ export function steamErrorToIssue(error: unknown, endpoint: string): {
   if (status === 429) return { code: 'RATE_LIMITED', params: { endpoint, status } };
   return { code: 'NETWORK', params: { endpoint } };
 }
+
+/** vanity 해석 기본 공식 URL. baseUrl 없으면 이것을 쓴다. */
+const VANITY_DEFAULT_BASE = 'https://api.steampowered.com';
+
+/** vanity 해석 상한 10초. 초과는 NETWORK로 반환한다. */
+const VANITY_TIMEOUT_MS = 10_000;
+
+/** vanity 해석 결과. 키 비반향. */
+export type VanityResult =
+  | { ok: true; steamId: string }
+  | { ok: false; code: SyncErrorCode; params: IssueParams };
+
+export type VanityFetchFn = (
+  url: string,
+  init: { signal: AbortSignal },
+) => Promise<{ status: number; json: () => Promise<unknown> }>;
+
+/**
+ * vanity → SteamID64 해석 (P-7, 동결 v1.5.1).
+ * 웹 파싱은 단일 이름만 넘긴다. trim 외 변형 없음, 빈 거부.
+ * url_type=1. 자동 재시도·캐시 없음. 같은 키·10초 상한·P-5 매핑 재사용.
+ * 알려진 0건(success 42)은 not_found 잠정(PRE-4 재검토).
+ * success!=1 일괄 not_found 추정 금지, 그 외 깨짐은 PAYLOAD_CORRUPT.
+ * baseUrl 형태는 http·https 파싱만 본다(호스트 정책은 데이터 측).
+ */
+export function resolveVanityName(input: {
+  vanity: string;
+  keyText: string;
+  baseUrl?: string;
+  signal?: AbortSignal;
+  fetchFn?: VanityFetchFn;
+}): Promise<VanityResult> {
+  return (async (): Promise<VanityResult> => {
+    const vanity = input.vanity.trim();
+    if (vanity.length === 0) {
+      return { ok: false, code: 'PAYLOAD_CORRUPT', params: {} };
+    }
+    let base = VANITY_DEFAULT_BASE;
+    if (input.baseUrl !== undefined) {
+      const parsed = parseHttpBase(input.baseUrl);
+      if (parsed === null) {
+        return { ok: false, code: 'NETWORK', params: { reason: 'upstream' } };
+      }
+      base = parsed;
+    }
+    if (input.signal?.aborted) {
+      return { ok: false, code: 'NETWORK', params: { reason: 'timeout' } };
+    }
+    const ctrl = new AbortController();
+    const onExternalAbort = (): void => {
+      ctrl.abort();
+    };
+    if (input.signal) {
+      input.signal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const url =
+        `${base}/ISteamUser/ResolveVanityURL/v0001/` +
+        `?key=${encodeURIComponent(input.keyText.trim())}` +
+        `&vanityurl=${encodeURIComponent(vanity)}&url_type=1`;
+      const fetchFn = input.fetchFn ?? fetch;
+      const pending = fetchFn(url, { signal: ctrl.signal });
+      void pending.catch(() => {
+        /* 경합에서 진 쪽의 뒤늦은 실패는 무시한다 */
+      });
+      const res = await Promise.race([
+        pending,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            ctrl.abort();
+            reject(new Error('vanity timeout'));
+          }, VANITY_TIMEOUT_MS);
+        }),
+      ]);
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, code: 'AUTH_INVALID_KEY', params: { reason: 'rejected' } };
+      }
+      if (res.status === 429) {
+        return { ok: false, code: 'RATE_LIMITED', params: {} };
+      }
+      if (res.status !== 200) {
+        return { ok: false, code: 'NETWORK', params: { reason: 'upstream' } };
+      }
+      let body: unknown;
+      try {
+        body = await res.json();
+      } catch {
+        return { ok: false, code: 'PAYLOAD_CORRUPT', params: {} };
+      }
+      const response = isRecord(body) ? body['response'] : undefined;
+      const success = isRecord(response) ? response['success'] : undefined;
+      const steamid = isRecord(response) ? response['steamid'] : undefined;
+      if (success === 1 && typeof steamid === 'string' && steamid.length > 0) {
+        return { ok: true, steamId: steamid };
+      }
+      if (success === 42) {
+        return { ok: false, code: 'AUTH_ID_MISMATCH', params: { reason: 'not_found' } };
+      }
+      return { ok: false, code: 'PAYLOAD_CORRUPT', params: {} };
+    } catch {
+      if (ctrl.signal.aborted) {
+        return { ok: false, code: 'NETWORK', params: { reason: 'timeout' } };
+      }
+      return { ok: false, code: 'NETWORK', params: { reason: 'network' } };
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      input.signal?.removeEventListener('abort', onExternalAbort);
+    }
+  })();
+}
+
+function parseHttpBase(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  // P-6 정책과 같은 경계(데이터 측 normalizeSteamBaseUrl과 중복.
+  // core→web 역참조가 금지라 공통 추출 대신 둔다. 통합은 별도 범위).
+  if (parsed.username !== '' || parsed.password !== '' || parsed.search !== '' || parsed.hash !== '') {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase();
+  const bracketed = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+  const isOfficial = host === 'api.steampowered.com' && parsed.port === '';
+  const isLoopback =
+    host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '[::1]';
+  if (!isOfficial && !isLoopback && bracketed !== '[::1]') return null;
+  return `${parsed.protocol}//${bracketed}${parsed.port === '' ? '' : `:${parsed.port}`}${parsed.pathname.replace(/\/+$/, '')}`;
+}
