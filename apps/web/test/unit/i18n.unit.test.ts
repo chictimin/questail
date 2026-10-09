@@ -48,6 +48,7 @@ describe('i18n 키 정합', () => {
       'HELD_DEPENDENCY',
       'HELD_TIME_ZERO',
       'HELD_ZERO',
+      'KEY_STORE_FAILED',
       'NETWORK',
       'PAYLOAD_CORRUPT',
       'RATE_LIMITED',

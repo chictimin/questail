@@ -157,7 +157,8 @@ export type SyncErrorCode =
   | 'HELD_TIME_ZERO' // 소스 보류 2종 = 급감 0건 보류·시간 전건 0(보유 확정). 급증(spike)은 소스 보류가 아니라 게임 단위 검토 사유(review kind)라 코드 없음 (C-3 F-4)
   | 'HELD_DEPENDENCY' // 의존성 대기 held — 첫 수집 보유 실패 시 종속 소스, 급감 held와 구분 (C-3, PM #60441). params는 대기 대상 소스
   | 'TAG_FAILED'
-  | 'TAG_EMPTY'; // 태그 실패 vs 빈 태그 구분 (C-3, D-17)
+  | 'TAG_EMPTY' // 태그 실패 vs 빈 태그 구분 (C-3, D-17)
+  | 'KEY_STORE_FAILED'; // 키 저장 실패 (P-3, 동결 v1.2). params reason=permission|io
 
 /** 소스별 수집 진행률 (C-3) */
 export type CollectProgress = { done: number; total: number | null; source: CollectSource };

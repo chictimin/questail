@@ -18,5 +18,6 @@ export const en = {
     HELD_DEPENDENCY: 'Waiting on earlier step',
     TAG_FAILED: 'Tags unavailable',
     TAG_EMPTY: 'No tags',
+    KEY_STORE_FAILED: 'Could not save the key — check data folder permissions and disk space, then retry.',
   },
 } as const;

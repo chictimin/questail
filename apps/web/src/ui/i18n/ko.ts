@@ -18,5 +18,6 @@ export const ko = {
     HELD_DEPENDENCY: '앞 단계 대기 중이다',
     TAG_FAILED: '태그를 못 가져왔다',
     TAG_EMPTY: '태그가 없다',
+    KEY_STORE_FAILED: '키를 저장하지 못했다 — 데이터 폴더 권한과 저장 공간 확인 후 다시 시도',
   },
 } as const;
