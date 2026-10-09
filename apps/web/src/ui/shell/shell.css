@@ -1,0 +1,95 @@
+/**
+ * U4 셸 스타일 — 토큰 변수만 사용(인라인 style 없음).
+ * 요약 pill 자리는 렌더하지 않는다(D-08 뒤 배선).
+ */
+.wordmark {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.wordmark-q {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  font-size: 1.28em;
+}
+
+.wordmark-rest {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 0.86em;
+}
+
+.shell-symbol {
+  width: 40px;
+  height: 40px;
+  margin-right: -6px;
+}
+
+.site-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  height: 64px;
+}
+
+.site-menu {
+  display: flex;
+}
+
+.site-menu a {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 10px 0 10px;
+}
+
+.site-menu a[aria-current='page'] {
+  background: var(--surface-selected);
+  font-weight: 600;
+}
+
+.site-footer {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.site-footer-link {
+  display: inline-flex;
+  text-decoration: underline;
+}
+
+.mobile-header {
+  display: none;
+}
+
+.mobile-header-top {
+  display: grid;
+  grid-template-columns: 40px 1fr 1fr;
+  align-items: center;
+  height: 76px;
+}
+
+.mobile-header-top .wordmark {
+  font-size: 11px;
+}
+
+.mobile-menu {
+  display: flex;
+  overflow-x: auto;
+}
+
+.mobile-header.is-hidden {
+  transform: translateY(-76px);
+}
+
+@media (max-width: 768px) {
+  .site-header {
+    display: none;
+  }
+
+  .mobile-header {
+    display: block;
+    position: sticky;
+    top: 0;
+  }
+}

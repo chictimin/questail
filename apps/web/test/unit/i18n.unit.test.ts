@@ -227,6 +227,22 @@ describe('UI 하드코딩 문자열 0', () => {
     'connect-submit-label is-shimmer', // CSS 클래스 조합 — 화면 미노출
     'connect-needs-heading', // aria-labelledby 식별자 — 화면 미노출
     'connect-warn-heading', // aria-labelledby 식별자 — 화면 미노출
+    'Questail', // 워드마크 식별자(서체 표시용) — 화면 미노출
+    'page', // aria-current 값 — 화면 미노출
+    'scroll', // DOM 이벤트명 — 화면 미노출
+    'true', // 불리언 속성 직렬화 — 화면 미노출
+    'wordmark', // CSS 클래스 — 화면 미노출
+    'wordmark-q', // CSS 클래스 — 화면 미노출
+    'wordmark-rest', // CSS 클래스 — 화면 미노출
+    'shell-symbol', // CSS 클래스 — 화면 미노출
+    'site-header', // CSS 클래스 — 화면 미노출
+    'site-menu', // CSS 클래스 — 화면 미노출
+    'site-footer', // CSS 클래스 — 화면 미노출
+    'site-footer-link', // CSS 클래스 — 화면 미노출
+    'mobile-header', // CSS 클래스 — 화면 미노출
+    'mobile-header is-hidden', // CSS 클래스 조합 — 화면 미노출
+    'mobile-header-top', // CSS 클래스 — 화면 미노출
+    'mobile-menu', // CSS 클래스 — 화면 미노출
     'https://store.steampowered.com/', // Steam 링크 상수(번역 대상 아님)
     'wait', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
     'run', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키

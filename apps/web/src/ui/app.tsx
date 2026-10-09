@@ -9,8 +9,8 @@ import { SyncPage } from './routes/sync.js';
 import { LibraryPage } from './routes/library.js';
 import { SettingsPage } from './routes/settings.js';
 import { ExportPage } from './routes/export.js';
-import { LogoHeader } from './shell/header.js';
-import { NavHeader } from './shell/navHeader.js';
+import { Header, LogoHeader } from './shell/header.js';
+import { MobileHeader } from './shell/MobileHeader.js';
 import { SiteFooter } from './shell/footer.js';
 
 export const ROUTES = [
@@ -77,7 +77,10 @@ export function App(): React.JSX.Element {
   }
   const header =
     connected === true ? (
-      <NavHeader />
+      <>
+        <Header />
+        <MobileHeader />
+      </>
     ) : (
       <LogoHeader />
     );
