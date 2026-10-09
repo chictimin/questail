@@ -51,7 +51,7 @@ export interface GameMeta {
   /** 지원 플랫폼 (appdetails data.platforms에서 true인 키만) */
   platforms?: string[];
   /** 장르 — 영문 정본 + 로케일 무관 id (D9). id는 ko 매핑표의 키다 */
-  genres?: { id: string; name: string }[];
+  genres?: { id: string; name: string; nameKo?: string | null }[];
   developers?: string[];
   publishers?: string[];
   /** ISO 8601 날짜 (D9). 파싱 실패 시 undefined */
