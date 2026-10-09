@@ -143,12 +143,28 @@ export function LibraryPage(): React.JSX.Element {
   }, [games, filterKey, score, keep, locale, sortSpec]);
 
   const counts = useMemo<Record<FilterKey, number>>(
-    () => ({
-      all: filterGames(games as GameFacts[], { key: 'all' }).length,
-      unrated: filterGames(games as GameFacts[], { key: 'unrated' }).length,
-      byRating: filterGames(games as GameFacts[], { key: 'byRating' }).length,
-      hidden: filterGames(games as GameFacts[], { key: 'hidden' }).length,
-    }),
+    () => {
+      // filterGames 4회 호출과 동등(keep 없음) — 단pass 집계. hidden 제외 규칙 포함.
+      const result: Record<FilterKey, number> = {
+        all: 0,
+        unrated: 0,
+        byRating: 0,
+        hidden: 0,
+      };
+      for (const game of games as GameFacts[]) {
+        if (game.hidden) {
+          result.hidden += 1;
+          continue;
+        }
+        result.all += 1;
+        if (game.latestScore === null) {
+          result.unrated += 1;
+        } else {
+          result.byRating += 1;
+        }
+      }
+      return result;
+    },
     [games],
   );
 
@@ -316,6 +332,7 @@ export function LibraryPage(): React.JSX.Element {
             filterKey={filterKey}
             score={score}
             counts={counts}
+            resultCount={visible.length}
             sortSpec={sortSpec}
             showEnded={showEnded}
             onFilter={changeFilter}

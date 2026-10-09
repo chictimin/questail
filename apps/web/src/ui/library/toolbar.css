@@ -1,0 +1,13 @@
+/**
+ * U2a 툴바 — 결과 줄 flex 간격(토큰) · 좁은 폭 필터 버튼 라벨 숨김(아이콘·뱃지 유지).
+ */
+main[data-route='library'] .result-line {
+  display: flex;
+  gap: var(--space-8);
+}
+
+@media (max-width: 768px) {
+  main[data-route='library'] .filter-text {
+    display: none;
+  }
+}

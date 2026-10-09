@@ -134,6 +134,12 @@ describe('UI 하드코딩 문자열 0', () => {
     'connect-key-error', // 필드 오류 연결
     'connect-steamid-error', // 필드 오류 연결
     'string', // typeof 검사(화면 미노출)
+    'sort', // radio name(화면 미노출)
+    'radio', // HTML 속성값(화면 미노출)
+    'playtime:desc', // 정렬 식별자(화면 미노출)
+    'ratedAt:desc', // 정렬 식별자(화면 미노출)
+    'filter-text', // 좁은 폭 숨김 후크(화면 미노출)
+    'result-line', // 결과 줄 후크(화면 미노출)
     'number', // typeof 검사(화면 미노출)
     'https://steamcommunity.com/dev/apikey', // Steam 링크 상수(번역 대상 아님)
     'https://steamcommunity.com/dev/apiterms', // Steam 링크 상수(번역 대상 아님)
