@@ -7,7 +7,8 @@ export type RequestErrorCode =
   | 'INVALID_ORIGIN'
   | 'INVALID_BODY'
   | 'INTERNAL'
-  | 'EXPORT_FAILED';
+  | 'EXPORT_FAILED'
+  | 'CONNECT_IN_PROGRESS';
 
 export type RequestDeniedBody = {
   code: RequestErrorCode;

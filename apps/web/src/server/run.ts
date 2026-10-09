@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { main } from './main.js';
 import { createServerApp } from './app.js';
 import { productionDeps } from './deps.js';
+import { connectKeyPath } from './routes/connect.js';
 import { uiDistDir } from './static.js';
 
 await main({
@@ -17,5 +18,9 @@ await main({
         ctx.db === undefined
           ? undefined
           : { db: ctx.db, exportDir: join(ctx.dataDir, 'export') },
+      connectDeps:
+        ctx.db === undefined
+          ? undefined
+          : { db: ctx.db, keyPath: connectKeyPath(ctx.dataDir) },
     }),
 });

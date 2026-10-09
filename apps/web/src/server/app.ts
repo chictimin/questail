@@ -17,6 +17,7 @@ import {
   type ExportFailureReason,
 } from './export.js';
 import { wireStatic } from './static.js';
+import { registerConnectRoutes, type ConnectDeps } from './routes/connect.js';
 import { parseJsonBody, type BodyGuard } from './validate.js';
 
 export const HEALTH_PATH = '/api/health';
@@ -53,9 +54,9 @@ const exportBodyGuard: BodyGuard<ExportRequest> = (unknownBody) => {
 };
 
 /** bare 앱 — 라우트만. 테스트·합성의 재료다. */
-export function createApp(exportDeps?: ExportDeps): Hono {
+export function createApp(exportDeps?: ExportDeps, connectDeps?: ConnectDeps): Hono {
   const app = new Hono();
-  registerRoutes(app, exportDeps);
+  registerRoutes(app, exportDeps, connectDeps);
   return app;
 }
 
@@ -70,6 +71,7 @@ export type AppType = ReturnType<typeof createApp>;
 export function createServerApp(opts?: {
   staticRoot?: string;
   exportDeps?: ExportDeps;
+  connectDeps?: ConnectDeps;
 }): Hono {
   const app = new Hono();
   app.use(hostCheck);
@@ -82,15 +84,16 @@ export function createServerApp(opts?: {
     const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
     return c.json(body, 500);
   });
-  registerRoutes(app, opts?.exportDeps);
+  registerRoutes(app, opts?.exportDeps, opts?.connectDeps);
   if (opts?.staticRoot !== undefined) {
     wireStatic(app, opts.staticRoot);
   }
   return app;
 }
 
-function registerRoutes(app: Hono, exportDeps?: ExportDeps): void {
+function registerRoutes(app: Hono, exportDeps?: ExportDeps, connectDeps?: ConnectDeps): void {
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
+  registerConnectRoutes(app, connectDeps);
   app.post(EXPORT_PATH, async (c) => {
     const parsed = await parseJsonBody(c, exportBodyGuard);
     if (!parsed.ok) {
