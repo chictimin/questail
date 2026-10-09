@@ -231,6 +231,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'page', // aria-current 값 — 화면 미노출
     'scroll', // DOM 이벤트명 — 화면 미노출
     'true', // 불리언 속성 직렬화 — 화면 미노출
+    'data-preview', // 미리보기 후크 속성 — 화면 미노출
     'wordmark', // CSS 클래스 — 화면 미노출
     'wordmark-q', // CSS 클래스 — 화면 미노출
     'wordmark-rest', // CSS 클래스 — 화면 미노출

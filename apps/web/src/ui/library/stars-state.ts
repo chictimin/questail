@@ -26,6 +26,13 @@ function clampStars(value: number): number {
   return value;
 }
 
+/** 미리보기 후크 — 미리보기 중이면 data-preview, 아니면 없음. 순수. */
+export function previewAttrs(preview: number | null): {
+  'data-preview'?: 'true';
+} {
+  return preview === null ? {} : { 'data-preview': 'true' };
+}
+
 /**
  * current = 확정값(별 단위, 미평가 null), preview = 미리보기.
  * Enter/Space는 미리보기(없으면 확정값)를 확정하고, 확정값과 같으면

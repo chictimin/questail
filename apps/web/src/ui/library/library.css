@@ -8,3 +8,8 @@
   overflow-y: auto;
   max-height: var(--library-list-max-height);
 }
+
+/* U2c: 미리보기 중(호버·←→ 미리보기) 별 색. 확정 색 그대로. 기존 토큰만. */
+div[role='slider'][data-preview] {
+  color: var(--qt-purple);
+}

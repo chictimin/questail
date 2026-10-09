@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { t, type Locale } from '../i18n/index.js';
 import { starsValueText } from './format.js';
-import { starsTransition, type StarsKeyInput } from './stars-state.js';
+import { starsTransition, previewAttrs, type StarsKeyInput } from './stars-state.js';
 
 export interface StarsProps {
   /** 확정값 — 저장 단위 1~10, 미평가 null. */
@@ -47,6 +47,7 @@ export function Stars({ value, disabled, locale, onCommit }: StarsProps): React.
     <div
       role="slider"
       tabIndex={locked ? -1 : 0}
+      {...previewAttrs(preview)}
       aria-label={t(locale, 'library.ariaStars')}
       aria-valuemin={0.5}
       aria-valuemax={5}

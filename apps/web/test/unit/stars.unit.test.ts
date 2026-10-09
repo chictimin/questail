@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  previewAttrs,
   starsTransition,
   type StarsKeyInput,
 } from '../../src/ui/library/stars-state.js';
@@ -53,5 +54,12 @@ describe('확정·취소', () => {
   it('Delete/Backspace는 즉시 취소', () => {
     expect(apply(4, 3, 'delete')).toEqual({ preview: null, commit: null });
     expect(apply(4, null, 'backspace')).toEqual({ preview: null, commit: null });
+  });
+});
+
+describe('previewAttrs', () => {
+  it('미리보기 중이면 data-preview, 아니면 없음', () => {
+    expect(previewAttrs(3)).toEqual({ 'data-preview': 'true' });
+    expect(previewAttrs(null)).toEqual({});
   });
 });
