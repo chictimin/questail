@@ -21,6 +21,8 @@ export type ConnectDeps = {
   db: Database.Database;
   keyPath: string;
   fetchFn?: VerifyFetchFn;
+  /** P-6 테스트 주입용 base URL. 없으면 공식 기본. */
+  baseUrl?: string;
 };
 
 /** 키 경로 = <dataDir>/KEY_FILE_NAME. 경로는 서버가 주입한다. */
@@ -101,6 +103,7 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps): void {
         keyText: parsed.value.keyText,
         steamId: parsed.value.steamId,
         fetchFn: deps.fetchFn,
+        baseUrl: deps.baseUrl,
       });
       if (result.ok) {
         return c.json({ connected: true }, 200);
