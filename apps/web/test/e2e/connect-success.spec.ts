@@ -77,6 +77,11 @@ test('가짜 Steam 검증 → 연동 성공 + steam.key 생성', async ({ page }
     await page.getByRole('button', { name: '연결하고 물어오기' }).click();
     await expect(page.getByText('연결했어요')).toBeVisible();
     expect(existsSync(join(dataDir, 'steam.key'))).toBe(true);
+    // P7W-F1: 성공 후 셸 상태가 갱신돼 /library에 머문다(미연동 리다이렉트 없음).
+    await expect(page).toHaveURL(/\/library$/);
+    await expect(
+      page.locator('main[data-route="library"] h1'),
+    ).toContainText('라이브러리');
   } finally {
     if (child !== null && child.pid !== undefined) {
       try {

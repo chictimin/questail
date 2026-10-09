@@ -20,7 +20,11 @@ type StatusBody = {
 
 type SubmitBody = { connected?: unknown; code?: unknown };
 
-export function ConnectPage(): React.JSX.Element {
+export function ConnectPage({
+  onConnected,
+}: {
+  onConnected(): Promise<void>;
+}): React.JSX.Element {
   const { text } = useLocale();
   type TextKey = Parameters<typeof text>[0];
   const [, navigate] = useLocation();
@@ -95,12 +99,15 @@ export function ConnectPage(): React.JSX.Element {
       return;
     }
     const timer = setTimeout(() => {
-      navigate('/library');
+      // App 셸의 연동 상태를 먼저 갱신해야 /library 리다이렉트에 안 걸린다.
+      void onConnected().finally(() => {
+        navigate('/library');
+      });
     }, 600);
     return () => {
       clearTimeout(timer);
     };
-  }, [succeeded, navigate]);
+  }, [succeeded, navigate, onConnected]);
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();

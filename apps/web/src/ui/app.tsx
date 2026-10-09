@@ -2,7 +2,7 @@
  * W5-UI 앱 셸 — 미연동이면 /connect로 리다이렉트 + 로고 헤더, 연동 후 nav 헤더.
  * 상태 확인 실패 시 fail-open(리다이렉트 안 함). 68px 레일·수집 요약은 범위 밖.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { ConnectPage } from './routes/connect.js';
 import { SyncPage } from './routes/sync.js';
@@ -22,8 +22,23 @@ export const ROUTES = [
 ] as const;
 
 /** true=연동·false=미연동·null=미확인(fail-open). */
-function useConnected(): boolean | null {
+function useConnected(): {
+  connected: boolean | null;
+  refresh(): Promise<void>;
+} {
   const [connected, setConnected] = useState<boolean | null>(null);
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      const response = await fetch('/api/connect/status');
+      if (!response.ok) {
+        return;
+      }
+      const body = (await response.json()) as { connected?: unknown };
+      setConnected(body.connected === true);
+    } catch {
+      // fail-open: 갱신 실패는 기존값 유지
+    }
+  }, []);
   useEffect(() => {
     let cancelled = false;
     const load = async (): Promise<void> => {
@@ -51,12 +66,12 @@ function useConnected(): boolean | null {
       cancelled = true;
     };
   }, []);
-  return connected;
+  return { connected, refresh };
 }
 
 export function App(): React.JSX.Element {
   const [path] = useLocation();
-  const connected = useConnected();
+  const { connected, refresh } = useConnected();
   if (connected === false && path !== '/connect') {
     return <Redirect to="/connect" />;
   }
@@ -70,7 +85,9 @@ export function App(): React.JSX.Element {
     <div>
       {header}
       <Switch>
-        <Route path="/connect" component={ConnectPage} />
+        <Route path="/connect">
+          {() => <ConnectPage onConnected={refresh} />}
+        </Route>
         <Route path="/sync" component={SyncPage} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/settings" component={SettingsPage} />
