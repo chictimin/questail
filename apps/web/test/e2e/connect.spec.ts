@@ -69,3 +69,11 @@ test('미연동 /sync 진입 → /connect 리다이렉트', async ({ page }) => 
   await page.goto(`http://127.0.0.1:${started.port}/sync`);
   await expect(page).toHaveURL(/\/connect$/);
 });
+
+test('빈 vanity 입력 → 예시 박스 제목 표시(Steam 호출 없음)', async ({ page }) => {
+  await page.goto(`http://127.0.0.1:${started.port}/connect`);
+  await page.getByLabel('Steam Web API 키').fill('abcdef0123456789abcdef0123456789');
+  await page.getByLabel('프로필 주소 또는 SteamID').fill('steamcommunity.com/id/');
+  await page.getByRole('button', { name: '연결하고 물어오기' }).click();
+  await expect(page.getByText('이렇게 넣을 수 있어요')).toBeVisible();
+});

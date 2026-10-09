@@ -337,20 +337,23 @@ export function ConnectPage({
                   <p id="connect-steamid-error">{text(steamIdError)}</p>
                 )}
                 {showExamples && (
-                  <ul>
-                    <li>
-                      <span>{text('connect.exUrl')}</span>{' '}
-                      <span>{text('connect.exUrlValue')}</span>
-                    </li>
-                    <li>
-                      <span>{text('connect.exCustom')}</span>{' '}
-                      <span>{text('connect.exCustomValue')}</span>
-                    </li>
-                    <li>
-                      <span>{text('connect.exNum')}</span>{' '}
-                      <span>{text('connect.exNumValue')}</span>
-                    </li>
-                  </ul>
+                  <div>
+                    <p>{text('connect.exTitle')}</p>
+                    <ul>
+                      <li>
+                        <span>{text('connect.exUrl')}</span>{' '}
+                        <span>{text('connect.exUrlValue')}</span>
+                      </li>
+                      <li>
+                        <span>{text('connect.exCustom')}</span>{' '}
+                        <span>{text('connect.exCustomValue')}</span>
+                      </li>
+                      <li>
+                        <span>{text('connect.exNum')}</span>{' '}
+                        <span>{text('connect.exNumValue')}</span>
+                      </li>
+                    </ul>
+                  </div>
                 )}
                 <button
                   disabled={busy}
