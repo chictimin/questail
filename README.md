@@ -32,6 +32,14 @@ pnpm install && pnpm start
 
 After startup, open `http://127.0.0.1:4747` in a browser. The connect screen appears — enter the API key and a profile address or SteamID.
 
+## Collection Scope
+
+- Each collection fetches owned games, playtime, wishlist, game info, and SteamSpy tags. Achievements are fetched only when enabled in settings (a disabled row shows as off in collection status).
+- Game info is fetched in the display language only. Check the language in settings before the first collection.
+- The collection status screen shows per-source state with retry and collect-all. The header shows game info progress.
+- Game info requests go out every 2 seconds, so 1,000 games take about 35 minutes. Larger libraries take hours, longer if Steam rate-limits requests (429).
+- A daily snapshot runs at 04:00 in the operating system's local time zone, only while the server is on. A missed run fires once at the next startup.
+
 ## Data Directory
 
 - Default: `data/` under the repository root. Set the `QUESTAIL_DATA_DIR` environment variable to store it elsewhere, then restart the app.
@@ -59,7 +67,7 @@ node apps/web/dist/src/server/run.js
 ## Achievements
 
 - Achievement records are collected only when "Game details" on the Steam profile is public. If it is private, those games are skipped. This is an account setting, not an app failure.
-- If achievements are not recorded, the gamer type (TBTI) result and some titles will be affected later.
+- Unrecorded achievements may later affect the gamer type (TBTI) result and some titles, a feature planned for later.
 
 ## Key Handling
 
