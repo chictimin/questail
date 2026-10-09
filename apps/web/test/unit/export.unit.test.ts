@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach } from 'vitest';
 import type { GameFacts } from '../../src/data/library.js';
 import type { ExportFsOps } from '../../src/server/export.js';
 import {
@@ -14,6 +14,20 @@ import {
 } from '../../src/server/export.js';
 
 /** W9 렌더·원자 쓰기 단위 테스트. DB 없이 GameFacts 픽스처로 확인한다. */
+
+/** 이 파일이 만든 임시 디렉터리 — afterEach에서 전부 지운다. */
+const createdDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of createdDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function track(dir: string): string {
+  createdDirs.push(dir);
+  return dir;
+}
 function makeFacts(overrides?: Partial<GameFacts>): GameFacts {
   return {
     key: { platform: 'steam', externalId: '100' },
@@ -168,7 +182,7 @@ describe('exportFilename', () => {
 
 describe('writeExportFiles', () => {
   it('N개 쓰기 + 잔여 파일 제거', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'questail-export-'));
+    const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
     const target = join(dir, 'export');
     const files = renderExportFiles(
       [
@@ -194,7 +208,7 @@ describe('writeExportFiles', () => {
   });
 
   it('경로 탈출 파일명은 이전 결과 보존 + 실패', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'questail-export-'));
+    const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
     const target = join(dir, 'export');
     const files = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '100' } })],
@@ -222,7 +236,7 @@ describe('writeExportFiles', () => {
   });
 
   it('교체 단계 실패 시 이전 결과 복원', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'questail-export-'));
+    const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
     const target = join(dir, 'export');
     const oldFiles = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '100' } })],
@@ -267,7 +281,7 @@ describe('writeExportFiles', () => {
   });
 
   it('prev 삭제 실패해도 성공 응답 + 새 결과 유지, 다음 실행에서 잔여 정리', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'questail-export-'));
+    const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
     const target = join(dir, 'export');
     const oldFiles = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '100' } })],

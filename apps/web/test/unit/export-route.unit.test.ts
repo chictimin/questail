@@ -1,9 +1,9 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach } from 'vitest';
 import {
   EXPORT_PATH,
   createApp,
@@ -13,8 +13,22 @@ import {
 /** W9 POST /api/export 라우트 테스트. 합성 DB + 임시 출력 디렉터리로 확인한다. */
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+/** 이 파일이 만든 임시 디렉터리 — afterEach에서 전부 지운다. */
+const createdDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of createdDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function track(dir: string): string {
+  createdDirs.push(dir);
+  return dir;
+}
+
 function freshDb(): Database.Database {
-  const dir = mkdtempSync(join(tmpdir(), 'questail-w9route-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'questail-w9route-')));
   const journal = JSON.parse(
     readFileSync(join(WEB, 'drizzle', 'meta', '_journal.json'), 'utf8'),
   ) as { entries: { tag: string }[] };
@@ -92,7 +106,7 @@ describe('POST /api/export', () => {
       seedGame(db, 'steam', '100', 0);
       seedGame(db, 'steam', '200', 0);
       seedGame(db, 'steam', '300', 1);
-      const exportDir = join(mkdtempSync(join(tmpdir(), 'questail-w9out-')), 'export');
+      const exportDir = join(track(mkdtempSync(join(tmpdir(), 'questail-w9out-'))), 'export');
       const app = createApp({ db, exportDir });
       const response = await postExport(app, { locale: 'en' });
       expect(response.status).toBe(200);
@@ -138,7 +152,7 @@ describe('POST /api/export', () => {
   it('예상 밖 예외 → onError INTERNAL(params {})', async () => {
     const db = freshDb();
     db.close();
-    const exportDir = join(mkdtempSync(join(tmpdir(), 'questail-w9out-')), 'export');
+    const exportDir = join(track(mkdtempSync(join(tmpdir(), 'questail-w9out-'))), 'export');
     const app = createServerApp({ exportDeps: { db, exportDir } });
     const response = await postExport(app, { locale: 'ko' }, { host: 'localhost' });
     expect(response.status).toBe(500);
@@ -149,7 +163,7 @@ describe('POST /api/export', () => {
     const db = freshDb();
     try {
       seedGame(db, 'steam', '100', 0);
-      const exportDir = join(mkdtempSync(join(tmpdir(), 'questail-w9out-')), 'export');
+      const exportDir = join(track(mkdtempSync(join(tmpdir(), 'questail-w9out-'))), 'export');
       const app = createServerApp({ exportDeps: { db, exportDir } });
       const response = await postExport(app, { locale: 'ko' }, { host: 'localhost' });
       expect(response.status).toBe(200);
