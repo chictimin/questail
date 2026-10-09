@@ -88,6 +88,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'en', // 로케일 코드
     'nav', // i18n 섹션 식별자
     'error', // i18n 섹션 식별자
+    'export', // i18n 섹션 식별자
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
   ]);

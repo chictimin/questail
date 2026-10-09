@@ -20,4 +20,14 @@ export const ko = {
     TAG_EMPTY: '태그가 없다',
     KEY_STORE_FAILED: '키를 저장하지 못했다 — 데이터 폴더 권한과 저장 공간 확인 후 다시 시도',
   },
+  export: {
+    playtime: '플레이타임',
+    lastPlayed: '마지막 플레이',
+    rating: '별점',
+    unrated: '미평가',
+    genres: '장르',
+    tags: '태그',
+    minutes: '분',
+    none: '없음',
+  },
 } as const;

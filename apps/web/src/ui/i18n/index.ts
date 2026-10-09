@@ -9,9 +9,12 @@ export type Locale = 'ko' | 'en';
 export const LOCALES: Locale[] = ['ko', 'en'];
 
 const dicts = { ko, en } as const;
-export type DictKey = keyof typeof ko.nav | keyof typeof ko.error;
+export type DictKey =
+  | keyof typeof ko.nav
+  | keyof typeof ko.error
+  | keyof typeof ko.export;
 
-type Section = 'nav' | 'error';
+type Section = 'nav' | 'error' | 'export';
 
 /** 'nav.connect'·'error.AUTH_INVALID_KEY' 형태 키를 푼다. */
 export function t(
@@ -36,6 +39,7 @@ export function flatKeys(locale: Locale): string[] {
   return [
     ...Object.keys(dict.nav).map((k) => `nav.${k}`),
     ...Object.keys(dict.error).map((k) => `error.${k}`),
+    ...Object.keys(dict.export).map((k) => `export.${k}`),
   ].sort();
 }
 

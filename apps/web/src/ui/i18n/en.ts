@@ -20,4 +20,14 @@ export const en = {
     TAG_EMPTY: 'No tags',
     KEY_STORE_FAILED: 'Could not save the key — check data folder permissions and disk space, then retry.',
   },
+  export: {
+    playtime: 'Playtime',
+    lastPlayed: 'Last played',
+    rating: 'Rating',
+    unrated: 'Unrated',
+    genres: 'Genres',
+    tags: 'Tags',
+    minutes: 'min',
+    none: 'None',
+  },
 } as const;
