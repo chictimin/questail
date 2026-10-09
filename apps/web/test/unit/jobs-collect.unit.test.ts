@@ -934,4 +934,64 @@ describe('jobs collect', () => {
       resetSyncLocksForTest();
     }
   });
+
+  it('실물 Response 가짜 fetch — runMeta가 이름·장르·커버를 저장한다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-meta-f1-'));
+    try {
+      const APPID = '990071';
+      const seen: string[] = [];
+      const envelope = {
+        [APPID]: {
+          success: true,
+          data: {
+            name: 'Meta F1 Game',
+            genres: [{ id: '1', description: 'Action' }],
+            capsule_imagev5: 'http://127.0.0.1:9/capsule.jpg',
+          },
+        },
+      };
+      const body = (payload: unknown): Response =>
+        new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      const realFetch: FetchLike = async (url: string) => {
+        seen.push(url);
+        if (url.includes('GetOwnedGames')) {
+          return body(ownedPayload([{ appid: Number(APPID), total: 5 }]));
+        }
+        if (url.includes('appdetails')) {
+          return body(envelope);
+        }
+        return body({});
+      };
+      const service = serviceWith(db, dir, { fetchFn: realFetch, storeBaseUrl: 'http://127.0.0.1:9/' });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(service.getSyncStatus().find((row) => row.source === 'owned')).toMatchObject({
+        state: 'ok',
+      });
+      expect(seen.filter((url) => url.includes('appdetails'))).toEqual([]);
+      service.resyncSource('meta', { locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      const meta = service.getSyncStatus().find((row) => row.source === 'meta');
+      expect(meta).toMatchObject({ state: 'ok', failedItems: 0 });
+      const cached = JSON.parse(
+        readFileSync(join(dir, 'cache', `${APPID}.ko.json`), 'utf8'),
+      ) as { raw: { name: string; genres: { id: string; description: string }[]; capsule_imagev5: string } };
+      expect(cached.raw.name).toBe('Meta F1 Game');
+      expect(cached.raw.genres).toEqual([{ id: '1', description: 'Action' }]);
+      expect(cached.raw.capsule_imagev5).toBe('http://127.0.0.1:9/capsule.jpg');
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  }, 30_000);
 });

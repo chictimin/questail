@@ -560,7 +560,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
                 ({
                   status: res.status,
                   ok: res.status >= 200 && res.status < 300,
-                  json: res.json,
+                  json: () => res.json(),
                 }) as Response,
             ),
           now,
