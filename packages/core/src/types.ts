@@ -132,3 +132,32 @@ export interface LlmOptions {
    */
   temperature?: number;
 }
+
+// ─── R1 수집 계약 타입 (동결본 .roster/contract-r1-v1.0.md C-3, 근거 plan-r1 I-6·D-08) ──
+// S6b에서 동결분만 옮긴다. C-4 DTO·C-5 서비스는 범위 밖.
+
+/** 게임 키 — (platform, external_id) 복합. API에서도 :platform/:externalId (C-3) */
+export type GameKey = { platform: string; externalId: string };
+
+/** 수집 소스 5종 (C-3, plan-r1 I-7) */
+export type CollectSource = 'owned' | 'wishlist' | 'meta' | 'achievements' | 'steamspy';
+
+/** 소스별 수집 상태 (C-3) */
+export type SourceStatus = 'idle' | 'running' | 'ok' | 'failed' | 'held';
+
+/** 수집 이슈 코드 — 서버·core는 코드+파라미터만 반환한다 (C-3, C-10 L-1·L-2) */
+export type SyncErrorCode =
+  | 'AUTH_INVALID_KEY'
+  | 'AUTH_ID_MISMATCH'
+  | 'ACCESS_PRIVATE' // 업적 403 Profile is not public (C-3)
+  | 'RATE_LIMITED'
+  | 'NETWORK'
+  | 'PAYLOAD_CORRUPT'
+  | 'HELD_ZERO'
+  | 'HELD_TIME_ZERO' // 소스 보류 2종 = 급감 0건 보류·시간 전건 0(보유 확정). 급증(spike)은 소스 보류가 아니라 게임 단위 검토 사유(review kind)라 코드 없음 (C-3 F-4)
+  | 'HELD_DEPENDENCY' // 의존성 대기 held — 첫 수집 보유 실패 시 종속 소스, 급감 held와 구분 (C-3, PM #60441). params는 대기 대상 소스
+  | 'TAG_FAILED'
+  | 'TAG_EMPTY'; // 태그 실패 vs 빈 태그 구분 (C-3, D-17)
+
+/** 소스별 수집 진행률 (C-3) */
+export type CollectProgress = { done: number; total: number | null; source: CollectSource };
