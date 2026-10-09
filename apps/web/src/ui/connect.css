@@ -25,3 +25,33 @@ main[data-route='connect'] .connect-layout > section {
     grid-template-columns: 1fr;
   }
 }
+
+/* R1: 제출 버튼 모션 — 라벨 교체(qtSwap) · 확인 중 shimmer · 성공색 전환.
+   토큰 변수만 사용. reduced-motion은 토큰 전역 규칙이 끈다. */
+main[data-route='connect'] .connect-submit {
+  display: inline-flex;
+  align-items: center;
+}
+
+main[data-route='connect'] .connect-submit-label {
+  display: inline-block;
+  animation: qtSwap var(--dur-swap) var(--ease-out-soft) both;
+}
+
+main[data-route='connect'] .connect-submit-label.is-shimmer {
+  background-image:
+    linear-gradient(90deg, transparent 35%, rgba(255,255,255,var(--qtA)) 50%, transparent 65%),
+    linear-gradient(currentColor, currentColor);
+  background-size: 300% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  background-clip: text;
+  color: transparent;
+  animation:
+    qtSwap var(--dur-swap) var(--ease-out-soft) both,
+    qtShimmer var(--dur-shimmer) linear infinite;
+}
+
+main[data-route='connect'] .connect-submit.is-success {
+  color: var(--success);
+  transition: color 400ms;
+}

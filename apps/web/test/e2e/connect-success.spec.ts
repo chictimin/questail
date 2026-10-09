@@ -73,7 +73,7 @@ test('가짜 Steam 검증 → 연동 성공 + steam.key 생성', async ({ page }
 
     await page.goto(`http://127.0.0.1:${appPort}/connect`);
     await page.getByLabel('Steam Web API 키').fill('A'.repeat(32));
-    await page.getByLabel('Steam ID').fill(steamId);
+    await page.getByLabel('프로필 주소 또는 SteamID').fill(steamId);
     await page.getByRole('button', { name: '연결하고 물어오기' }).click();
     await expect(page.getByText('연결했어요')).toBeVisible();
     expect(existsSync(join(dataDir, 'steam.key'))).toBe(true);

@@ -18,7 +18,34 @@ type StatusBody = {
   permissionEnforced?: unknown;
 };
 
-type SubmitBody = { connected?: unknown; code?: unknown };
+/**
+ * 실패 코드+reason → 표시 문구 키. 순수 함수(단위 테스트용).
+ * fixed_id는 d_body, 그 외 AUTH_ID_MISMATCH는 e_id다(계약 v1.5.4 384-386/445·495).
+ */
+export function resolveConnectError(
+  code: string,
+  reason: unknown,
+): { field: 'key' | 'steamId' | 'notice'; key: string } {
+  if (code === 'AUTH_INVALID_KEY') {
+    return { field: 'key', key: 'error.AUTH_INVALID_KEY' };
+  }
+  if (code === 'AUTH_ID_MISMATCH') {
+    if (reason === 'fixed_id') {
+      return { field: 'steamId', key: 'connect.fixedIdError' };
+    }
+    return { field: 'steamId', key: 'error.AUTH_ID_MISMATCH' };
+  }
+  if (code === 'KEY_STORE_FAILED') {
+    return { field: 'steamId', key: 'error.KEY_STORE_FAILED' };
+  }
+  return { field: 'notice', key: `error.${code}` };
+}
+
+type SubmitBody = {
+  connected?: unknown;
+  code?: unknown;
+  params?: { reason?: unknown };
+};
 
 export function ConnectPage({
   onConnected,
@@ -155,18 +182,18 @@ export function ConnectPage({
         setNoticeKey('connect.submitFailed');
         return;
       }
-      if (body.code === 'AUTH_INVALID_KEY') {
-        setKeyError(`error.${body.code}` as TextKey);
-      } else if (
-        body.code === 'AUTH_ID_MISMATCH' ||
-        body.code === 'KEY_STORE_FAILED'
-      ) {
-        setSteamIdError(`error.${body.code}` as TextKey);
+      const reason =
+        typeof body.params?.reason === 'string' ? body.params.reason : null;
+      const resolved = resolveConnectError(body.code, reason);
+      if (resolved.field === 'key') {
+        setKeyError(resolved.key as TextKey);
+      } else if (resolved.field === 'steamId') {
+        setSteamIdError(resolved.key as TextKey);
+        if (resolved.key === 'error.AUTH_ID_MISMATCH') {
+          setShowExamples(true);
+        }
       } else {
-        setNoticeKey(`error.${body.code}` as TextKey);
-      }
-      if (body.code === 'AUTH_ID_MISMATCH') {
-        setShowExamples(true);
+        setNoticeKey(resolved.key as TextKey);
       }
     } catch {
       setBusy(false);
@@ -176,9 +203,25 @@ export function ConnectPage({
 
   const showForm = connected === null || editing;
 
+  const submitLabel = text(
+    succeeded ? 'connect.success' : busy ? 'connect.verifying' : 'connect.submit',
+  );
+
   const guide = (
     <section>
       <h2>{text('connect.issueTitle')}</h2>
+      <section aria-labelledby="connect-needs-heading">
+        <h3 id="connect-needs-heading">{text('connect.needsTitle')}</h3>
+        <ul>
+          <li>{text('connect.needsGames')}</li>
+          <li>{text('connect.needsUnlimited')}</li>
+          <li>{text('connect.needsLocal')}</li>
+        </ul>
+      </section>
+      <section aria-labelledby="connect-warn-heading">
+        <h3 id="connect-warn-heading">{text('connect.warnTitle')}</h3>
+        <p>{text('connect.warnBody')}</p>
+      </section>
       <ol>
         <li>
           <a href={STEAM_LINKS.apiKey}>{text('connect.issueStep1')}</a>
@@ -195,6 +238,7 @@ export function ConnectPage({
       </ol>
       <details>
         <summary>{text('connect.accIssue')}</summary>
+        <p>{text('connect.accNote')}</p>
         <p>
           {text('connect.issueLimited')}{' '}
           <a href={STEAM_LINKS.limitedFaq}>{text('connect.faqLinkText')}</a>
@@ -241,6 +285,7 @@ export function ConnectPage({
                 >
                   {text('connect.reEnter')}
                 </button>
+                <p>{text('connect.goList')}</p>
               </section>
               {guide}
             </div>
@@ -307,7 +352,17 @@ export function ConnectPage({
                     </li>
                   </ul>
                 )}
-                <button disabled={busy} aria-busy={busy}>
+                <button
+                  disabled={busy}
+                  aria-busy={busy}
+                  className={
+                    succeeded
+                      ? 'connect-submit is-success'
+                      : busy
+                        ? 'connect-submit is-busy'
+                        : 'connect-submit'
+                  }
+                >
                   {succeeded ? (
                     <Check size={16} aria-hidden />
                   ) : busy ? (
@@ -315,13 +370,14 @@ export function ConnectPage({
                   ) : (
                     <ArrowRight size={16} aria-hidden />
                   )}
-                  {text(
-                    succeeded
-                      ? 'connect.success'
-                      : busy
-                        ? 'connect.verifying'
-                        : 'connect.submit',
-                  )}
+                  <span
+                    key={submitLabel}
+                    className={
+                      busy ? 'connect-submit-label is-shimmer' : 'connect-submit-label'
+                    }
+                  >
+                    {submitLabel}
+                  </span>
                 </button>
                 </form>
               </div>

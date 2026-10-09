@@ -7,7 +7,6 @@ export function NavHeader(): React.JSX.Element {
   return (
     <header>
       <nav>
-        <Link href="/connect">{text('nav.connect')}</Link>
         <Link href="/sync">{text('nav.sync')}</Link>
         <Link href="/library">{text('nav.library')}</Link>
         <Link href="/settings">{text('nav.settings')}</Link>

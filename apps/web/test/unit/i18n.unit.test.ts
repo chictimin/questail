@@ -200,6 +200,20 @@ describe('UI 하드코딩 문자열 0', () => {
     'loading', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'ready', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'failed', // 로드 상태 식별자(ui 내부) — 화면 미노출
+    'fixed_id', // 계약 params.reason 값(v1.5.4 384행) — 화면 미노출
+    'key', // 에러 자리 식별자(ui 내부) — 화면 미노출
+    'steamId', // 에러 자리 식별자(ui 내부) — 화면 미노출
+    'notice', // 에러 자리 식별자(ui 내부) — 화면 미노출
+    'connect-submit', // CSS 클래스 — 화면 미노출
+    'connect-submit-label', // CSS 클래스 — 화면 미노출
+    'is-busy', // CSS 상태 클래스 — 화면 미노출
+    'is-success', // CSS 상태 클래스 — 화면 미노출
+    'is-shimmer', // CSS 상태 클래스 — 화면 미노출
+    'connect-submit is-success', // CSS 클래스 조합 — 화면 미노출
+    'connect-submit is-busy', // CSS 클래스 조합 — 화면 미노출
+    'connect-submit-label is-shimmer', // CSS 클래스 조합 — 화면 미노출
+    'connect-needs-heading', // aria-labelledby 식별자 — 화면 미노출
+    'connect-warn-heading', // aria-labelledby 식별자 — 화면 미노출
     'https://store.steampowered.com/', // Steam 링크 상수(번역 대상 아님)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
