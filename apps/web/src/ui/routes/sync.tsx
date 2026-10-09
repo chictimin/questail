@@ -9,6 +9,7 @@ import { useLocale } from '../i18n/context.js';
 import { formatDateTime } from '../../shared/datetime.js';
 import { latestFinishedAt, rowViewFor } from '../sync/models.js';
 import { appAlertFor } from '../sync/statusMap.js';
+import { useSyncStatus } from '../sync/statusContext.js';
 import { SyncStatus, type SyncRowModel } from '../sync/SyncStatus.js';
 
 interface AchSettings {
@@ -24,40 +25,21 @@ async function readJson(response: Response): Promise<unknown> {
 
 export function SyncPage(): React.JSX.Element {
   const { locale, text } = useLocale();
-  const [entries, setEntries] = useState<SyncStatusEntry[] | null>(null);
+  const { entries, failed: statusFailed, reload } = useSyncStatus();
   const [achEnabled, setAchEnabled] = useState(true);
   const [failed, setFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const [statusBody, achBody] = await Promise.all([
-      readJson(await fetch('/api/sync/status')),
-      readJson(await fetch('/api/settings/achievements')),
-    ]);
-    setEntries(statusBody as SyncStatusEntry[]);
+  const loadAch = useCallback(async () => {
+    const achBody = await readJson(await fetch('/api/settings/achievements'));
     setAchEnabled((achBody as AchSettings).enabled);
-    setFailed(false);
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    load().catch(() => {
-      if (!cancelled) setFailed(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
+    loadAch().catch(() => setFailed(true));
+  }, [loadAch]);
 
-  const running = entries?.some((entry) => entry.state === 'running') ?? false;
-
-  useEffect(() => {
-    if (!running) return;
-    const timer = setInterval(() => {
-      load().catch(() => setFailed(true));
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [running, load]);
+  const loadFailed = statusFailed || failed;
 
   async function retry(source: SyncStatusEntry['source']): Promise<void> {
     try {
@@ -69,7 +51,7 @@ export function SyncPage(): React.JSX.Element {
       if (!response.ok) {
         throw new Error(`[web] 재수집 실패: ${response.status}`);
       }
-      await load();
+      await reload();
     } catch {
       setFailed(true);
     }
@@ -90,23 +72,26 @@ export function SyncPage(): React.JSX.Element {
         throw new Error(`[web] 전체 수집 실패: ${response.status}`);
       }
       setNotice(null);
-      await load();
+      await reload();
     } catch {
       setFailed(true);
     }
   }
 
+  const running = entries?.some((entry) => entry.state === 'running') ?? false;
+
   if (entries === null) {
     return (
       <main data-route="sync">
         <h1>{text('nav.sync')}</h1>
-        {failed ? (
+        {loadFailed ? (
           <div role="alert">
             <p>{text('library.loadFailed')}</p>
             <button
               type="button"
               onClick={() => {
-                load().catch(() => setFailed(true));
+                reload().catch(() => setFailed(true));
+                loadAch().catch(() => setFailed(true));
               }}
             >
               {text('library.reload')}
@@ -154,7 +139,7 @@ export function SyncPage(): React.JSX.Element {
         {text('sync.collectAll')}
       </button>
       {notice === null ? null : <p role="status">{notice}</p>}
-      {failed ? (
+      {loadFailed ? (
         <div role="alert">
           <p>{text('library.loadFailed')}</p>
         </div>

@@ -4,6 +4,7 @@ import { useLocale } from '../i18n/context.js';
 import logoUrl from '../../assets/logo-mark.png';
 import { Wordmark } from './Wordmark.js';
 import { SHELL_MENU } from './menu.js';
+import { SummaryPill } from './SummaryPill.js';
 import './shell.css';
 
 export function LogoHeader(): React.JSX.Element {
@@ -34,6 +35,7 @@ export function Header(): React.JSX.Element {
           </Link>
         ))}
       </nav>
+      <SummaryPill />
       <img
         className="shell-symbol"
         src={logoUrl}

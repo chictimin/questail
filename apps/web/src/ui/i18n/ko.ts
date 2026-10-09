@@ -179,6 +179,9 @@ ownership_status: "owned"
   shell: {
     logoAlt: 'Questail 로고',
     storeLink: 'Steam 스토어',
+    summary: '게임 정보 {done}/{total}',
+    summaryDone: '게임 정보 {done}/{total}',
+    summaryFail: '수집 멈춤 · 키 확인 필요',
   },
   settings: {
     achTitle: '업적 기록',

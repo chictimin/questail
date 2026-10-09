@@ -179,6 +179,9 @@ ownership_status: "owned"
   shell: {
     logoAlt: 'Questail logo',
     storeLink: 'Steam Store',
+    summary: 'Game info {done}/{total}',
+    summaryDone: 'Game info {done}/{total}',
+    summaryFail: 'Collection stopped · check key',
   },
   settings: {
     achTitle: 'Achievement history',

@@ -258,6 +258,11 @@ describe('UI 하드코딩 문자열 0', () => {
     'mobile-menu', // CSS 클래스 — 화면 미노출
     'https://store.steampowered.com/', // Steam 링크 상수(번역 대상 아님)
     'QUESTAIL_DATA_DIR', // 환경변수 고유명(고정 문자열)
+    'meta', // 수집 소스 식별자(화면 미노출)
+    'sync-summary', // 요약 pill 후크(화면 미노출)
+    'var(--qt-red)', // 토큰 참조(화면 미노출)
+    'var(--qt-purple)', // 토큰 참조(화면 미노출)
+    'var(--qt-mint)', // 토큰 참조(화면 미노출)
     'settings-backup-item', // 백업 항목 후크(화면 미노출)
     'settings-backup-date', // 백업 날짜 후크(화면 미노출)
     'wait', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
@@ -359,6 +364,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'settings-lang-on', // CSS 클래스 식별자(화면 미노출)
     'settings-lang-off', // CSS 클래스 식별자(화면 미노출)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
+    'useSyncStatus는 SyncStatusProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
     'game-row-main', // CSS 클래스 식별자(화면 미노출)
     'game-row-title', // CSS 클래스 식별자(화면 미노출)

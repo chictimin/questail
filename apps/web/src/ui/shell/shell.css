@@ -93,3 +93,19 @@
     top: 0;
   }
 }
+
+/* U4-P 수집 요약 pill — h32 · white 5% · 12px · tabular-nums · 셸 모서리 계열. */
+.sync-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--corner-8);
+  background: var(--qt-white-5);
+  color: color-mix(in srgb, var(--qt-white) 80%, transparent);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  white-space: nowrap;
+}
