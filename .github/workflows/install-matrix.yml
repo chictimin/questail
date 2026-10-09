@@ -47,6 +47,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      - name: README code blocks (INST-1)
+        # README가 약속하는 명령은 pnpm install && pnpm start라 npm 축에서는 검증이 안 된다 — 건너뛴다.
+        if: matrix.pm == 'pnpm'
+        run: node tools/run-readme-blocks.mjs
+
       - name: Scaffold minimal project
         run: |
           PROBE_DIR="$RUNNER_TEMP/x1-probe"
