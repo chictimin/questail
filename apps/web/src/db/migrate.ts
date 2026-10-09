@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { BootDatabase } from '../server/boot.js';
@@ -11,14 +10,18 @@ export function defaultMigrationsFolder(): string {
   return join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'drizzle');
 }
 
+const BOOKKEEPING_DDL = `CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+  id SERIAL PRIMARY KEY,
+  hash text NOT NULL,
+  created_at numeric
+)`;
+
 /**
  * DB 마이그레이션. 열고 순서대로 적용한다.
- * 실패 시 핸들을 닫고 예외를 그대로 던진다 — 기동이 중단된다.
- * 원본보존 근거(drizzle-orm 0.45.3 실소스): migrate()는 BEGIN 후 전체
- * 저널을 실행하고 COMMIT, 실패 시 ROLLBACK한다. 사용자 스키마·행 변경은
- * 0건이고 기록표 삽입도 함께 롤백된다. 단, BEGIN 전 bookkeeping
- * CREATE TABLE IF NOT EXISTS __drizzle_migrations는 롤백 대상 밖이라
- * 초기 DB에는 빈 기록표가 남는다. 직전 백업 파일은 복원 수단으로 별도 보존.
+ * 트랜잭션 경계(PM #67516 최종 승인): 원값 보관 → 트랜잭션 밖 OFF → 전체 실행 →
+ * COMMIT 직전 foreign_key_check 위반 0 검사(위반 시 ROLLBACK·기동 중단) →
+ * finally 원값 복원. 실패하면 핸들을 닫고 예외를 던진다.
+ * 저널 판독 형식은 drizzle과 같다. 기록표 생성은 drizzle처럼 BEGIN 밖이다.
  * BootDatabase는 동기 close의 async 어댑터다(W3 경계).
  * db는 같은 open 핸들이다(PM #63860). 구조적 BootDeps 호환.
  */
@@ -28,7 +31,7 @@ export async function migrateDatabase(
 ): Promise<BootDatabase & { db: Database.Database }> {
   const raw: Database.Database = openDatabase(dataDir);
   try {
-    await migrate(drizzle(raw), { migrationsFolder });
+    applyMigrations(raw, migrationsFolder);
   } catch (error) {
     raw.close();
     throw error;
@@ -39,4 +42,48 @@ export async function migrateDatabase(
     },
     db: raw,
   };
+}
+
+function applyMigrations(raw: Database.Database, migrationsFolder: string): void {
+  const migrations = readMigrationFiles({ migrationsFolder });
+  raw.exec(BOOKKEEPING_DDL);
+  const last = raw
+    .prepare('SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1')
+    .get() as { created_at: number } | undefined;
+  const pending = migrations.filter(
+    (migration) => last === undefined || Number(last.created_at) < migration.folderMillis,
+  );
+  const originalFk = raw.pragma('foreign_keys', { simple: true }) as unknown as number;
+  raw.pragma('foreign_keys = OFF');
+  try {
+    raw.exec('BEGIN');
+    try {
+      for (const migration of pending) {
+        for (const stmt of migration.sql) {
+          raw.exec(stmt);
+        }
+      }
+      const violations = raw.prepare('SELECT * FROM pragma_foreign_key_check').all();
+      if (violations.length > 0) {
+        throw new Error(
+          `migration FK 위반 ${violations.length}건 — ROLLBACK 후 기동 중단`,
+        );
+      }
+      for (const migration of pending) {
+        raw
+          .prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
+          .run(migration.hash, migration.folderMillis);
+      }
+      raw.exec('COMMIT');
+    } catch (error) {
+      try {
+        raw.exec('ROLLBACK');
+      } catch {
+        /* 롤백 실패는 원본 예외를 유지한다 */
+      }
+      throw error;
+    }
+  } finally {
+    raw.pragma(`foreign_keys = ${originalFk ? 'ON' : 'OFF'}`);
+  }
 }

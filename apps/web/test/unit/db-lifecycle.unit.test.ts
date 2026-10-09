@@ -8,6 +8,18 @@ import { fileURLToPath } from 'node:url';
 import { backupDatabase } from '../../src/db/backup.js';
 import { migrateDatabase } from '../../src/db/migrate.js';
 import { openDatabase } from '../../src/db/open.js';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate as drizzleMigrate } from 'drizzle-orm/better-sqlite3/migrator';
+
+/** 기록표 행수. 호환 0건 판정용 */
+function migrationRecordCount(dir: string): number {
+  const db = new Database(join(dir, 'questail.db'), { readonly: true });
+  try {
+    return (db.prepare('SELECT COUNT(*) AS n FROM __drizzle_migrations').get() as { n: number }).n;
+  } finally {
+    db.close();
+  }
+}
 
 /**
  * D-02 DB 수명주기 테스트. 합성 v1 DB와 시험용 v1→v2 additive로
@@ -169,6 +181,52 @@ describe('db lifecycle', () => {
     expect(fullMasterWithSql(dir)).toEqual(masterBefore);
     expect(allLegacyRows(dir)).toEqual(rowsBefore);
     expect(allLegacyRatings(dir)).toEqual(ratingsBefore);
+  });
+
+  it('FK 위반 마이그레이션은 COMMIT 전 검사에서 되돌린다', async () => {
+    const dir = tmpDir();
+    await expect(migrateDatabase(dir, join(FIXTURES, 'migrations-fkbad'))).rejects.toThrow();
+    const check = new Database(join(dir, 'questail.db'), { readonly: true });
+    try {
+      expect(
+        check.prepare("SELECT name FROM sqlite_master WHERE name IN ('fk_parent', 'fk_child')").all(),
+      ).toEqual([]);
+    } finally {
+      check.close();
+    }
+  });
+  it('drizzle 적용분은 자체 실행기가 0건 재적용한다', async () => {
+    const dir = tmpDir();
+    const first = new Database(join(dir, 'questail.db'));
+    try {
+      drizzleMigrate(drizzle(first), { migrationsFolder: join(FIXTURES, 'migrations-v1') });
+    } finally {
+      first.close();
+    }
+    const before = migrationRecordCount(dir);
+    const handle = await migrateDatabase(dir, join(FIXTURES, 'migrations-v1'));
+    try {
+      expect(migrationRecordCount(dir)).toBe(before);
+    } finally {
+      await handle.close();
+    }
+  });
+
+  it('자체 적용분은 drizzle이 0건 재적용한다', async () => {
+    const dir = tmpDir();
+    const handle = await migrateDatabase(dir, join(FIXTURES, 'migrations-v1'));
+    try {
+      const before = migrationRecordCount(dir);
+      const raw = new Database(join(dir, 'questail.db'));
+      try {
+        drizzleMigrate(drizzle(raw), { migrationsFolder: join(FIXTURES, 'migrations-v1') });
+      } finally {
+        raw.close();
+      }
+      expect(migrationRecordCount(dir)).toBe(before);
+    } finally {
+      await handle.close();
+    }
   });
 });
 
