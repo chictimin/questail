@@ -8,8 +8,9 @@ import { createSyncService } from '../../src/data/service.js';
 import { resetSyncLocksForTest } from '../../src/data/sync.js';
 import { toLocalDay } from '../../src/data/syncRuns.js';
 import { startRun } from '../../src/data/syncRuns.js';
-import { createJobExecutor } from '../../src/jobs/collect.js';
+import { createJobExecutor, setSteamSpyTestHooksForTest } from '../../src/jobs/collect.js';
 import { buildQueue } from '../../src/jobs/queue.js';
+import { createSteamSpyLimiter } from '@questail/core';
 import type { FetchLike } from '../../src/data/connection.js';
 
 /**
@@ -54,6 +55,7 @@ function routeFetch(opts: {
   owned?: () => unknown;
   appdetails?: (appid: string) => unknown;
   steamspy?: (appid: string) => unknown;
+  achievements?: () => unknown;
   calls?: { url: string };
 }): FetchLike {
   return async (url: string) => {
@@ -67,6 +69,15 @@ function routeFetch(opts: {
     if (url.includes('steamspy.com')) {
       const appid = new URL(url).searchParams.get('appid') ?? '?';
       return { status: 200, json: async () => (opts.steamspy ? opts.steamspy(appid) : { tags: {} }) };
+    }
+    if (url.includes('GetPlayerAchievements')) {
+      return {
+        status: 200,
+        json: async () =>
+          opts.achievements
+            ? opts.achievements()
+            : { playerstats: { success: true, achievements: [{ apiname: 'a1', achieved: 1, unlocktime: 5 }] } },
+      };
     }
     const appid = new URL(url).searchParams.get('appids') ?? '?';
     return { status: 200, json: async () => (opts.appdetails ? opts.appdetails(appid) : {}) };
@@ -637,6 +648,212 @@ describe('jobs collect', () => {
       expect(counts).toEqual({ 30: 1 });
       const meta = service.getSyncStatus().find((row) => row.source === 'meta');
       expect(meta?.state).not.toBe('held');
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('OFF→ON: owned 진행 중 바꾸면 같은 run에서 업적 수집된다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({
+          owned: async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return ownedPayload([{ appid: 40, total: 5 }]);
+          },
+        }),
+      });
+      const id = service.startSync({ sources: ['owned', 'achievements'], locale: 'ko' });
+      expect(typeof id).toBe('number');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      db.prepare("INSERT INTO preferences (key, value, updated_at) VALUES ('achievement_enabled', '1', 1)").run();
+      await settled(service);
+      const ach = db
+        .prepare('SELECT apiname FROM achievements')
+        .all() as { apiname: string }[];
+      expect(ach.length).toBeGreaterThan(0);
+      const state = db.prepare('SELECT state AS s FROM achievement_states').get() as { s: string };
+      expect(state.s).toBe('ready');
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('OFF면 요청 0·ok·itemCount null·행 무변경이다', async () => {    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      let calls = 0;
+      const counting: FetchLike = async () => {
+        calls += 1;
+        return { status: 200, json: async () => ({}) };
+      };
+      const service = serviceWith(db, dir, { fetchFn: counting });
+      service.startSync({ sources: ['achievements'], locale: 'ko' });
+      await settled(service);
+      expect(calls).toBe(0);
+      const run = service.getSyncStatus().find((row) => row.source === 'achievements');
+      expect(run).toMatchObject({ state: 'ok', issue: null });
+      const row = db
+        .prepare('SELECT item_count AS n FROM sync_runs ORDER BY id DESC LIMIT 1')
+        .get() as { n: number | null };
+      expect(row.n).toBeNull();
+      expect(db.prepare('SELECT COUNT(*) AS n FROM achievements').get()).toEqual({ n: 0 });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('steamspy 가짜 clock 주입이면 실 sleep 없이 수집된다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      let t = 10_000;
+      let slept = 0;
+      setSteamSpyTestHooksForTest({
+        clock: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            slept += ms;
+            t += ms;
+          },
+        },
+        limiter: createSteamSpyLimiter(),
+      });
+      try {
+        const service = serviceWith(db, dir, {
+          fetchFn: routeFetch({
+            owned: () => ownedPayload([{ appid: 50, total: 1 }, { appid: 51, total: 2 }, { appid: 52, total: 3 }]),
+            steamspy: (appid: string) => ({ tags: { [`T${appid}`]: 1 } }),
+          }),
+        });
+        service.startSync({ sources: ['owned'], locale: 'ko' });
+        await settled(service);
+        service.resyncSource('steamspy', { locale: 'ko' });
+        await settled(service);
+        const n = db.prepare('SELECT COUNT(*) AS n FROM game_user_tags').get() as { n: number };
+        expect(n).toEqual({ n: 3 });
+        expect(slept).toBeGreaterThan(0);
+      } finally {
+        setSteamSpyTestHooksForTest(null);
+      }
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it.each(['meta', 'steamspy', 'achievements'] as const)(
+    '%s stop 중단은 running 유지·완료분 유지·recover 후 나머지만 한다',
+    async (source) => {      const db = freshDb();
+      const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+      try {
+        db.prepare('INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)').run(
+          'steam',
+          '990011',
+          'g1',
+        );
+        db.prepare('INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)').run(
+          'steam',
+          '990012',
+          'g2',
+        );
+        for (const id of ['990011', '990012']) {
+          db.prepare(
+            'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
+          ).run('steam', id, 'observed', 1700000000, 0, 0);
+        }
+        db.prepare("INSERT INTO preferences (key, value, updated_at) VALUES ('achievement_enabled', '1', 1)").run();
+        writeFileSync(join(dir, 'steam.key'), KEY, { mode: 0o600 });
+        db.prepare('INSERT INTO account (id, steam_id, created_at) VALUES (1, ?, 1)').run(SID);
+        let hang = true;
+        let calls = 0;
+        const counts: Record<string, number> = {};
+        const gateFetch: FetchLike = async (url: string) => {
+          calls += 1;
+          if (hang && calls > 1) {
+            return new Promise<never>(() => {});
+          }
+          if (url.includes('GetPlayerAchievements')) {
+            return {
+              status: 200,
+              json: async () => ({
+                playerstats: { success: true, achievements: [{ apiname: 'a1', achieved: 1, unlocktime: 5 }] },
+              }),
+            };
+          }
+          if (url.includes('steamspy.com')) {
+            const appid = new URL(url).searchParams.get('appid') ?? '?';
+            counts[appid] = (counts[appid] ?? 0) + 1;
+            return { status: 200, json: async () => ({ tags: { T: 1 } }) };
+          }
+          if (url.includes('appdetails')) {
+            const appid = new URL(url).searchParams.get('appids') ?? '?';
+            counts[appid] = (counts[appid] ?? 0) + 1;
+            return { status: 200, json: async () => appdetailsPayload(appid, 'g') };
+          }
+          return { status: 200, json: async () => ({}) };
+        };
+        const makeService = () =>
+          createSyncService({
+            db,
+            keyPath: join(dir, 'steam.key'),
+            cacheDir: join(dir, 'cache'),
+            baseUrl: BASE,
+            fetchFn: gateFetch,
+            timeZone: 'Asia/Seoul',
+            executor: (ctx) => createJobExecutor(ctx),
+          });
+        const service = makeService();
+        service.startSync({ sources: [source], locale: 'ko' });
+        for (let i = 0; i < 400; i++) {
+          const done = db
+            .prepare('SELECT COUNT(*) AS n FROM checkpoints WHERE source = ?')
+            .get(source) as { n: number };
+          if (done.n >= 1) break;
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+        await service.stop();
+        const mid = service.getSyncStatus().find((row) => row.source === source);
+        expect(mid?.state).toBe('running');
+        hang = false;
+        const service2 = makeService();
+        await service2.recover();
+        await settled(service2);
+        const done = service2.getSyncStatus().find((row) => row.source === source);
+        expect(done?.state).toBe('ok');
+        if (source !== 'achievements') {
+          expect(Object.keys(counts).length).toBe(2);
+          const totalCalls = Object.values(counts).reduce((a, b) => a + b, 0);
+          expect(totalCalls).toBe(2);
+        }
+      } finally {
+        db.close();
+        resetSyncLocksForTest();
+      }
+    },
+    30_000,
+  );
+
+  it('meta는 찜 전용 포함·achievements는 보유만 대상이다', async () => {
+    const db = freshDb();
+    try {
+      db.prepare('INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)').run(
+        'steam',
+        '770001',
+        'wish-only',
+      );
+      db.prepare(
+        'INSERT INTO wishlist_spans (platform, external_id, first_observed_at, ended) VALUES (?, ?, ?, 0)',
+      ).run('steam', '770001', 1700000000);
+      expect(buildQueue(db, { source: 'meta', generation: 1, mode: 'resume' })).toEqual([
+        'steam:770001:meta',
+      ]);
+      expect(buildQueue(db, { source: 'achievements', generation: 1, mode: 'resume' })).toEqual([]);
     } finally {
       db.close();
       resetSyncLocksForTest();

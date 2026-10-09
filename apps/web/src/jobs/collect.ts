@@ -4,21 +4,29 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { dirname, join } from 'node:path';
 import {
   buildOwnedGamesPath,
+  buildPlayerAchievementsPath,
   buildWishlistPath,
+  createSteamSpyLimiter,
   fetchAppMetaStatus,
   fetchSteamSpyUserTags,
+  judgeAchievementsResponse,
   judgeOwnedResponse,
   judgeWishlistResponse,
   normalizeOwnedGames,
+  normalizePlayerAchievements,
   STEAMSPY_CACHE_DIR_NAME,
   type IssueParams,
+  type SteamSpyClock,
+  type SteamSpyLimiter,
   type SyncErrorCode,
 } from '@questail/core';
 import { ownershipSpans, syncRuns, wishlistSpans, checkpoints } from '../db/schema.js';
 import { applyOwnedDiff } from '../data/ownership.js';
 import { applyWishlistDiff } from '../data/wishlist.js';
 import { recordPlaytimeSnapshot } from '../data/playtime.js';
+import { saveCollectedAchievements, toCollectedAchievements } from '../data/achievements.js';
 import { saveCollectedTags } from '../data/tags.js';
+import { getAchievementSettings } from '../data/viewState.js';
 import { createSteamRequest, getConnection, type FetchLike } from '../data/connection.js';
 import type { CollectSource, Locale } from '../data/sync.js';
 import { toLocalDay } from '../data/syncRuns.js';
@@ -76,6 +84,21 @@ export interface JobExecutor {
 
 const STOP_TIMEOUT_MS = 10_000;
 
+/**
+ * 테스트 전용 steamspy clock·limiter 주입. 제품 옵션 아님(D-07 intervalMs 선례).
+ * executor 생성 뒤 호출하면 그 executor의 수집에 쓴다. null이면 기본으로 복귀.
+ */
+export interface SteamSpyTestHooks {
+  clock?: SteamSpyClock;
+  limiter?: SteamSpyLimiter;
+}
+
+let steamSpyTestHooks: SteamSpyTestHooks | null = null;
+
+export function setSteamSpyTestHooksForTest(hooks: SteamSpyTestHooks | null): void {
+  steamSpyTestHooks = hooks;
+}
+
 function countOpen(
   db: Database.Database,
   table: typeof ownershipSpans | typeof wishlistSpans,
@@ -116,6 +139,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
   const controllers = new Set<AbortController>();
 
   const now = ctx.now ?? Date.now;
+  const spyLimiter = createSteamSpyLimiter();
 
   async function pump(): Promise<void> {
     if (pumping) return;
@@ -183,13 +207,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         await runMeta(job);
         break;
       case 'achievements':
-        ctx.transitions.finishSyncRun(job.runId, job.source, {
-          status: 'ok',
-          finishedAt: Math.floor(now() / 1000),
-          itemCount: 0,
-          isFinalized: true,
-          issue: null,
-        });
+        await runAchievements(job);
         break;
       case 'steamspy':
         await runSteamspy(job);
@@ -372,6 +390,92 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
     }
   }
 
+  async function runAchievements(job: CollectJob): Promise<void> {
+    // OFF 확정(PM #83058): 요청 0·finish ok·itemCount null·issue null. 행 무변경.
+    if (!getAchievementSettings(ctx.db).enabled) {
+      ctx.transitions.finishSyncRun(job.runId, job.source, {
+        status: 'ok',
+        finishedAt: Math.floor(now() / 1000),
+        itemCount: null,
+        isFinalized: true,
+        issue: null,
+      });
+      return;
+    }
+    const connection = getConnection(ctx.db);
+    if (!connection.connected || connection.steamId === null) {
+      finishFailed(job, 'KEY_STORE_FAILED', {});
+      return;
+    }
+    const steamId = connection.steamId;
+    const targets = buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
+      (key) => key.split(':')[1],
+    );
+    ctx.transitions.progressRun(job.runId, job.source, { done: 0, total: targets.length });
+    const baseFetch: FetchLike = ctx.fetchFn ?? ((url) => fetch(url));
+    for (const appid of targets) {
+      if (stopped) break;
+      const { signal, release } = trackController();
+      try {
+        const authed = createSteamRequest({
+          keyPath: ctx.keyPath,
+          baseUrl: ctx.baseUrl,
+          fetchFn: (url) => raceWithSignal(baseFetch(url), signal),
+        });
+        let collected;
+        try {
+          const result = await raceWithSignal(
+            authed.request((key, base) => buildPlayerAchievementsPath(key, steamId, appid, base)),
+            signal,
+          );
+          if (!result.ok) {
+            finishFailed(job, result.code, result.params);
+            return;
+          }
+          const verdict = judgeAchievementsResponse(result.status, result.body, Number(appid));
+          if (verdict.kind === 'failSource') {
+            finishFailed(job, verdict.code, verdict.params);
+            return;
+          }
+          collected = toCollectedAchievements(verdict, normalizePlayerAchievements(result.body));
+        } catch (error) {
+          if (signal.aborted) return; // stop — running 유지, recover가 잇는다
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+          finishFailed(job, 'PAYLOAD_CORRUPT', {});
+          return;
+        }
+        saveCollectedAchievements(
+          ctx.db,
+          { platform: 'steam', externalId: appid },
+          collected,
+          { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
+        );
+      } finally {
+        release();
+      }
+      if (stopped) break; // 중단된 항목은 체크포인트 없이 recover 대상에 둔다
+      writeCheckpoint(ctx.db, {
+        generation: job.generation,
+        source: job.source,
+        itemKey: itemKey('steam', appid, job.source),
+        syncRunId: job.runId,
+        doneAt: Math.floor(now() / 1000),
+      });
+      ctx.transitions.progressRun(job.runId, job.source, {
+        done: checkpointDone(ctx.db, job),
+        total: targets.length,
+      });
+    }
+    if (stopped) return; // running 유지·recover 대상. held로 끝내지 않는다.
+    ctx.transitions.finishSyncRun(job.runId, job.source, {
+      status: 'ok',
+      finishedAt: Math.floor(now() / 1000),
+      itemCount: targets.length,
+      isFinalized: true,
+      issue: null,
+    });
+  }
+
   async function runSteamspy(job: CollectJob): Promise<void> {
     const targets = buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
       (key) => key.split(':')[1],
@@ -388,6 +492,8 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           cacheDir: spyDir,
           signal,
           fetchFn: (url, init) => raceWithSignal(baseFetch(url), init.signal),
+          clock: steamSpyTestHooks?.clock,
+          limiter: steamSpyTestHooks?.limiter ?? spyLimiter,
         });
         saveCollectedTags(
           ctx.db,
@@ -400,6 +506,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       } finally {
         release();
       }
+      if (stopped) break; // 중단된 항목은 체크포인트 없이 recover 대상에 둔다
       writeCheckpoint(ctx.db, {
         generation: job.generation,
         source: job.source,
@@ -412,8 +519,9 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         total: targets.length,
       });
     }
+    if (stopped) return; // running 유지·recover 대상. held로 끝내지 않는다.
     ctx.transitions.finishSyncRun(job.runId, job.source, {
-      status: stopped ? 'held' : 'ok',
+      status: 'ok',
       finishedAt: Math.floor(now() / 1000),
       itemCount: targets.length,
       isFinalized: true,
@@ -476,8 +584,9 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         total: targets.length,
       });
     }
+    if (stopped) return; // running 유지·recover 대상. held로 끝내지 않는다.
     ctx.transitions.finishSyncRun(job.runId, job.source, {
-      status: stopped ? 'held' : 'ok',
+      status: 'ok',
       finishedAt: Math.floor(now() / 1000),
       itemCount: targets.length,
       isFinalized: true,

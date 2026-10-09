@@ -127,21 +127,29 @@ export function buildQueue(
     .filter((key) => !done.has(key));
 }
 
+/** 열린 구간 합집합. 중복 제거한다. */
+function openUnion(
+  db: Database.Database,
+): { platform: string; externalId: string }[] {
+  const seen = new Set<string>();
+  const out: { platform: string; externalId: string }[] = [];
+  for (const game of [...openGames(db, ownershipSpans), ...openGames(db, wishlistSpans)]) {
+    const k = `${game.platform}:${game.externalId}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(game);
+  }
+  return out;
+}
+
 function targetGames(
   db: Database.Database,
   source: CollectSource,
 ): { platform: string; externalId: string }[] {
   if (source === 'wishlist') return openGames(db, wishlistSpans);
-  if (source === 'steamspy') {
-    const seen = new Set<string>();
-    const out: { platform: string; externalId: string }[] = [];
-    for (const game of [...openGames(db, ownershipSpans), ...openGames(db, wishlistSpans)]) {
-      const k = `${game.platform}:${game.externalId}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(game);
-    }
-    return out;
-  }
-  return openGames(db, ownershipSpans);
+  if (source === 'meta') return openUnion(db);
+  if (source === 'steamspy') return openUnion(db);
+  if (source === 'achievements') return openGames(db, ownershipSpans);
+  if (source === 'owned') return openGames(db, ownershipSpans);
+  throw new RangeError(`보충 대상 미정의 소스: ${source}`);
 }

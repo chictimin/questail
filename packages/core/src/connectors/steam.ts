@@ -67,6 +67,13 @@ export function buildWishlistPath(key: string, steamId: string, base: string): s
     + `?key=${key}&steamid=${steamId}&format=json`;
 }
 
+/** 업적 URL 경로 빌더 (D-06 커밋3, 순수 함수). 기존 fetch 함수는 불변(구 CLI용). */
+export function buildPlayerAchievementsPath(key: string, steamId: string, appid: string, base: string): string {
+  const root = base.replace(/\/+$/, '');
+  return `${root}/ISteamUserStats/GetPlayerAchievements/v0001/`
+    + `?key=${key}&steamid=${steamId}&appid=${appid}&format=json`;
+}
+
 export class SteamApiError extends Error {
   constructor(
     message: string,
