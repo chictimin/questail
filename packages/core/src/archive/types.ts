@@ -14,7 +14,7 @@ export interface GameFacts {
   developerRaw: string | null;
   releaseDate: number | null;
   releaseDateText: string | null;
-  genres: { genreId: string; nameEn: string; nameKo: string | null }[];
+  genres: { genreId: string; nameEn: string | null; nameKo: string | null }[];
   coverUrl: string | null;
   hidden: boolean;
   libraryAddedAt: number | null;

@@ -49,7 +49,7 @@ export const gameGenres = sqliteTable(
     platform: text().notNull(),
     externalId: text('external_id').notNull(),
     genreId: text('genre_id').notNull(),
-    genreNameEn: text('genre_name_en').notNull(),
+    genreNameEn: text('genre_name_en'),
     genreNameKo: text('genre_name_ko'),
     position: integer().notNull(),
     observedAt: integer('observed_at').notNull(),
