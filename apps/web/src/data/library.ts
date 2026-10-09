@@ -17,60 +17,9 @@ import {
   wishlistSpans,
 } from '../db/schema.js';
 import type { GameKey } from './ratings.js';
+import type { GameFacts } from '@questail/core';
 
-/** C-4 GameFacts 후속 port 원천. 필요한 분까지만 둔다. */
-export interface GameFacts {
-  key: GameKey;
-  name: string | null;
-  titleKo: string | null;
-  developerRaw: string | null;
-  releaseDate: number | null;
-  releaseDateText: string | null;
-  genres: { genreId: string; nameEn: string; nameKo: string | null }[];
-  coverUrl: string | null;
-  hidden: boolean;
-  libraryAddedAt: number | null;
-  confirmedMinutes: number;
-  lastPlayed: number | null;
-  snapshots: {
-    observedAt: number;
-    observedDay: string;
-    totalMinutes: number;
-    deltaMinutes: number | null;
-    elapsedSeconds: number | null;
-    isReview: boolean;
-  }[];
-  deltas: { observedAt: number; deltaMinutes: number; elapsedSeconds: number }[];
-  coverage: {
-    firstObservedAt: number | null;
-    lastObservedAt: number | null;
-    gapDays: string[];
-    isBaseline: boolean;
-  };
-  ownership: {
-    origin: 'observed' | 'baseline' | 'imported';
-    startedAt: number | null;
-    ended: boolean;
-    endedAt: number | null;
-    isBaseline: boolean;
-    syncRunId: number | null;
-  }[];
-  wishlist: {
-    dateAdded: number | null;
-    firstObservedAt: number;
-    priority: number | null;
-    observedAt: number | null;
-    ended: boolean;
-    syncRunId: number | null;
-  }[];
-  tags: { tag: string; votes: number; rank: number }[];
-  tagStatus: 'ready' | 'empty' | 'failed' | 'not_collected';
-  achievements: { apiname: string; achieved: boolean; unlockedAt: number | null }[];
-  achievementState: 'disabled' | 'failed' | 'not_collected' | 'empty' | 'ready';
-  latestScore: number | null;
-  ratingEvents: { id: number; before: number | null; after: number | null; at: number }[];
-  syncRunRefs: number[];
-}
+export type { GameFacts };
 
 function keyOf(platform: string, externalId: string): string {
   return JSON.stringify([platform, externalId]);
