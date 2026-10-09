@@ -20,6 +20,9 @@ importers:
       '@hono/node-server':
         specifier: 2.1.4
         version: 2.1.4(hono@4.13.13)
+      '@questail/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
