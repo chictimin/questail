@@ -13,7 +13,8 @@ import {
   formatYear,
   starsOf,
 } from './format.js';
-import { displayNameOf, type SortableGame } from './sort.js';
+import { displayNameOf } from '../../shared/displayName.js';
+import { type SortableGame } from './sort.js';
 import { genreDisplayNames } from '../../shared/genres.js';
 import { Stars } from './Stars.js';
 import './row.css';

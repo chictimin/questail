@@ -5,6 +5,7 @@
  */
 import type { GameFacts } from '../../data/library.js';
 import { latestRatedAt } from '../../shared/ratedAt.js';
+import { displayNameOf } from '../../shared/displayName.js';
 import type { Locale } from '../i18n/index.js';
 
 /** P-4 반영 입력 — name이 null일 수 있다(D-04 착지 전에는 발동 안 함). */
@@ -40,15 +41,9 @@ export const SORT_OPTIONS: SortSpec[] = [
 ];
 
 /**
- * 표시 이름 — ko면 titleKo ?? name, en이면 name. 둘 다 없으면 null(P-9, P-4).
- * 정렬 키가 아니다.
+ * 표시 이름은 shared/displayName.ts 1곳에만 있다(서버→UI 의존 금지).
+ * 정렬·표시가 같은 함수를 써서 en 정렬도 같이 바뀐다. 정렬 키가 아니다.
  */
-export function displayNameOf(facts: SortableGame, locale: Locale): string | null {
-  if (locale === 'ko') {
-    return facts.titleKo ?? facts.name;
-  }
-  return facts.name;
-}
 
 /**
  * 현재 점수가 된 최신 실변경 at. 미평가면 null.

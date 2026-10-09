@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { displayNameOf } from '../../src/shared/displayName.js';
 import {
   SORT_OPTIONS,
   compareGames,
-  displayNameOf,
   ratedAtOf,
   sortGames,
   type SortableGame,
@@ -110,17 +110,20 @@ describe('P-4 이름 규칙', () => {
     const game = makeGame({ name: 'Store', titleKo: '한글' });
     expect(displayNameOf(game, 'ko')).toBe('한글');
     expect(displayNameOf(game, 'en')).toBe('Store');
+    expect(displayNameOf(makeGame({ name: null, titleKo: '한글' }), 'ko')).toBe('한글');
+    expect(displayNameOf(makeGame({ name: null, titleKo: '한글' }), 'en')).toBe('한글');
     expect(displayNameOf(makeGame({ name: null, titleKo: null }), 'ko')).toBeNull();
     expect(displayNameOf(makeGame({ name: null, titleKo: null }), 'en')).toBeNull();
   });
 
-  it('en + name 없음 + titleKo만 있음 → 값 없음 그룹(P-9·PM #74479 확정)', () => {
-    // en 표시 = name만. 값 없음은 맨 뒤 + externalId 순(P-4도 현재 locale 표시 이름 기준으로 정리).
+  it('en + titleKo 폴백 게임이 이름 없는 게임보다 앞 (NAME-EN)', () => {
+    // en 표시 = name ?? titleKo. 값 없음은 맨 뒤 + externalId 순.
     const onlyKo = makeGame({ key: { platform: 'steam', externalId: '50' }, name: null, titleKo: '한글' });
     const named = makeGame({ key: { platform: 'steam', externalId: '60' }, name: 'Apple', titleKo: null });
+    const nameless = makeGame({ key: { platform: 'steam', externalId: '40' }, name: null, titleKo: null });
     expect(
-      ids(sortGames([onlyKo, named], 'en', { sortKey: 'name', direction: 'asc' })),
-    ).toEqual(['60', '50']);
+      ids(sortGames([onlyKo, named, nameless], 'en', { sortKey: 'name', direction: 'asc' })),
+    ).toEqual(['60', '50', '40']);
   });
 
   it('en에서는 titleKo 있어도 name으로 정렬', () => {

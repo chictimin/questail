@@ -132,6 +132,22 @@ describe('renderExportFile', () => {
     expect(fm['rated_at']).toBe('null');
   });
 
+  it('본문 제목은 표시 규칙 + 둘 다 없으면 untitled (NAME-EN)', () => {
+    const headingOf = (content: string): string =>
+      content.split('\n').find((line) => line.startsWith('# ')) ?? '';
+    expect(
+      headingOf(renderExportFile(makeFacts({ name: 'Store', titleKo: '한글' }), 'en').content),
+    ).toBe('# Store');
+    expect(
+      headingOf(renderExportFile(makeFacts({ name: null, titleKo: '한글' }), 'en').content),
+    ).toBe('# 한글');
+    expect(
+      headingOf(
+        renderExportFile(makeFacts({ name: null, titleKo: null }), 'en').content,
+      ),
+    ).toBe('# Untitled game(100)');
+  });
+
   it('취소 후 재평가는 현재 점수의 최신 at', () => {
     const facts = makeFacts({
       latestScore: 9,
