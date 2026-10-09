@@ -4,10 +4,74 @@
  * db 핸들은 boot가 shutdown에서 close한다. BootedServer에 db를 노출하지 않는다(D-05 후 결정).
  */
 import { join } from 'node:path';
-import { normalizeSteamBaseUrl } from '../data/connection.js';
+import type Database from 'better-sqlite3';
+import { getConnection, normalizeSteamBaseUrl } from '../data/connection.js';
+import type { SyncService } from '../data/service.js';
 import { backupDatabase } from '../db/backup.js';
 import { migrateDatabase } from '../db/migrate.js';
-import { findRepoRoot, type BootDeps } from './boot.js';
+import { findRepoRoot, type BootDeps, type CronHandle } from './boot.js';
+import { SNAPSHOT_CRON_EXPRESSION, scheduleCron } from './cron.js';
+import { registerSnapshotCron, runOverdueSnapshot } from '../jobs/scheduler.js';
+
+/** 실연결 판정 — getConnection(db).connected 매핑. db 없으면 false. */
+export function isConnectedLive(args: {
+  db: Database.Database | undefined;
+}): boolean {
+  if (args.db === undefined) {
+    return false;
+  }
+  return getConnection(args.db).connected;
+}
+
+export function runOverdueSnapshotLive(args: {
+  signal: AbortSignal;
+  service: SyncService | undefined;
+  db: Database.Database | undefined;
+  timeZone: string;
+}): Promise<void> {
+  if (args.service === undefined || args.db === undefined) {
+    return Promise.resolve();
+  }
+  const service = args.service;
+  const db = args.db;
+  return runOverdueSnapshot({
+    db,
+    now: Date.now,
+    timeZone: args.timeZone,
+    isConnected: () => isConnectedLive({ db }),
+    service,
+    signal: args.signal,
+  }).then(() => undefined);
+}
+
+export function registerCronLive(
+  args: {
+    service: SyncService | undefined;
+    db: Database.Database | undefined;
+    timeZone: string;
+  },
+  scheduleCronFn: (
+    expression: string,
+    task: () => void,
+    timezone?: string,
+  ) => { stop: () => void | Promise<void> } = scheduleCron,
+): CronHandle {
+  if (args.service === undefined || args.db === undefined) {
+    return { unregister: () => undefined };
+  }
+  const service = args.service;
+  const db = args.db;
+  const timeZone = args.timeZone;
+  return registerSnapshotCron({
+    db,
+    now: Date.now,
+    timeZone,
+    isConnected: () => isConnectedLive({ db }),
+    service,
+    cronExpression: SNAPSHOT_CRON_EXPRESSION,
+    scheduleCron: (expression, task) => scheduleCronFn(expression, task, timeZone),
+  });
+}
 
 /** 테스트용 Steam API base 환경변수 (P-6). README에 노출하지 않는다. */
 export const STEAM_API_BASE_ENV = 'QUESTAIL_STEAM_API_BASE';
@@ -37,14 +101,18 @@ export function productMigrationsFolder(): string {
   return join(findRepoRoot(), 'apps', 'web', 'drizzle');
 }
 
-export function productionDeps(env: NodeJS.ProcessEnv = process.env): BootDeps {
+export function productionDeps(
+  env: NodeJS.ProcessEnv = process.env,
+  timeZone: string,
+): BootDeps {
   return {
     env,
+    timeZone,
     backupDatabase: (dataDir: string) => backupDatabase(dataDir),
     migrateDatabase: (dataDir: string, opts?: { backupBeforeApply?: () => Promise<void> }) =>
       migrateDatabase(dataDir, productMigrationsFolder(), opts?.backupBeforeApply),
-    isConnected: () => false,
-    runOverdueSnapshot: async () => undefined,
-    registerCron: () => ({ unregister: () => undefined }),
+    isConnected: (args) => isConnectedLive(args),
+    runOverdueSnapshot: (args) => runOverdueSnapshotLive(args),
+    registerCron: (args) => registerCronLive(args),
   };
 }

@@ -28,7 +28,8 @@ if (steamApiBaseUrl !== undefined) {
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 await main({
-  ...productionDeps(),
+  ...productionDeps(process.env, timeZone),
+  timeZone,
   createSyncService: ({ db, dataDir }) =>
     db === undefined
       ? undefined

@@ -44,7 +44,7 @@ describe('W3 실배선 통합', () => {
   it('(a) 빈 디렉터리 기동 → DB 생성·health 200·shutdown 후 close', async () => {
     const env = tempEnv();
     env.QUESTAIL_PORT = String(await freePort());
-    const booted = await boot(productionDeps(env));
+    const booted = await boot(productionDeps(env, 'UTC'));
     void booted.background.catch(() => undefined);
     expect(booted.port).toBe(Number(env.QUESTAIL_PORT));
     const response = await fetch(
@@ -72,10 +72,10 @@ describe('W3 실배선 통합', () => {
   it('(b) 재기동(pending 없음) → 백업 0', async () => {
     const env = tempEnv();
     env.QUESTAIL_PORT = String(await freePort());
-    const first = await boot(productionDeps(env));
+    const first = await boot(productionDeps(env, 'UTC'));
     void first.background.catch(() => undefined);
     await first.shutdown();
-    const second = await boot(productionDeps(env));
+    const second = await boot(productionDeps(env, 'UTC'));
     void second.background.catch(() => undefined);
     // 첫 기동(첫 설치)도 재기동(pending 없음)도 백업을 만들지 않는다.
     expect(existsSync(join(env.QUESTAIL_DATA_DIR as string, 'backups'))).toBe(false);

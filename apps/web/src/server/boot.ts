@@ -101,9 +101,20 @@ export type BootDeps = {
     dataDir: string,
     opts?: { backupBeforeApply?: () => Promise<void> },
   ) => Promise<BootDatabase>;
-  isConnected: () => boolean | Promise<boolean>;
-  runOverdueSnapshot: (signal: AbortSignal) => Promise<void>;
-  registerCron: () => CronHandle;
+  isConnected: (args: { db: Database.Database | undefined }) => boolean | Promise<boolean>;
+  runOverdueSnapshot: (args: {
+    signal: AbortSignal;
+    service: SyncService | undefined;
+    db: Database.Database | undefined;
+    timeZone: string;
+  }) => Promise<void>;
+  registerCron: (args: {
+    service: SyncService | undefined;
+    db: Database.Database | undefined;
+    timeZone: string;
+  }) => CronHandle;
+  /** 표시 시간대 — run.ts 1회 결정, background가 슬롯에 명시 전달한다. */
+  timeZone: string;
   createApp?: (ctx: AppContext) => Hono;
   /**
    * U3b+W13: 동기 서비스 팩토리. migrate 뒤·listen 전에 1회 호출하고
@@ -171,17 +182,26 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
     if (signal.aborted) {
       return;
     }
-    const connected = await deps.isConnected();
+    const connected = await deps.isConnected({ db: rawDb });
     if (signal.aborted) {
       return;
     }
     if (connected) {
-      await deps.runOverdueSnapshot(signal);
+      await deps.runOverdueSnapshot({
+        signal,
+        service: syncService,
+        db: rawDb,
+        timeZone: deps.timeZone,
+      });
     }
     if (signal.aborted) {
       return;
     }
-    const cron = deps.registerCron();
+    const cron = deps.registerCron({
+      service: syncService,
+      db: rawDb,
+      timeZone: deps.timeZone,
+    });
     if (signal.aborted) {
       cron.unregister();
       return;

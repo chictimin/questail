@@ -28,6 +28,7 @@ function stubDeps(calls: string[]): BootDeps {
   };
   return {
     env: { QUESTAIL_DATA_DIR: join(tmpdir(), 'questail-nozi-boot') },
+    timeZone: 'UTC',
     backupDatabase: async (dataDir: string) => {
       calls.push(`backup:${dataDir}`);
     },
