@@ -96,6 +96,12 @@ test('별점 입력 → 내용 변경 1행', async ({ page }) => {
         };
       };
     });
+    const rowHeightOf = (key: string): Promise<number> =>
+      page.evaluate((k) => {
+        const li = document.querySelector(`li[data-game-key="${k}"]`);
+        return li instanceof HTMLElement ? li.offsetHeight : -1;
+      }, key);
+    const heightBefore = await rowHeightOf(targetKey);
     const [putResponse] = await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -109,6 +115,8 @@ test('별점 입력 → 내용 변경 1행', async ({ page }) => {
     ]);
     expect(putResponse.status()).toBe(200);
     await page.waitForTimeout(500);
+    // RATE3-F2: 별점 전후 대상 행 높이 동일(슬롯 예약).
+    expect(await rowHeightOf(targetKey)).toBe(heightBefore);
     const observed = (await page.evaluate(
       () =>
         (

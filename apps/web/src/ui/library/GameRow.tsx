@@ -96,7 +96,13 @@ export function GameRow({
               onRate(next === null ? null : Math.round(next * 2))
             }
           />
-          {stars === null ? null : <span>{stars}</span>}
+          {stars === null ? (
+            // 별점 줄 슬롯 예약 — 미평가 때도 같은 줄 높이를 차지해 별점 변경이 행 높이를 바꾸지 않는다.
+            // nbsp는 판독 대상 아님(aria-hidden)이라 추가 aria 처리는 없다.
+            <span aria-hidden="true">{'\u00A0'}</span>
+          ) : (
+            <span>{stars}</span>
+          )}
         </div>
         <div>
           {badges.missing && (
