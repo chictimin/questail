@@ -247,6 +247,9 @@ describe('UI 하드코딩 문자열 0', () => {
     'mobile-header-top', // CSS 클래스 — 화면 미노출
     'mobile-menu', // CSS 클래스 — 화면 미노출
     'https://store.steampowered.com/', // Steam 링크 상수(번역 대상 아님)
+    'QUESTAIL_DATA_DIR', // 환경변수 고유명(고정 문자열)
+    'settings-backup-item', // 백업 항목 후크(화면 미노출)
+    'settings-backup-date', // 백업 날짜 후크(화면 미노출)
     'wait', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
     'run', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
     'done', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
@@ -327,6 +330,8 @@ describe('UI 하드코딩 문자열 0', () => {
     'export-sample-head-icon', // CSS 클래스 식별자(화면 미노출)
     'export-sample-pre', // CSS 클래스 식별자(화면 미노출)
     '/api/settings/info', // API 경로
+    '/api/settings/backups', // API 경로
+    'settings-data-heading', // aria 연결 식별자(화면 미노출)
     'settings-about-heading', // aria-labelledby 식별자 — 화면 미노출
     'settings-conn-heading', // aria-labelledby 식별자 — 화면 미노출
     'settings-conn-dialog-title', // aria-labelledby 식별자 — 화면 미노출

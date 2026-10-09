@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { stopServer } from './helpers.js';
 import Database from 'better-sqlite3';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -102,5 +102,111 @@ test.describe('설정 빈 상태', () => {
     await page.goto(`http://127.0.0.1:${started.port}/settings`);
     await expect(page.getByText('0.1.0-test')).toBeVisible();
     await expect(page.getByText('MIT', { exact: true })).toBeVisible();
+  });
+});
+
+async function migrate(dir: string): Promise<Database.Database> {
+  const journal = JSON.parse(
+    readFileSync(join(WEB, 'drizzle', 'meta', '_journal.json'), 'utf8'),
+  ) as { entries: { tag: string }[] };
+  const setup = new Database(join(dir, 'questail.db'));
+  try {
+    for (const entry of journal.entries) {
+      setup.exec(readFileSync(join(WEB, 'drizzle', `${entry.tag}.sql`), 'utf8'));
+    }
+  } finally {
+    setup.close();
+  }
+  return new Database(join(dir, 'questail.db'));
+}
+
+test.describe('설정 데이터 섹션', () => {  test.use({ locale: 'ko-KR' });
+  let withDir = '';
+  let withDb = null as Database.Database | null;
+  let withStarted = null as StartedServer | null;
+  let emptyDir = '';
+  let emptyDb = null as Database.Database | null;
+  let emptyStarted = null as StartedServer | null;
+
+  function boot(
+    dir: string,
+    db: Database.Database,
+  ): Promise<StartedServer> {
+    return startServer(
+      createServerApp({
+        staticRoot: uiDistDir(),
+        exportDeps: { db, exportDir: join(dir, 'export') },
+        connectDeps: { db, keyPath: join(dir, 'steam.key') },
+        settingsDeps: { dataDir: dir, version: '0.1.0-test' },
+      }),
+      0,
+    );
+  }
+
+  test.beforeAll(async () => {
+    withDir = mkdtempSync(join(tmpdir(), 'questail-u53-with-'));
+    withDb = await migrate(withDir);
+    const backupsDir = join(withDir, 'backups');
+    mkdirSync(backupsDir);
+    writeFileSync(join(backupsDir, 'questail-a.db'), 'a');
+    writeFileSync(join(backupsDir, 'questail-b.db'), 'b');
+    writeFileSync(join(backupsDir, 'stray.txt'), 'x');
+    withDb
+      .prepare('INSERT INTO account (id, steam_id, created_at) VALUES (?, ?, ?)')
+      .run(1, '76561198000000001', 1700000000);
+    withStarted = await boot(withDir, withDb);
+    emptyDir = mkdtempSync(join(tmpdir(), 'questail-u53-empty-'));
+    emptyDb = await migrate(emptyDir);
+    // connectDeps 없음 — status 500 fail-open으로 /settings에 머문다(미연동 리다이렉트 회피).
+    emptyStarted = await startServer(
+      createServerApp({
+        staticRoot: uiDistDir(),
+        exportDeps: { db: emptyDb, exportDir: join(emptyDir, 'export') },
+        settingsDeps: { dataDir: emptyDir, version: '0.1.0-test' },
+      }),
+      0,
+    );
+  });
+
+  test.afterAll(async () => {
+    if (withStarted !== null) {
+      await stopServer(withStarted);
+    }
+    withDb?.close();
+    if (withDir !== '') {
+      rmSync(withDir, { recursive: true, force: true });
+    }
+    if (emptyStarted !== null) {
+      await stopServer(emptyStarted);
+    }
+    emptyDb?.close();
+    if (emptyDir !== '') {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  test('with-files: 백업 2건 표시·stray 제외', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${(withStarted as StartedServer).port}/settings`);
+    await expect(page.getByText('0.0 MB')).toHaveCount(2);
+    await expect(page.getByText('stray.txt')).toHaveCount(0);
+  });
+
+  test('empty: 자동 백업 없음 표시', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${(emptyStarted as StartedServer).port}/settings`);
+    await expect(page.getByText('아직 자동 백업이 없어요')).toBeVisible();
+  });
+
+  test('연결 상태 확인 실패 시 연결 섹션(저장 표시 없음 + 키 교체 링크)', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${(emptyStarted as StartedServer).port}/settings`);
+    await expect(page.getByText('저장됨')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: '키 교체' })).toBeVisible();
+  });
+
+  test('대화상자 확인 → 트리거 포커스 복귀', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${(withStarted as StartedServer).port}/settings`);
+    const trigger = page.getByRole('button', { name: '다른 계정으로 바꾸기' });
+    await trigger.click();
+    await page.getByRole('button', { name: '확인' }).click();
+    await expect(trigger).toBeFocused();
   });
 });

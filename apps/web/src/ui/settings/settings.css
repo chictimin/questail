@@ -100,3 +100,16 @@
   background: transparent;
   color: color-mix(in srgb, var(--qt-white) 80%, transparent);
 }
+
+/* U5-[3] 백업 항목 32px 고정(디자인 수치). */
+.settings-backup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  height: 32px;
+}
+
+/* U5-[3] 백업 날짜 mono(디자인). */
+.settings-backup-date {
+  font-family: var(--font-mono);
+}
