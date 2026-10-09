@@ -32,7 +32,7 @@ export const games = sqliteTable(
   {
     platform: text().notNull(),
     externalId: text('external_id').notNull(),
-    name: text().notNull(),
+    name: text(),
     titleKo: text('title_ko'),
     developerRaw: text('developer_raw'),
     releaseDateText: text('release_date_text'),

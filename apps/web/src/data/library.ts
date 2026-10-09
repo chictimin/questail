@@ -21,7 +21,7 @@ import type { GameKey } from './ratings.js';
 /** C-4 GameFacts 후속 port 원천. 필요한 분까지만 둔다. */
 export interface GameFacts {
   key: GameKey;
-  name: string;
+  name: string | null;
   titleKo: string | null;
   developerRaw: string | null;
   releaseDate: number | null;
