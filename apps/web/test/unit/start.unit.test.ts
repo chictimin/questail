@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -6,11 +6,22 @@ import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { findRepoRoot } from '../../src/server/boot.js';
 
-/** pnpm start 자식 프로세스 — 임시 dir·포트 → health·index 200 → 그룹 SIGTERM 정리. */
-describe('pnpm start 실행', () => {
+/**
+ * 빌드된 서버 직접 기동 — 임시 dir·포트 → health·index 200 → 그룹 SIGTERM 정리.
+ * 빌드 0이라 vitest 워커와 tsc 경합 없음(START-F2).
+ * "pnpm start 한 줄이 빌드+기동" 검증은 README CI(tools/run-readme-blocks.mjs)가 맡는다.
+ */
+describe('빌드된 서버 직접 기동', () => {
   it(
     'health 200 + / index.html 200 + 그룹 SIGTERM 후 health down·잔류 0',
     async () => {
+      const root = findRepoRoot();
+      const runJs = join(root, 'apps', 'web', 'dist', 'src', 'server', 'run.js');
+      if (!existsSync(runJs)) {
+        throw new Error(
+          `[web] dist 없음: ${runJs} — pnpm build(루트 test는 자동) 후 실행`,
+        );
+      }
       const dataDir = mkdtempSync(join(tmpdir(), 'w-start-'));
       const probe = createServer();
       await new Promise<void>((resolve) =>
@@ -21,8 +32,7 @@ describe('pnpm start 실행', () => {
         address !== null && typeof address === 'object' ? address.port : 0;
       await new Promise<void>((resolve) => probe.close(() => resolve()));
 
-      const root = findRepoRoot();
-      const child: ChildProcess = spawn('pnpm', ['--dir', root, 'start'], {
+      const child: ChildProcess = spawn(process.execPath, [runJs], {
         env: {
           ...process.env,
           QUESTAIL_DATA_DIR: dataDir,
@@ -58,8 +68,8 @@ describe('pnpm start 실행', () => {
         expect(index.status).toBe(200);
         expect(await index.text()).toContain('<div id="root">');
 
-        // 그룹 전체(pnpm + 손자 node)에 SIGTERM — 포트 기반 kill 없음.
-        // node는 wireShutdown 정리 후 exit 0, pnpm은 시그널로 죽는다.
+        // 그룹 SIGTERM — 포트 기반 kill 없음.
+        // node는 wireShutdown 정리 후 exit 0이다.
         process.kill(-(child.pid as number), 'SIGTERM');
         const exited = await new Promise<{
           code: number | null;
@@ -70,7 +80,7 @@ describe('pnpm start 실행', () => {
           );
           setTimeout(() => resolve({ code: -1, signal: null }), 30000);
         });
-        expect(exited.signal, out).toBe('SIGTERM');
+        expect(exited.code, out).toBe(0);
         // graceful 증거 — health down + 잔류 0.
         let healthDown = false;
         for (let i = 0; i < 20; i++) {
