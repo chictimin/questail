@@ -4,6 +4,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from 'react';
@@ -43,6 +44,10 @@ export function LocaleProvider({
     kept.set(next);
     setLocaleState(next);
   };
+  // U1-F3: 표시 언어 = <html lang>. 마운트·전환 시 1곳에서 동기화한다.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
   return (
     <LocaleContext.Provider
       value={{ locale, setLocale, text: (key, params) => t(locale, key, params) }}
