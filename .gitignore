@@ -16,3 +16,10 @@ AGENTS.md
 
 # 에이전트 로스터 원장 (로컬 전용)
 .roster/
+
+# 캡틴 실응답 녹화 (로컬 전용, 커밋 금지 — S7)
+apps/web/test/fixtures/local/
+
+# 테스트 산출물 (로컬 전용, 커밋 금지)
+apps/web/test-results/
+apps/web/playwright-report/
