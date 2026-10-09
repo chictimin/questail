@@ -59,3 +59,90 @@ test.describe('라이브러리 빈 상태', () => {
     await expect(page.getByText('보유한 게임이 없어요')).toBeVisible();
   });
 });
+
+test.describe('숨기기·다시 보이기 상태 갱신', () => {
+  test.use({ locale: 'ko-KR' });
+  let seeded: StartedServer;
+  let seededDb: Database.Database;
+  let seededDir: string;
+
+  test.beforeEach(async () => {
+    seededDir = mkdtempSync(join(tmpdir(), 'questail-w7f2e2e-'));
+    const setup = new Database(join(seededDir, 'questail.db'));
+    try {
+      const journal = JSON.parse(
+        readFileSync(join(WEB, 'drizzle', 'meta', '_journal.json'), 'utf8'),
+      ) as { entries: { tag: string }[] };
+      for (const entry of journal.entries) {
+        setup.exec(readFileSync(join(WEB, 'drizzle', `${entry.tag}.sql`), 'utf8'));
+      }
+      for (const externalId of ['100', '200']) {
+        setup
+          .prepare(
+            'INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)',
+          )
+          .run('steam', externalId, `game-${externalId}`);
+        setup
+          .prepare(
+            'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
+          )
+          .run('steam', externalId, 'observed', 1700000000, 0, 0);
+      }
+    } finally {
+      setup.close();
+    }
+    seededDb = new Database(join(seededDir, 'questail.db'));
+    seeded = await startServer(
+      createServerApp({
+        staticRoot: uiDistDir(),
+        exportDeps: { db: seededDb, exportDir: join(seededDir, 'export') },
+      }),
+      0,
+    );
+  });
+
+  test.afterEach(async () => {
+    await new Promise<void>((resolve, reject) => {
+      seeded.server.close((error: Error | undefined) =>
+        error ? reject(error) : resolve(),
+      );
+    });
+    seededDb.close();
+    rmSync(seededDir, { recursive: true, force: true });
+  });
+
+  // 가상 행이 겹쳐 포인터가 가로막히면 evaluate 클릭(가상 스크롤 측정 artifact, 제품 동작 아님).
+  test('숨기기 → 탭 건수·행·토스트 갱신', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${seeded.port}/library`);
+    await expect(page.getByRole('button', { name: '전체 2' })).toBeVisible();
+    const row = page.locator('article', { hasText: 'game-100' });
+    await row.getByText('행 메뉴').evaluate((el) => (el as HTMLElement).click());
+    await row.getByRole('button', { name: '숨기기' }).evaluate((el) => (el as HTMLElement).click());
+    await expect(page.getByRole('status')).toContainText('숨겼어요');
+    await expect(
+      page.getByRole('button', { name: '숨긴 항목 1' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: '전체 1' })).toBeVisible();
+    await expect(page.getByText('game-100')).toHaveCount(0);
+    await expect(page.getByText('game-200')).toBeVisible();
+  });
+
+  test('다시 보이기 → 탭 건수·행·토스트 갱신', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${seeded.port}/library`);
+    await expect(page.getByRole('button', { name: '전체 2' })).toBeVisible();
+    const all = page.locator('article', { hasText: 'game-100' });
+    await all.getByText('행 메뉴').evaluate((el) => (el as HTMLElement).click());
+    await all.getByRole('button', { name: '숨기기' }).evaluate((el) => (el as HTMLElement).click());
+    await expect(page.getByRole('button', { name: '숨긴 항목 1' })).toBeVisible();
+    await page.getByRole('button', { name: '숨긴 항목 1' }).click();
+    const hidden = page.locator('article', { hasText: 'game-100' });
+    await hidden.getByText('행 메뉴').evaluate((el) => (el as HTMLElement).click());
+    await hidden.getByRole('button', { name: '다시 보이기' }).evaluate((el) => (el as HTMLElement).click());
+    await expect(page.getByRole('status')).toContainText('다시 보이게 했어요');
+    await expect(
+      page.getByRole('button', { name: '숨긴 항목 0' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: '전체 2' }).click();
+    await expect(page.getByText('game-100')).toBeVisible();
+  });
+});

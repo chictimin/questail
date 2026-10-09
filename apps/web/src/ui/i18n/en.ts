@@ -99,6 +99,7 @@ export const en = {
     unhide: 'Show again',
     undoHide: 'Undo',
     hiddenNotice: 'Hidden',
+    unhiddenNotice: 'Shown again',
     reload: 'Try again',
     loadFailed: 'Could not load your library. Check that the data folder is accessible, then try again.',
     rateFailed: 'Could not save the rating. Try rating again.',

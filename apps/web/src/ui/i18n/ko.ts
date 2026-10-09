@@ -99,6 +99,7 @@ export const ko = {
     unhide: '다시 보이기',
     undoHide: '되돌리기',
     hiddenNotice: '숨겼어요',
+    unhiddenNotice: '다시 보이게 했어요.',
     reload: '다시 시도',
     loadFailed: '라이브러리를 불러오지 못했어요. 데이터 폴더에 접근할 수 있는지 확인한 뒤 다시 시도해 주세요.',
     rateFailed: '별점을 저장하지 못했어요. 다시 매겨주세요.',

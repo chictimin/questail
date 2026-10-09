@@ -210,13 +210,17 @@ export function LibraryPage(): React.JSX.Element {
       );
       const nextPrefs = (await readJson(response)) as Prefs;
       setPrefs(nextPrefs);
+      // 숨김은 행 플래그(GET 조인값)에 반영되므로 목록·건수를 다시 읽는다.
+      setReloadTick((tick) => tick + 1);
       focusSlider(listRef.current, id, 1);
-      if (!hidden.has(id)) {
+      if (hidden.has(id)) {
         setToast({
           message: text('library.hiddenNotice'),
           actionLabel: text('library.undoHide'),
           onAction: () => toggleHide(game).catch(() => undefined),
         });
+      } else {
+        setToast({ message: text('library.unhiddenNotice') });
       }
     } catch {
       setToast({ message: text('library.prefsFailed') });
