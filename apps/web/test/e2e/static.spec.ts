@@ -27,8 +27,8 @@ async function gotoRoute(page: Page, route: string) {
   await expect(page.locator(`main[data-route="${route.slice(1)}"] h1`)).toBeVisible();
 }
 
-test.describe('라우트 4개 진입', () => {
-  for (const route of ['/connect', '/sync', '/library', '/settings']) {
+test.describe('라우트 5개 진입', () => {
+  for (const route of ['/connect', '/sync', '/library', '/settings', '/export']) {
     test(`${route} → 200 + 루트 요소`, async ({ page }) => {
       await gotoRoute(page, route);
     });
@@ -41,6 +41,9 @@ test.describe('로케일 전환', () => {
     await gotoRoute(page, '/library');
     await expect(page.locator('h1')).toContainText('라이브러리');
     expect(await page.content()).not.toContain('Library');
+    await gotoRoute(page, '/export');
+    await expect(page.locator('h1')).toContainText('내보내기');
+    expect(await page.content()).not.toContain('Export');
   });
 });
 
@@ -50,5 +53,8 @@ test.describe('로케일 전환 en', () => {
     await gotoRoute(page, '/library');
     await expect(page.locator('h1')).toContainText('Library');
     expect(await page.content()).not.toContain('라이브러리');
+    await gotoRoute(page, '/export');
+    await expect(page.locator('h1')).toContainText('Export');
+    expect(await page.content()).not.toContain('내보내기');
   });
 });
