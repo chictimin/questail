@@ -6,6 +6,16 @@ import { syncRuns } from '../db/schema.js';
 /** 수집 실행 기록. */
 export type CollectSource = 'owned' | 'wishlist' | 'meta' | 'achievements' | 'steamspy';
 
+/** epoch ms → IANA 시간대 로컬 날짜 YYYY-MM-DD. scheduler·수집이 공유한다. */
+export function toLocalDay(nowMs: number, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(nowMs));
+}
+
 export interface StartRunInput {
   source: CollectSource;
   startedAt: number;

@@ -3,7 +3,9 @@ import { and, desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { AppMetaRateLimitedError, type SourceStatus } from '@questail/core';
 import { syncGenerations, syncRuns } from '../db/schema.js';
-import { startRun, type CollectSource } from './syncRuns.js';
+import { startRun, toLocalDay, type CollectSource } from './syncRuns.js';
+
+export type { CollectSource };
 
 /** 전체 소스. C-3 5종 순서다. */
 export const ALL_SOURCES: CollectSource[] = ['owned', 'wishlist', 'meta', 'achievements', 'steamspy'];
@@ -48,8 +50,8 @@ export interface ProgressPatch {
 interface SyncState {
   /** 프로세스 내 원자 락. 같은 틱에 검사·확보가 끝나므로 경합 없다. */
   running: Set<CollectSource>;
-  /** 실행별 메타. D06 인계용으로 영속하지 않는다. */
-  meta: Map<number, { source: CollectSource; generation: number; locale: Locale }>;
+  /** 실행별 메타. D06 인계용으로 영속하지 않는다. 복구 채택분은 locale null이다. */
+  meta: Map<number, { source: CollectSource; generation: number; locale: Locale | null }>;
   /** 실행별 진행. D06 영속과 별개다. */
   progress: Map<number, { done: number; total: number | null }>;
 }
@@ -73,10 +75,6 @@ function stateFor(db: Database.Database): SyncState {
 
 function isLocale(value: unknown): value is Locale {
   return value === 'ko' || value === 'en';
-}
-
-function utcDay(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function currentGeneration(db: Database.Database, source: CollectSource): number {
@@ -131,7 +129,7 @@ export function rateLimitIssue(_error: AppMetaRateLimitedError): SyncIssue {
  */
 export function startSync(
   db: Database.Database,
-  opts: { sources?: CollectSource[]; locale: Locale },
+  opts: { sources?: CollectSource[]; locale: Locale; timeZone: string },
 ): StartResult {
   if (!isLocale(opts.locale)) {
     throw new RangeError('locale은 ko|en이다(호출 계약 위반)');
@@ -147,7 +145,7 @@ export function startSync(
   for (const source of targets) {
     state.running.add(source);
     const generation = bumpGeneration(db, source);
-    const id = startRun(db, { source, startedAt: Math.floor(Date.now() / 1000), observedDay: utcDay(), generation });
+    const id = startRun(db, { source, startedAt: Math.floor(Date.now() / 1000), observedDay: toLocalDay(Date.now(), opts.timeZone), generation });
     state.meta.set(id, { source, generation, locale: opts.locale });
     state.progress.set(id, { done: 0, total: null });
     if (firstId === 0) firstId = id;
@@ -162,7 +160,7 @@ export function startSync(
 export function resyncSource(
   db: Database.Database,
   source: CollectSource,
-  opts: { mode?: 'resume' | 'refresh'; locale: Locale },
+  opts: { mode?: 'resume' | 'refresh'; locale: Locale; timeZone: string },
 ): StartResult {
   if (!isLocale(opts.locale)) {
     throw new RangeError('locale은 ko|en이다(호출 계약 위반)');
@@ -173,7 +171,7 @@ export function resyncSource(
   }
   state.running.add(source);
   const generation = bumpGeneration(db, source);
-  const id = startRun(db, { source, startedAt: Math.floor(Date.now() / 1000), observedDay: utcDay(), generation });
+  const id = startRun(db, { source, startedAt: Math.floor(Date.now() / 1000), observedDay: toLocalDay(Date.now(), opts.timeZone), generation });
   state.meta.set(id, { source, generation, locale: opts.locale });
   state.progress.set(id, { done: 0, total: null });
   return id;
@@ -182,10 +180,42 @@ export function resyncSource(
 /** 수락 판정. running 중이고 현 세대 실행일 때만 true다. */
 function isAcceptedRun(db: Database.Database, runId: number, source: CollectSource): boolean {
   const state = stateFor(db);
-  if (!state.running.has(source)) return false;
   const meta = state.meta.get(runId);
-  if (!meta || meta.source !== source) return false;
-  return meta.generation === currentGeneration(db, source);
+  if (meta) {
+    if (meta.source !== source) return false;
+    if (!state.running.has(source)) return false;
+    return meta.generation === currentGeneration(db, source);
+  }
+  return adoptCrashedRun(db, state, runId, source);
+}
+
+/**
+ * 충돌 잔여 채택. 락은 없지만 DB 행이 running이면 복구 경로로 받아들이고
+ * 락을 확보한다. 세대 불일치·종료분은 거부한다.
+ */
+function adoptCrashedRun(
+  db: Database.Database,
+  state: SyncState,
+  runId: number,
+  source: CollectSource,
+): boolean {
+  try {
+    const row = drizzle(db)
+      .select({ source: syncRuns.source, status: syncRuns.status, generation: syncRuns.generation })
+      .from(syncRuns)
+      .where(eq(syncRuns.id, runId))
+      .get();
+    if (!row || row.source !== source || row.status !== 'running') return false;
+    if (row.generation !== currentGeneration(db, source)) return false;
+    state.running.add(source);
+    state.meta.set(runId, { source, generation: row.generation, locale: null });
+    if (!state.progress.has(runId)) {
+      state.progress.set(runId, { done: 0, total: null });
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

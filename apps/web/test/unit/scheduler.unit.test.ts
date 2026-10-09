@@ -8,6 +8,7 @@ import { resyncSource } from '../../src/data/sync.js';
 import type { Locale } from '../../src/data/sync.js';
 import type { CollectSource } from '../../src/data/syncRuns.js';
 import { registerSnapshotCron, runOverdueSnapshot } from '../../src/jobs/scheduler.js';
+import { toLocalDay } from '../../src/data/syncRuns.js';
 
 /**
  * D-09 스케줄러 테스트. 합성 DB·가짜 clock/cron만 쓴다. 실호출 없음.
@@ -47,12 +48,16 @@ function ownedRunCount(db: Database.Database): number {
   ).n;
 }
 
-function baseDeps(db: Database.Database, extra?: Record<string, unknown>) {
+function baseDeps(
+  db: Database.Database,
+  extra?: { now?: () => number; timeZone?: string; isConnected?: () => boolean },
+) {
   const seen: { locale: Locale | null }[] = [];
+  const timeZone = extra?.timeZone ?? 'Asia/Seoul';
   return {
     db,
     now: () => Date.parse('2026-01-02T00:10:00+09:00'),
-    timeZone: 'Asia/Seoul',
+    timeZone,
     isConnected: () => true,
     service: {
       resyncSource: (
@@ -60,7 +65,7 @@ function baseDeps(db: Database.Database, extra?: Record<string, unknown>) {
         opts: { mode?: 'resume' | 'refresh'; locale: Locale },
       ) => {
         seen.push({ locale: opts.locale });
-        return resyncSource(db, source, opts);
+        return resyncSource(db, source, { ...opts, timeZone });
       },
     },
     seen,
@@ -128,6 +133,24 @@ describe('runOverdueSnapshot', () => {
     }
   });
 
+  it('KST 00:30 관측은 같은 로컬 날짜로 보고 재수집 안 한다', async () => {
+    const { db } = freshDb();
+    try {
+      setPref(db, 'last_collect_locale', 'ko');
+      addRun(db, '2026-01-02');
+      const deps = baseDeps(db, { now: () => Date.parse('2026-01-02T00:30:00+09:00') });
+      const out = await runOverdueSnapshot(deps);
+      expect(out).toEqual({ triggered: false, reason: 'already-done' });
+    } finally {
+      db.close();
+    }
+  });
+
+  it('toLocalDay는 UTC 15:30을 KST 다음 날로 본다', () => {
+    expect(toLocalDay(Date.parse('2026-01-01T15:30:00Z'), 'Asia/Seoul')).toBe('2026-01-02');
+    expect(toLocalDay(Date.parse('2026-01-01T14:59:00Z'), 'Asia/Seoul')).toBe('2026-01-01');
+  });
+
   it('locale은 수집 키→표시 키 순, 없으면 no-locale skip이다', async () => {
     const { db } = freshDb();
     try {
@@ -154,7 +177,7 @@ describe('runOverdueSnapshot', () => {
     const { db } = freshDb();
     try {
       setPref(db, 'last_collect_locale', 'ko');
-      resyncSource(db, 'owned', { mode: 'resume', locale: 'ko' });
+      resyncSource(db, 'owned', { mode: 'resume', locale: 'ko', timeZone: 'Asia/Seoul' });
       const deps = baseDeps(db);
       const out = await runOverdueSnapshot(deps);
       expect(out).toEqual({ triggered: false, reason: 'in-progress' });

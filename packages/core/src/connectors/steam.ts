@@ -50,6 +50,23 @@ export interface PlayerAchievementsResponse {
 
 const STEAM_API_BASE = 'https://api.steampowered.com';
 
+/**
+ * 수집 URL 경로 빌더 (D-06, 순수 함수). 기존 fetch 함수는 불변(구 CLI용).
+ * base 끝 slash는 정리한다.
+ */
+export function buildOwnedGamesPath(key: string, steamId: string, base: string): string {
+  const root = base.replace(/\/+$/, '');
+  return `${root}/IPlayerService/GetOwnedGames/v0001/`
+    + `?key=${key}&steamid=${steamId}&format=json&include_appinfo=true&include_played_free_games=true`;
+}
+
+/** 위시리스트 URL 경로 빌더 (D-06, 순수 함수). 기존 fetch 함수는 불변(구 CLI용). */
+export function buildWishlistPath(key: string, steamId: string, base: string): string {
+  const root = base.replace(/\/+$/, '');
+  return `${root}/IWishlistService/GetWishlist/v1/`
+    + `?key=${key}&steamid=${steamId}&format=json`;
+}
+
 export class SteamApiError extends Error {
   constructor(
     message: string,

@@ -40,17 +40,17 @@ describe('data sync', () => {
   it('같은 소스 running 중 재요청은 코드를 낸다', () => {
     const db = freshDb();
     try {
-      const first = startSync(db, { sources: ['owned'], locale: 'ko' });
+      const first = startSync(db, { sources: ['owned'], locale: 'ko', timeZone: 'UTC' });
       expect(typeof first).toBe('number');
-      expect(startSync(db, { sources: ['owned', 'wishlist'], locale: 'ko' })).toEqual({
+      expect(startSync(db, { sources: ['owned', 'wishlist'], locale: 'ko', timeZone: 'UTC' })).toEqual({
         code: 'SYNC_IN_PROGRESS',
         source: 'owned',
       });
-      expect(resyncSource(db, 'wishlist', { locale: 'ko' })).not.toEqual({
+      expect(resyncSource(db, 'wishlist', { locale: 'ko', timeZone: 'UTC' })).not.toEqual({
         code: 'SYNC_IN_PROGRESS',
         source: 'wishlist',
       });
-      expect(resyncSource(db, 'owned', { locale: 'ko' })).toEqual({
+      expect(resyncSource(db, 'owned', { locale: 'ko', timeZone: 'UTC' })).toEqual({
         code: 'SYNC_IN_PROGRESS',
         source: 'owned',
       });
@@ -66,7 +66,7 @@ describe('data sync', () => {
       vi.setSystemTime(1700000000000);
       const db = freshDb();
       try {
-        const id = startSync(db, { locale: 'en' }) as number;
+        const id = startSync(db, { locale: 'en', timeZone: 'UTC' }) as number;
         expect(getSyncStatus(db).find((row) => row.source === 'owned')).toMatchObject({
           state: 'running',
           runId: id,
@@ -86,7 +86,7 @@ describe('data sync', () => {
           state: 'running',
         });
         vi.setSystemTime(1700000001000);
-        expect(startSync(db, { sources: ['owned'], locale: 'en' })).not.toEqual({
+        expect(startSync(db, { sources: ['owned'], locale: 'en', timeZone: 'UTC' })).not.toEqual({
           code: 'SYNC_IN_PROGRESS',
           source: 'owned',
         });
@@ -112,7 +112,7 @@ describe('data sync', () => {
       vi.setSystemTime(1700000000000);
       const db = freshDb();
       try {
-        const oldId = startSync(db, { sources: ['owned'], locale: 'ko' }) as number;
+        const oldId = startSync(db, { sources: ['owned'], locale: 'ko', timeZone: 'UTC' }) as number;
         expect(
           finishSyncRun(db, oldId, 'owned', {
             status: 'ok',
@@ -123,7 +123,7 @@ describe('data sync', () => {
           }),
         ).toBe(true);
         vi.setSystemTime(1700000001000);
-        const newId = startSync(db, { sources: ['owned'], locale: 'ko' }) as number;
+        const newId = startSync(db, { sources: ['owned'], locale: 'ko', timeZone: 'UTC' }) as number;
         expect(progressRun(db, oldId, 'owned', { done: 9 })).toBe(false);
         expect(
           finishSyncRun(db, oldId, 'owned', {
@@ -155,7 +155,7 @@ describe('data sync', () => {
       vi.setSystemTime(1700000000000);
       const db = freshDb();
       try {
-        const first = startSync(db, { sources: ['owned'], locale: 'ko' }) as number;
+        const first = startSync(db, { sources: ['owned'], locale: 'ko', timeZone: 'UTC' }) as number;
         expect(
           finishSyncRun(db, first, 'owned', {
             status: 'ok',
@@ -165,7 +165,7 @@ describe('data sync', () => {
             issue: null,
           }),
         ).toBe(true);
-        const second = startSync(db, { sources: ['owned'], locale: 'ko' });
+        const second = startSync(db, { sources: ['owned'], locale: 'ko', timeZone: 'UTC' });
         expect(typeof second).toBe('number');
         const rows = db
           .prepare('SELECT started_at FROM sync_runs WHERE source = ? ORDER BY id')
@@ -183,7 +183,7 @@ describe('data sync', () => {
   it('failedItems 0·양수·null이 왕복한다', () => {
     const db = freshDb();
     try {
-      const zero = startSync(db, { sources: ['meta'], locale: 'en' }) as number;
+      const zero = startSync(db, { sources: ['meta'], locale: 'en', timeZone: 'UTC' }) as number;
       expect(
         finishSyncRun(db, zero, 'meta', {
           status: 'ok',
@@ -197,7 +197,7 @@ describe('data sync', () => {
       expect(
         getSyncStatus(db).find((row) => row.source === 'meta')?.failedItems,
       ).toBe(0);
-      const positive = startSync(db, { sources: ['wishlist'], locale: 'en' }) as number;
+      const positive = startSync(db, { sources: ['wishlist'], locale: 'en', timeZone: 'UTC' }) as number;
       expect(
         finishSyncRun(db, positive, 'wishlist', {
           status: 'ok',
@@ -211,7 +211,7 @@ describe('data sync', () => {
       expect(
         getSyncStatus(db).find((row) => row.source === 'wishlist')?.failedItems,
       ).toBe(3);
-      const none = startSync(db, { sources: ['owned'], locale: 'en' }) as number;
+      const none = startSync(db, { sources: ['owned'], locale: 'en', timeZone: 'UTC' }) as number;
       expect(
         finishSyncRun(db, none, 'owned', {
           status: 'ok',

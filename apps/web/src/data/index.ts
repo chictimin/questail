@@ -33,3 +33,5 @@ export {
 export type { FinishInput, Locale, ProgressPatch, StartResult, SyncIssue, SyncStatusEntry } from './sync.js';
 export { createSyncService } from './service.js';
 export type { SyncService, SyncServiceDeps } from './service.js';
+export { createJobExecutor } from '../jobs/collect.js';
+export type { CollectJob, ExecutorContext, JobExecutor } from '../jobs/collect.js';

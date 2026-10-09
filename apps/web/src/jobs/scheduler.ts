@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import type { Locale, StartResult } from '../data/sync.js';
-import type { CollectSource } from '../data/syncRuns.js';
+import { toLocalDay, type CollectSource } from '../data/syncRuns.js';
 import type { CronHandle } from '../server/boot.js';
 
 /** overdue 판정·cron 등록 주입점. wall clock·env를 직접 읽지 않는다. */
@@ -36,15 +36,6 @@ export type OverdueReason =
   | 'in-progress'
   | 'aborted';
 
-function localDay(nowMs: number, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(nowMs));
-}
-
 function readPreference(db: Database.Database, key: string): string | null {
   const row = db
     .prepare('SELECT value AS v FROM preferences WHERE key = ?')
@@ -67,7 +58,7 @@ export async function runOverdueSnapshot(
 ): Promise<{ triggered: boolean; reason: OverdueReason }> {
   if (deps.signal?.aborted) return { triggered: false, reason: 'aborted' };
   if (!(await deps.isConnected())) return { triggered: false, reason: 'disconnected' };
-  const today = localDay(deps.now(), deps.timeZone);
+  const today = toLocalDay(deps.now(), deps.timeZone);
   const done = deps.db
     .prepare(
       "SELECT 1 FROM sync_runs WHERE source = 'owned' AND status = 'ok' AND observed_day = ? LIMIT 1",

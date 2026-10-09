@@ -28,7 +28,7 @@ function freshService() {
     db,
     keyPath: join(dir, 'steam.key'),
     cacheDir: join(dir, 'cache'),
-    executor: { kind: 'fake' },
+    timeZone: 'Asia/Seoul',
   });
   return { db, service };
 }
@@ -41,6 +41,7 @@ describe('data service', () => {
         db,
         keyPath: join(tmpdir(), 'steam.key'),
         cacheDir: join(tmpdir(), 'cache'),
+        timeZone: 'Asia/Seoul',
       });
       const id = service.startSync({ sources: ['owned'], locale: 'ko' });
       expect(typeof id).toBe('number');
