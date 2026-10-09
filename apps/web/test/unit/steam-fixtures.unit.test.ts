@@ -31,6 +31,7 @@ describe('steam fixtures load', () => {
     expect(onDisk).toEqual([
       'owned-missing-count.json',
       'owned-normal.json',
+      'owned-reown.json',
       'owned-time-zero.json',
       'owned-zero-drop.json',
       'owned-zero-first.json',
