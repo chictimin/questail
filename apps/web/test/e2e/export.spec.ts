@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { stopServer } from './helpers.js';
 import Database from 'better-sqlite3';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -48,11 +49,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    started.server.close((error: Error | undefined) =>
-      error ? reject(error) : resolve(),
-    );
-  });
+  await stopServer(started);
   db.close();
   rmSync(dir, { recursive: true, force: true });
 });

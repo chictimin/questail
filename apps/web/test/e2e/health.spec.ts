@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { stopServer } from './helpers.js';
 import { HEALTH_PATH, createServerApp } from '../../src/server/app.js';
 import { startServer, type StartedServer } from '../../src/server/serve.js';
 
@@ -10,11 +11,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    started.server.close((error: Error | undefined) =>
-      error ? reject(error) : resolve(),
-    );
-  });
+  await stopServer(started);
 });
 
 test('browser → 127.0.0.1 → GET /api/health → 200', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { stopServer } from './helpers.js';
 import { createServerApp } from '../../src/server/app.js';
 import { startServer, type StartedServer } from '../../src/server/serve.js';
 import { uiDistDir } from '../../src/server/static.js';
@@ -14,11 +15,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    started.server.close((error: Error | undefined) =>
-      error ? reject(error) : resolve(),
-    );
-  });
+  await stopServer(started);
 });
 
 async function gotoRoute(page: Page, route: string) {
