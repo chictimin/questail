@@ -1,8 +1,9 @@
 /**
- * W7 게임 행 — 커버·제목·연도·장르·플레이타임·별·뱃지·행 메뉴.
- * 색·간격·레이아웃은 만지지 않는다. 별점 PUT·숨김은 부모 콜백으로 올린다.
+ * W7 게임 행 — 커버·제목·연도·장르·플레이타임·별·뱃지·액션.
+ * 별점 PUT·숨김은 부모 콜백으로 올린다. 행 메뉴 없이 아이콘 버튼 2개 직접 노출(U2b).
  */
 import type { GameFacts } from '../../data/library.js';
+import { Check, CircleNotch, EyeSlash, LinkBreak, SteamLogo } from '@phosphor-icons/react';
 import { t, type Locale } from '../i18n/index.js';
 import { useLocale } from '../i18n/context.js';
 import { filterKeyOf } from './filter.js';
@@ -14,27 +15,19 @@ import {
 } from './format.js';
 import { displayNameOf, type SortableGame } from './sort.js';
 import { Stars } from './Stars.js';
+import './row.css';
 
 /** Steam 스토어 URL — ui 상수(Q5). 비steam 행에는 메뉴를 내지 않는다. */
 export const STEAM_STORE_URL = 'https://store.steampowered.com/app';
 
-export type RowBadge = 'unrated' | 'missing' | 'filling';
-
 export type RowGame = Omit<GameFacts, 'name'> & { name: string | null };
 
 /** 행 뱃지 판정 — 순수. missing = 열린 보유 구간 없음, filling = 커버·장르 미보충. */
-export function rowBadges(facts: RowGame): RowBadge[] {
-  const badges: RowBadge[] = [];
-  if (facts.latestScore === null) {
-    badges.push('unrated');
-  }
-  if (!facts.ownership.some((span) => !span.ended)) {
-    badges.push('missing');
-  }
-  if (facts.coverUrl === null || facts.genres.length === 0) {
-    badges.push('filling');
-  }
-  return badges;
+export function rowBadges(facts: RowGame): { missing: boolean; filling: boolean } {
+  return {
+    missing: !facts.ownership.some((span) => !span.ended),
+    filling: facts.coverUrl === null || facts.genres.length === 0,
+  };
 }
 
 /** 표시 이름 — titleKo 또는 name, 둘 다 없으면 game.untitled(P-4, 정렬 키 아님). */
@@ -55,12 +48,6 @@ export interface GameRowProps {
   onToggleHide: () => void;
 }
 
-const BADGE_KEYS: Record<RowBadge, 'library.badgeUnrated' | 'library.badgeMissing' | 'library.badgeFilling'> = {
-  unrated: 'library.badgeUnrated',
-  missing: 'library.badgeMissing',
-  filling: 'library.badgeFilling',
-};
-
 export function GameRow({
   facts,
   justRated,
@@ -75,9 +62,15 @@ export function GameRow({
   const badges = rowBadges(facts);
 
   return (
-    <article aria-labelledby={`title-${facts.key.platform}-${facts.key.externalId}`}>
-        {facts.coverUrl === null ? null : (
-          <img src={facts.coverUrl} alt="" />
+    <article
+      aria-labelledby={`title-${facts.key.platform}-${facts.key.externalId}`}
+      className="game-row"
+      data-just-rated={justRated || undefined}
+    >
+        {facts.coverUrl === null ? (
+          <span className="game-cover" data-placeholder aria-hidden />
+        ) : (
+          <img className="game-cover" src={facts.coverUrl} alt="" />
         )}
         <h2 id={`title-${facts.key.platform}-${facts.key.externalId}`}>
           {displayGameName(facts, locale)}
@@ -105,27 +98,49 @@ export function GameRow({
           />
           {stars === null ? null : <span>{stars}</span>}
         </div>
-        <ul>
-          {badges.map((badge) => (
-            <li key={badge}>{text(BADGE_KEYS[badge])}</li>
-          ))}
-          {justRated ? <li>{text('library.badgeJustRated')}</li> : null}
-        </ul>
-        <details>
-          <summary>{text('library.ariaMenu')}</summary>
-          <div>
-            <button type="button" onClick={onToggleHide}>
-              {text(facts.hidden ? 'library.unhide' : 'library.hide')}
-            </button>
-            {facts.key.platform === 'steam' ? (
-              <a
-                href={`${STEAM_STORE_URL}/${encodeURIComponent(facts.key.externalId)}`}
-              >
-                {text('library.ariaStore')}
-              </a>
-            ) : null}
-          </div>
-        </details>
+        <div>
+          {badges.missing && (
+            <LinkBreak
+              size={24}
+              color="var(--qt-orange)"
+              aria-label={text('library.badgeMissing')}
+            />
+          )}
+          {badges.filling && (
+            <CircleNotch
+              size={24}
+              color="var(--qt-purple)"
+              className="badge-spin"
+              aria-label={text('library.badgeFilling')}
+            />
+          )}
+          {justRated && (
+            <Check
+              size={24}
+              color="var(--qt-mint)"
+              aria-label={text('library.badgeJustRated')}
+            />
+          )}
+        </div>
+        <div>
+          <button
+            type="button"
+            className="row-action"
+            aria-label={text(facts.hidden ? 'library.unhide' : 'library.hide')}
+            onClick={onToggleHide}
+          >
+            <EyeSlash size={18} aria-hidden />
+          </button>
+          {facts.key.platform === 'steam' ? (
+            <a
+              className="row-action"
+              href={`${STEAM_STORE_URL}/${encodeURIComponent(facts.key.externalId)}`}
+              aria-label={text('library.ariaStore')}
+            >
+              <SteamLogo size={18} aria-hidden />
+            </a>
+          ) : null}
+        </div>
     </article>
   );
 }

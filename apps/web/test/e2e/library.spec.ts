@@ -117,7 +117,6 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
     await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-100' });
-    await row.getByText('행 메뉴').click();
     await row.getByRole('button', { name: '숨기기' }).click();
     await expect(page.getByRole('status')).toContainText('숨겼어요');
     await expect(
@@ -132,12 +131,10 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
     await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
     const all = page.locator('article', { hasText: 'game-100' });
-    await all.getByText('행 메뉴').click();
     await all.getByRole('button', { name: '숨기기' }).click();
     await expect(page.getByRole('button', { name: '숨긴 항목', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '숨긴 항목', exact: true }).click();
     const hidden = page.locator('article', { hasText: 'game-100' });
-    await hidden.getByText('행 메뉴').click();
     await hidden.getByRole('button', { name: '다시 보이기' }).click();
     await expect(page.getByRole('status')).toContainText('다시 보이게 했어요');
     await expect(
@@ -151,7 +148,6 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
     await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-100' });
-    await row.getByText('행 메뉴').click();
     await row.getByRole('button', { name: '숨기기' }).click();
     await expect(page.getByRole('button', { name: '숨긴 항목', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '되돌리기' }).click();
@@ -227,11 +223,10 @@ test.describe('가상 스크롤 렌더 상한', () => {
     expect(rendered).toBeLessThanOrEqual(70);
   });
 
-  test('상한 후 행 메뉴 일반 클릭 가능', async ({ page }) => {
+  test('상한 후 행 숨기기 버튼 바로 보임', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${capped.port}/library`);
     await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-1000' }).first();
-    await row.getByText('행 메뉴').click();
     await expect(row.getByRole('button', { name: '숨기기' })).toBeVisible();
   });
 });

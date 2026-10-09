@@ -139,7 +139,6 @@ ownership_status: "owned"
     sortReleaseDateDesc: 'Newest release',
     sortReleaseDateAsc: 'Oldest release',
     sortNameAsc: 'Name',
-    badgeUnrated: 'Unrated',
     badgeMissing: 'Missing · reason unknown',
     badgeFilling: 'Filling in info',
     badgeJustRated: 'Just rated',
@@ -169,7 +168,6 @@ ownership_status: "owned"
     starsUnrated: 'Not rated',
     unitHours: 'h',
     ariaStars: 'Rate',
-    ariaMenu: 'Row menu',
     ariaStore: 'View on Steam Store',
   },
   game: {

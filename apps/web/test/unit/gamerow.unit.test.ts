@@ -41,8 +41,8 @@ function makeGame(overrides?: Partial<RowGame>): RowGame {
 }
 
 describe('rowBadges', () => {
-  it('미평가·빠짐·미보충', () => {
-    expect(rowBadges(makeGame())).toEqual(['unrated', 'filling']);
+  it('빠짐·미보충', () => {
+    expect(rowBadges(makeGame())).toEqual({ missing: false, filling: true });
     expect(
       rowBadges(
         makeGame({
@@ -51,7 +51,7 @@ describe('rowBadges', () => {
           genres: [{ genreId: 'action', nameEn: 'Action', nameKo: null }],
         }),
       ),
-    ).toEqual([]);
+    ).toEqual({ missing: false, filling: false });
     expect(
       rowBadges(
         makeGame({
@@ -61,7 +61,7 @@ describe('rowBadges', () => {
           ownership: [{ origin: 'observed', startedAt: 1700000000, ended: true, endedAt: 1700100000, isBaseline: false, syncRunId: null }],
         }),
       ),
-    ).toEqual(['missing']);
+    ).toEqual({ missing: true, filling: false });
   });
 });
 

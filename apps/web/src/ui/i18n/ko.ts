@@ -139,7 +139,6 @@ ownership_status: "owned"
     sortReleaseDateDesc: '출시일 최근 순',
     sortReleaseDateAsc: '출시일 오래된 순',
     sortNameAsc: '이름순',
-    badgeUnrated: '미평가',
     badgeMissing: '빠짐 · 사유 미상',
     badgeFilling: '정보 채우는 중',
     badgeJustRated: '방금 매김',
@@ -169,7 +168,6 @@ ownership_status: "owned"
     starsUnrated: '평가 안 함',
     unitHours: '시간',
     ariaStars: '별점 입력',
-    ariaMenu: '행 메뉴',
     ariaStore: 'Steam 스토어에서 보기',
   },
   game: {

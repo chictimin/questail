@@ -1,0 +1,49 @@
+/**
+ * U2b 행 — 고정 높이 하한(넓은 폭 72 · 좁은 폭 104, F4 minHeight 측정 방식 유지).
+ * 커버 96×45 / 72×34. justRated 행 배경 purple 7%. 행 액션 히트 36×36.
+ */
+main[data-route='library'] .game-row {
+  min-height: 72px;
+}
+
+main[data-route='library'] .game-row[data-just-rated] {
+  background: color-mix(in srgb, var(--qt-purple) 7%, transparent);
+}
+
+main[data-route='library'] .game-cover {
+  width: 96px;
+  height: 45px;
+}
+
+main[data-route='library'] .game-cover[data-placeholder] {
+  background: var(--surface-sunken);
+}
+
+main[data-route='library'] .row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+@keyframes qtSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+main[data-route='library'] .badge-spin {
+  animation: qtSpin 900ms linear infinite;
+}
+
+@media (max-width: 768px) {
+  main[data-route='library'] .game-row {
+    min-height: 104px;
+  }
+
+  main[data-route='library'] .game-cover {
+    width: 72px;
+    height: 34px;
+  }
+}
