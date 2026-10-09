@@ -27,6 +27,8 @@ import {
   type SettingsDeps,
 } from './routes/settings-info.js';
 import { parseJsonBody, type BodyGuard } from './validate.js';
+// U5-[1] W-S2 — W-S1(info import)과 별도 hunk로 둔다.
+import { registerSettingsBackupsRoutes } from './routes/settings-backups.js';
 
 export const HEALTH_PATH = '/api/health';
 export const EXPORT_PATH = '/api/export';
@@ -315,6 +317,8 @@ function registerRoutes(
     setAchievementSettings(exportDeps.db, parsed.value);
     return c.json(getAchievementSettings(exportDeps.db));
   });
+  // U5-[1] W-S2 — W-S1(info 마운트)와 별도 hunk로 둔다.
+  registerSettingsBackupsRoutes(app, settingsDeps);
   app.post(EXPORT_PATH, async (c) => {
     const parsed = await parseJsonBody(c, exportBodyGuard);
     if (!parsed.ok) {
