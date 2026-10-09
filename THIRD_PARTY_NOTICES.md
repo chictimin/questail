@@ -116,6 +116,22 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
+## Azeret Mono (wordmark, woff2 subset)
+
+- Source: https://github.com/displaay/Azeret (via @fontsource/azeret-mono@5.3.0)
+- Files: `azeret-mono-latin-400-normal.woff2` (subset of the Original Version)
+- Copyright: Copyright 2021 The Azeret Project Authors (https://github.com/displaay/azeret)
+- License: SIL Open Font License, Version 1.1 (see `assets/fonts/OFL-Azeret.txt`
+  or https://openfontlicense.org)
+
+## JetBrains Mono (wordmark, woff2 subset, weight 500)
+
+- Source: https://github.com/JetBrains/JetBrainsMono (via @fontsource/jetbrains-mono@5.3.0)
+- Files: `jetbrains-mono-latin-500-normal.woff2` (subset of the Original Version)
+- Copyright: Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+- License: SIL Open Font License, Version 1.1 (see `assets/fonts/OFL-JetBrainsMono.txt`
+  or https://openfontlicense.org)
+
 ## Phosphor Icons (MIT)
 
 - 패키지: `@phosphor-icons/react@2.1.10` (npm, MIT, 의존성 0)
