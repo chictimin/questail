@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { SyncErrorCode } from '@questail/core';
 import { flatKeys } from '../../src/ui/i18n/index.js';
 
 /** i18n 키 전체 — t('...') 인자는 UI 문구가 아니라 검사 제외. */
@@ -38,20 +39,25 @@ describe('i18n 키 정합', () => {
     expect(flatKeys('ko')).toEqual(flatKeys('en'));
   });
 
-  it('error.* 11키 × 2언어 (동결본 C-3 SyncErrorCode)', () => {
-    const expected = [
-      'error.ACCESS_PRIVATE',
-      'error.AUTH_ID_MISMATCH',
-      'error.AUTH_INVALID_KEY',
-      'error.HELD_DEPENDENCY',
-      'error.HELD_TIME_ZERO',
-      'error.HELD_ZERO',
-      'error.NETWORK',
-      'error.PAYLOAD_CORRUPT',
-      'error.RATE_LIMITED',
-      'error.TAG_EMPTY',
-      'error.TAG_FAILED',
-    ].sort();
+  it('error.* 11키 × 2언어 (동결본 C-3 SyncErrorCode에서 파생)', () => {
+    // core에 코드가 늘면 아래 satisfies와 누락 검사가 typecheck를 깨뜨린다.
+    const ERROR_CODES = [
+      'ACCESS_PRIVATE',
+      'AUTH_ID_MISMATCH',
+      'AUTH_INVALID_KEY',
+      'HELD_DEPENDENCY',
+      'HELD_TIME_ZERO',
+      'HELD_ZERO',
+      'NETWORK',
+      'PAYLOAD_CORRUPT',
+      'RATE_LIMITED',
+      'TAG_EMPTY',
+      'TAG_FAILED',
+    ] as const satisfies readonly SyncErrorCode[];
+    type Missing = Exclude<SyncErrorCode, (typeof ERROR_CODES)[number]>;
+    const missingCheck: Missing extends never ? true : never = true;
+    expect(missingCheck).toBe(true);
+    const expected = ERROR_CODES.map((c) => `error.${c}`).sort();
     expect(flatKeys('ko').filter((k) => k.startsWith('error.'))).toEqual(
       expected,
     );
