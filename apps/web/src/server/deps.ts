@@ -96,6 +96,20 @@ export function resolveSteamApiBaseUrl(
   return normalized;
 }
 
+/**
+ * W-store: 테스트 base가 있으면 baseUrl·storeBaseUrl 둘 다 같은 값,
+ * 없으면 둘 다 미지정(공식 기본). 새 env 0.
+ */
+export function storeBasePair(baseUrl: string | undefined): {
+  baseUrl?: string;
+  storeBaseUrl?: string;
+} {
+  if (baseUrl === undefined) {
+    return {};
+  }
+  return { baseUrl, storeBaseUrl: baseUrl };
+}
+
 /** 제품 마이그레이션 폴더 — <루트>/apps/web/drizzle 절대 경로(cwd 무관). */
 export function productMigrationsFolder(): string {
   return join(findRepoRoot(), 'apps', 'web', 'drizzle');

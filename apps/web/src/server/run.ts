@@ -8,7 +8,7 @@ import { main } from './main.js';
 import { createServerApp } from './app.js';
 import { createJobExecutor, createSyncService } from '../data/index.js';
 import { EXPORT_DIR_NAME } from './export.js';
-import { productionDeps, resolveSteamApiBaseUrl } from './deps.js';
+import { productionDeps, resolveSteamApiBaseUrl, storeBasePair } from './deps.js';
 import { connectKeyPath } from './routes/connect.js';
 import { uiDistDir } from './static.js';
 
@@ -37,7 +37,7 @@ await main({
           db,
           keyPath: connectKeyPath(dataDir),
           cacheDir: join(dataDir, META_CACHE_DIR_NAME),
-          baseUrl: steamApiBaseUrl,
+          ...storeBasePair(steamApiBaseUrl),
           timeZone,
           executor: createJobExecutor,
         }),

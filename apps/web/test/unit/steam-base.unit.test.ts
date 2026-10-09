@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSteamApiBaseUrl, STEAM_API_BASE_ENV } from '../../src/server/deps.js';
+import { resolveSteamApiBaseUrl, STEAM_API_BASE_ENV, storeBasePair } from '../../src/server/deps.js';
 
 /** W-P6 [1] env 3분기 기동 동작. 값·키·경로 반향 없음. */
 function envWith(value: string | undefined): NodeJS.ProcessEnv {
@@ -41,5 +41,18 @@ describe('resolveSteamApiBaseUrl', () => {
       expect(message).not.toMatch(/[0-9a-f]{32}/i);
     }
     expect(() => resolveSteamApiBaseUrl(envWith('https://example.com/'))).toThrow();
+  });
+});
+
+describe('storeBasePair', () => {
+  it('base 있음 → 두 값이 같음', () => {
+    expect(storeBasePair('http://127.0.0.1:9')).toEqual({
+      baseUrl: 'http://127.0.0.1:9',
+      storeBaseUrl: 'http://127.0.0.1:9',
+    });
+  });
+
+  it('base 없음 → 둘 다 미지정', () => {
+    expect(storeBasePair(undefined)).toEqual({});
   });
 });
