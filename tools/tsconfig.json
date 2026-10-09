@@ -8,5 +8,5 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["record-steam.ts"]
+  "include": ["record-steam.ts", "generate-fixtures.ts", "migrate-r1-once.ts"]
 }
