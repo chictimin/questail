@@ -23,7 +23,7 @@ import { buildTasteProfile } from './profile/index.js';
 import { analyzeLibrary, REPORT_SCHEMA_VERSION, type AnalysisReportJson, type QuantitativeStats, toReportJson } from './analyze/index.js';
 import { parseReportChart, renderReportMarkdown, type ReportChart } from './analyze/report.js';
 import { fetchAppMetaBatch } from './metadata/index.js';
-import { fetchSteamSpyUserTags } from './connectors/steamspy.js';
+import { fetchSteamSpyUserTags, resolveSteamSpyCacheDir } from './connectors/steamspy.js';
 import { detectLocale, t, type Locale } from './i18n.js';
 import type { GameMeta, NormalizedGame } from './types.js';
 import {
@@ -384,8 +384,9 @@ async function cmdGatherSteam(): Promise<void> {
   // 실패는 빈 배열이라 미설정으로 둔다(다음 실행이 캐시 미스로 재시도한다).
   // userTags는 캐시 전용이라 normalize에 전달하지 않는다 — library/노트로 내려가지 않는다.
   for (const [appId, meta] of metaByAppId) {
-    const tags = await fetchSteamSpyUserTags(appId);
-    if (tags.length > 0) meta.userTags = tags;
+    // 보관 예정 구 CLI 호환: 실패는 빈 태그로 둔다(다음 실행이 캐시 미스로 재시도한다).
+    const collected = await fetchSteamSpyUserTags({ appId, cacheDir: resolveSteamSpyCacheDir() });
+    if (collected.tags.length > 0) meta.userTags = collected.tags;
   }
 
   // 위시리스트: appid 목록 조회 후 Set으로 매칭. 위시 없는 계정 등
