@@ -65,6 +65,9 @@ export function rowViewFor(
     code,
     failed: entry.state === 'failed',
     running: entry.state === 'running',
+    done: entry.state === 'ok',
+    total: entry.progress.total,
+    count: entry.progress.done,
     params: entry.issue?.params,
   });
   const body: RowBody = { ...display.body };

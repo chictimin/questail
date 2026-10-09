@@ -30,6 +30,10 @@ export interface RowInput {
   /** 코드 없는 소스 실패(b·e 일반 원인). */
   failed?: boolean;
   running?: boolean;
+  done?: boolean;
+  /** ok 본문 수치 — total null이면 메모리 소실로 보고 본문 없음. */
+  total?: number | null;
+  count?: number;
   /** 원인 문장 자리표시(causeHeldZero.prev · causeHeldTime.n · causeInfoPart.n). */
   params?: Record<string, string | number>;
 }
@@ -41,7 +45,7 @@ export interface RowInput {
  * f(부분 실패 {n})는 문구 키(sync.causeInfoPart)만 두고 매핑은 U3b.
  */
 export function rowDisplay(source: CollectSource, input: RowInput): RowDisplay {
-  const { code, failed = false, running = false, params } = input;
+  const { code, failed = false, running = false, done = false, total = null, count, params } = input;
   if (code === 'HELD_ZERO') {
     return {
       pill: 'hold',
@@ -78,6 +82,25 @@ export function rowDisplay(source: CollectSource, input: RowInput): RowDisplay {
   }
   if (running) {
     return { pill: 'run', body: { kind: 'progress' }, retry: false };
+  }
+  if (done) {
+    // progress는 메모리라 total null이면 소실 — 본문 없이 pill+시각만.
+    if (
+      (source === 'owned' || source === 'wish') &&
+      total !== null &&
+      count !== undefined
+    ) {
+      return {
+        pill: 'done',
+        body: {
+          kind: 'cause',
+          key: source === 'owned' ? 'sync.doneOwned' : 'sync.doneWish',
+          params: { n: count },
+        },
+        retry: false,
+      };
+    }
+    return { pill: 'done', body: { kind: 'none' }, retry: false };
   }
   return { pill: 'wait', body: { kind: 'none' }, retry: false };
 }

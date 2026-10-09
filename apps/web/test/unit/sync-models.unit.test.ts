@@ -69,6 +69,25 @@ describe('rowViewFor', () => {
     });
   });
 
+  it('ok + 수치 → done pill + 본문 + 시각', () => {
+    const view = rowViewFor(
+      makeEntry({
+        source: 'owned',
+        state: 'ok',
+        lastFinishedAt: 1700000000,
+        progress: { done: 1284, total: 1284, source: 'owned' },
+      }),
+    );
+    expect(view.pill).toBe('done');
+    expect(view.time).toBe(1700000000);
+    expect(view.body).toEqual({
+      kind: 'cause',
+      key: 'sync.doneOwned',
+      params: { n: 1284 },
+    });
+    expect(view.retry).toBe(false);
+  });
+
   it('업적 OFF면 꺼짐 pill·시각 없음·재수집 없음', () => {
     const view = rowViewFor(
       makeEntry({ source: 'achievements', state: 'running', lastFinishedAt: 1700000000 }),

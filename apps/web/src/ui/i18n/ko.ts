@@ -236,6 +236,8 @@ ownership_status: "owned"
     retry: '이것만 다시 수집',
     achOpenLink: '공개 설정 열기',
     causeOwned: 'Steam이 보유 목록을 보내지 않았어요. 잠시 뒤 이것만 다시 수집해 주세요.',
+    doneOwned: '{n}개 · 플레이타임 반영됨',
+    doneWish: '{n}개',
     causeHeldZero: '0개로 왔어요. 지난번엔 {prev}개라 반영하지 않았어요.',
     causeHeldTime: '목록은 반영했어요. 플레이타임이 줄어든 {n}개는 반영을 보류하고 검토 대기에 두었어요.',
     causeWish: '찜 목록을 받지 못했어요. 프로필에서 찜 목록 공개 범위를 확인한 뒤 다시 수집해 주세요.',

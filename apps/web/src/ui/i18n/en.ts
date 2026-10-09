@@ -237,6 +237,8 @@ ownership_status: "owned"
     retry: 'Retry this one',
     achOpenLink: 'Open privacy settings',
     causeOwned: 'Steam didn’t send your owned games. Retry this one in a moment.',
+    doneOwned: '{n} games · playtime applied',
+    doneWish: '{n} games',
     causeHeldZero: 'Steam returned 0 games. Last time it was {prev}, so nothing was applied.',
     causeHeldTime: 'The list was applied. Playtime for {n} games went down, so those are on hold for review.',
     causeWish: 'Couldn’t fetch your wishlist. Check its visibility on your profile, then retry.',

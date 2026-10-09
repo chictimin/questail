@@ -76,4 +76,29 @@ describe('rowDisplay', () => {
       retry: true,
     });
   });
+
+  it('ok + 수치 있음 → done pill + 소스별 본문', () => {
+    expect(
+      rowDisplay('owned', { code: null, done: true, total: 1284, count: 1284 }),
+    ).toEqual({
+      pill: 'done',
+      body: { kind: 'cause', key: 'sync.doneOwned', params: { n: 1284 } },
+      retry: false,
+    });
+    expect(
+      rowDisplay('wish', { code: null, done: true, total: 57, count: 57 }),
+    ).toEqual({
+      pill: 'done',
+      body: { kind: 'cause', key: 'sync.doneWish', params: { n: 57 } },
+      retry: false,
+    });
+  });
+
+  it('ok + total null(메모리 소실) → done pill 본문 없음', () => {
+    expect(rowDisplay('owned', { code: null, done: true, total: null })).toEqual({
+      pill: 'done',
+      body: { kind: 'none' },
+      retry: false,
+    });
+  });
 });

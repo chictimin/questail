@@ -140,3 +140,61 @@ test.describe('수집 상태 화면', () => {
     await expect(page.locator('.sync-row').first()).toBeVisible();
   });
 });
+
+test.describe('수집 성공 행', () => {
+  test.use({ locale: 'ko-KR' });
+  let okDir = '';
+  let okDb = null as Database.Database | null;
+  let okStarted = null as StartedServer | null;
+
+  test.beforeAll(async () => {
+    okDir = mkdtempSync(join(tmpdir(), 'questail-sync-ok-'));
+    const journal = JSON.parse(
+      readFileSync(join(WEB, 'drizzle', 'meta', '_journal.json'), 'utf8'),
+    ) as { entries: { tag: string }[] };
+    const setup = new Database(join(okDir, 'questail.db'));
+    try {
+      for (const entry of journal.entries) {
+        setup.exec(readFileSync(join(WEB, 'drizzle', `${entry.tag}.sql`), 'utf8'));
+      }
+    } finally {
+      setup.close();
+    }
+    okDb = new Database(join(okDir, 'questail.db'));
+    okDb.prepare(
+      `INSERT INTO sync_runs
+        (status, source, started_at, finished_at, item_count, observed_day, is_finalized, issue_code, issue_params, generation)
+       VALUES ('ok', 'owned', 1700000000, 1700000060, 1284, '2024-01-01', 1, NULL, NULL, 1)`,
+    ).run();
+    const service = createSyncService({
+      db: okDb,
+      keyPath: join(okDir, 'steam.key'),
+      cacheDir: join(okDir, 'meta'),
+      timeZone: 'UTC',
+      executor: createJobExecutor,
+    });
+    okStarted = await startServer(
+      createServerApp({
+        staticRoot: uiDistDir(),
+        exportDeps: { db: okDb, exportDir: join(okDir, 'export') },
+        syncService: service,
+      }),
+      0,
+    );
+  });
+
+  test.afterAll(async () => {
+    if (okStarted !== null) {
+      await stopServer(okStarted);
+    }
+    okDb?.close();
+    if (okDir !== '') {
+      rmSync(okDir, { recursive: true, force: true });
+    }
+  });
+
+  test('ok 시드 → 완료 pill 표시', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${(okStarted as StartedServer).port}/sync`);
+    await expect(page.getByText('완료').first()).toBeVisible();
+  });
+});
