@@ -380,6 +380,9 @@ export function deriveGameMeta(
 /** 캐시 디렉터리명. 데이터 디렉터리 아래에 둔다. 웹 run.ts가 조립해 주입한다. */
 export const META_CACHE_DIR_NAME = 'meta';
 
+/** SteamSpy 캐시 디렉터리명. meta 캐시의 형제(dataDir/steamspy)로 둔다. */
+export const STEAMSPY_CACHE_DIR_NAME = 'steamspy';
+
 /** 요청 간격 기본 2초 (D-07). 설정으로 바꾼다. */
 const DEFAULT_INTERVAL_MS = 2_000;
 

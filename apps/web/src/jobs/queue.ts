@@ -132,5 +132,16 @@ function targetGames(
   source: CollectSource,
 ): { platform: string; externalId: string }[] {
   if (source === 'wishlist') return openGames(db, wishlistSpans);
+  if (source === 'steamspy') {
+    const seen = new Set<string>();
+    const out: { platform: string; externalId: string }[] = [];
+    for (const game of [...openGames(db, ownershipSpans), ...openGames(db, wishlistSpans)]) {
+      const k = `${game.platform}:${game.externalId}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(game);
+    }
+    return out;
+  }
   return openGames(db, ownershipSpans);
 }

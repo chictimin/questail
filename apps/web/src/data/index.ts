@@ -35,3 +35,8 @@ export { createSyncService } from './service.js';
 export type { SyncService, SyncServiceDeps } from './service.js';
 export { createJobExecutor } from '../jobs/collect.js';
 export type { CollectJob, ExecutorContext, JobExecutor } from '../jobs/collect.js';
+export { saveCollectedTags } from './tags.js';
+export type { SaveCollectedTagsOptions } from './tags.js';
+export { listGameFacts, listArchivedReviewObservations, listWishlistSpans, getSyncRun } from './archiveRead.js';
+export { listReviewObservations, recordPlaytimeSnapshot } from './playtime.js';
+export type { RecordSnapshotInput, RecordSnapshotResult, ReviewObservation } from './playtime.js';

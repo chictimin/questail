@@ -1,19 +1,24 @@
 import type Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { dirname, join } from 'node:path';
 import {
   buildOwnedGamesPath,
   buildWishlistPath,
   fetchAppMetaStatus,
+  fetchSteamSpyUserTags,
   judgeOwnedResponse,
   judgeWishlistResponse,
   normalizeOwnedGames,
+  STEAMSPY_CACHE_DIR_NAME,
   type IssueParams,
   type SyncErrorCode,
 } from '@questail/core';
 import { ownershipSpans, syncRuns, wishlistSpans, checkpoints } from '../db/schema.js';
 import { applyOwnedDiff } from '../data/ownership.js';
 import { applyWishlistDiff } from '../data/wishlist.js';
+import { recordPlaytimeSnapshot } from '../data/playtime.js';
+import { saveCollectedTags } from '../data/tags.js';
 import { createSteamRequest, getConnection, type FetchLike } from '../data/connection.js';
 import type { CollectSource, Locale } from '../data/sync.js';
 import { toLocalDay } from '../data/syncRuns.js';
@@ -178,7 +183,6 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         await runMeta(job);
         break;
       case 'achievements':
-      case 'steamspy':
         ctx.transitions.finishSyncRun(job.runId, job.source, {
           status: 'ok',
           finishedAt: Math.floor(now() / 1000),
@@ -186,6 +190,9 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           isFinalized: true,
           issue: null,
         });
+        break;
+      case 'steamspy':
+        await runSteamspy(job);
         break;
     }
   }
@@ -241,13 +248,46 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         return;
       }
       const gamesList = normalizeOwnedGames(payload);
-      applyOwnedDiff(ctx.db, {
-        verdict,
-        games: gamesList.map((game) => ({ ...game, name: undefined })),
-        clock: { observedAt: Math.floor(at / 1000), observedDay: toLocalDay(at, ctx.timeZone), timezone: ctx.timeZone },
-        syncRunId: job.runId,
-        isFirstCollection: countOpen(ctx.db, ownershipSpans) === 0,
+      let heldTimeZero = false;
+      const apply = ctx.db.transaction(() => {
+        const applied = applyOwnedDiff(ctx.db, {
+          verdict,
+          games: gamesList.map((game) => ({ ...game, name: undefined })),
+          clock: { observedAt: Math.floor(at / 1000), observedDay: toLocalDay(at, ctx.timeZone), timezone: ctx.timeZone },
+          syncRunId: job.runId,
+          isFirstCollection: countOpen(ctx.db, ownershipSpans) === 0,
+        });
+        if (applied.outcome === 'held-time-zero') {
+          heldTimeZero = true;
+          return;
+        }
+        for (const game of gamesList) {
+          recordPlaytimeSnapshot(
+            ctx.db,
+            { platform: 'steam', externalId: String(game.appid) },
+            {
+              observedAt: Math.floor(at / 1000),
+              observedDay: toLocalDay(at, ctx.timeZone),
+              timezone: ctx.timeZone,
+              totalMinutes: game.playtimeForever,
+              lastPlayed: game.lastPlayed,
+              playtime2Weeks: game.playtime2weeks,
+              syncRunId: job.runId,
+            },
+          );
+        }
       });
+      apply();
+      if (heldTimeZero) {
+        ctx.transitions.finishSyncRun(job.runId, job.source, {
+          status: 'held',
+          finishedAt: Math.floor(now() / 1000),
+          itemCount: gamesList.length,
+          isFinalized: true,
+          issue: { code: 'HELD_TIME_ZERO', params: {} },
+        });
+        return;
+      }
       ctx.transitions.finishSyncRun(job.runId, job.source, {
         status: 'ok',
         finishedAt: Math.floor(now() / 1000),
@@ -330,6 +370,55 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
     } finally {
       release();
     }
+  }
+
+  async function runSteamspy(job: CollectJob): Promise<void> {
+    const targets = buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
+      (key) => key.split(':')[1],
+    );
+    ctx.transitions.progressRun(job.runId, job.source, { done: 0, total: targets.length });
+    const spyDir = join(dirname(ctx.cacheDir), STEAMSPY_CACHE_DIR_NAME);
+    const baseFetch: FetchLike = ctx.fetchFn ?? ((url) => fetch(url));
+    for (const appid of targets) {
+      if (stopped) break;
+      const { signal, release } = trackController();
+      try {
+        const collected = await fetchSteamSpyUserTags({
+          appId: appid,
+          cacheDir: spyDir,
+          signal,
+          fetchFn: (url, init) => raceWithSignal(baseFetch(url), init.signal),
+        });
+        saveCollectedTags(
+          ctx.db,
+          { platform: 'steam', externalId: appid },
+          collected,
+          { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
+        );
+      } catch {
+        if (signal.aborted && stopped) break;
+      } finally {
+        release();
+      }
+      writeCheckpoint(ctx.db, {
+        generation: job.generation,
+        source: job.source,
+        itemKey: itemKey('steam', appid, job.source),
+        syncRunId: job.runId,
+        doneAt: Math.floor(now() / 1000),
+      });
+      ctx.transitions.progressRun(job.runId, job.source, {
+        done: checkpointDone(ctx.db, job),
+        total: targets.length,
+      });
+    }
+    ctx.transitions.finishSyncRun(job.runId, job.source, {
+      status: stopped ? 'held' : 'ok',
+      finishedAt: Math.floor(now() / 1000),
+      itemCount: targets.length,
+      isFinalized: true,
+      issue: null,
+    });
   }
 
   async function runMeta(job: CollectJob): Promise<void> {

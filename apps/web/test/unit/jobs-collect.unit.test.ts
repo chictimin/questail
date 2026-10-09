@@ -49,10 +49,11 @@ function appdetailsPayload(appid: string, name: string) {
   return { [appid]: { success: true, data: { name, genres: [{ id: '1', description: 'Action' }] } } };
 }
 
-/** URL별 가짜 라우팅. GetOwnedGames·appdetails·GetWishlist만 답한다. */
+/** URL별 가짜 라우팅. GetOwnedGames·appdetails·GetWishlist·steamspy만 답한다. */
 function routeFetch(opts: {
   owned?: () => unknown;
   appdetails?: (appid: string) => unknown;
+  steamspy?: (appid: string) => unknown;
   calls?: { url: string };
 }): FetchLike {
   return async (url: string) => {
@@ -62,6 +63,10 @@ function routeFetch(opts: {
     }
     if (url.includes('GetWishlist')) {
       return { status: 200, json: async () => ({ response: { items: [] } }) };
+    }
+    if (url.includes('steamspy.com')) {
+      const appid = new URL(url).searchParams.get('appid') ?? '?';
+      return { status: 200, json: async () => (opts.steamspy ? opts.steamspy(appid) : { tags: {} }) };
     }
     const appid = new URL(url).searchParams.get('appids') ?? '?';
     return { status: 200, json: async () => (opts.appdetails ? opts.appdetails(appid) : {}) };
@@ -74,9 +79,12 @@ function serviceWith(
   opts: {
     fetchFn?: FetchLike;
     now?: () => number;
+    skipKey?: boolean;
   } = {},
 ) {
-  writeFileSync(join(dir, 'steam.key'), KEY, { mode: 0o600 });
+  if (!opts.skipKey) {
+    writeFileSync(join(dir, 'steam.key'), KEY, { mode: 0o600 });
+  }
   db.prepare('INSERT INTO account (id, steam_id, created_at) VALUES (1, ?, 1)').run(SID);
   return createSyncService({
     db,
@@ -376,6 +384,99 @@ describe('jobs collect', () => {
     }
   });
 
+  it('steamspy ready는 태그 저장 + 재개 시 재요청 0이다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const seen: string[] = [];
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({
+          owned: () => ownedPayload([{ appid: 10, total: 5 }]),
+          steamspy: (appid: string) => {
+            seen.push(appid);
+            return { tags: { Solo: 7 } };
+          },
+        }),
+      });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      service.resyncSource('steamspy', { locale: 'ko' });
+      await settled(service);
+      expect(seen).toEqual(['10']);
+      const tags = db
+        .prepare('SELECT tag, votes, rank FROM game_user_tags ORDER BY rank')
+        .all() as { tag: string; votes: number; rank: number }[];
+      expect(tags).toEqual([{ tag: 'Solo', votes: 7, rank: 1 }]);
+      const state = db
+        .prepare('SELECT tag_status AS s FROM tag_sources')
+        .get() as { s: string };
+      expect(state.s).toBe('ready');
+      service.resyncSource('steamspy', { locale: 'ko' });
+      await settled(service);
+      expect(seen).toEqual(['10']);
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('steamspy empty는 행 삭제 + empty다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({
+          owned: () => ownedPayload([{ appid: 11, total: 5 }]),
+          steamspy: () => ({ tags: {} }),
+        }),
+      });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      service.resyncSource('steamspy', { locale: 'ko' });
+      await settled(service);
+      const state = db.prepare('SELECT tag_status AS s FROM tag_sources').get() as { s: string };
+      expect(state.s).toBe('empty');
+      expect(db.prepare('SELECT COUNT(*) AS n FROM game_user_tags').get()).toEqual({ n: 0 });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('steamspy failed는 보존 + failed다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const failFetch: FetchLike = async (url: string) => {
+        if (url.includes('steamspy.com')) return { status: 500, json: async () => ({}) };
+        if (url.includes('GetOwnedGames')) {
+          return { status: 200, json: async () => ownedPayload([{ appid: 12, total: 5 }]) };
+        }
+        return { status: 200, json: async () => ({}) };
+      };
+      const service = serviceWith(db, dir, { fetchFn: failFetch });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      db.prepare(
+        "INSERT INTO game_user_tags (platform, external_id, tag, votes, rank, observed_at) VALUES ('steam', '12', 'Keep', 4, 1, 1)",
+      ).run();
+      db.prepare(
+        "INSERT INTO tag_sources (platform, external_id, tag_status, observed_at) VALUES ('steam', '12', 'ready', 1)",
+      ).run();
+      service.resyncSource('steamspy', { locale: 'ko' });
+      await settled(service);
+      const tags = db
+        .prepare('SELECT tag FROM game_user_tags')
+        .all() as { tag: string }[];
+      expect(tags).toEqual([{ tag: 'Keep' }]);
+      const state = db.prepare('SELECT tag_status AS s FROM tag_sources').get() as { s: string };
+      expect(state.s).toBe('failed');
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
   it('observed_day는 주입 zone 로컬 날짜다', async () => {
     const db = freshDb();
     const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
@@ -405,6 +506,137 @@ describe('jobs collect', () => {
           timeZone: 'Nope/Zone',
         }),
       ).toThrow(RangeError);
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('스냅샷 실패는 owned 차분까지 롤백한다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({ owned: () => ownedPayload([{ appid: 20, total: 5 }]) }),
+      });
+      db.exec('DROP TABLE playtime_snapshots');
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(
+        db.prepare('SELECT COUNT(*) AS n FROM ownership_spans').get(),
+      ).toEqual({ n: 0 });
+      expect(service.getSyncStatus().find((row) => row.source === 'owned')?.state).toBe('running');
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('KST 스냅샷 날짜로 기록한다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const at = Date.parse('2026-01-01T15:30:00Z');
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({ owned: () => ownedPayload([{ appid: 21, total: 5 }]) }),
+        now: () => at,
+      });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      const row = db
+        .prepare('SELECT observed_day AS d, timezone AS z FROM playtime_snapshots')
+        .get() as { d: string; z: string };
+      expect(row).toEqual({ d: '2026-01-02', z: 'Asia/Seoul' });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('키 없으면 KEY_STORE_FAILED으로 끝낸다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({ owned: () => ownedPayload([{ appid: 22, total: 5 }]) }),
+        skipKey: true,
+      });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      const owned = service.getSyncStatus().find((row) => row.source === 'owned');
+      expect(owned?.issue).toEqual({ code: 'KEY_STORE_FAILED', params: { reason: 'permission' } });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('깨진 JSON은 PAYLOAD_CORRUPT로 끝낸다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const broken: FetchLike = async (url: string) => {
+        if (url.includes('GetOwnedGames')) {
+          return {
+            status: 200,
+            json: async () => {
+              throw new Error('bad json');
+            },
+          };
+        }
+        return { status: 200, json: async () => ({}) };
+      };
+      const service = serviceWith(db, dir, { fetchFn: broken });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      const owned = service.getSyncStatus().find((row) => row.source === 'owned');
+      expect(owned?.issue).toEqual({ code: 'PAYLOAD_CORRUPT', params: {} });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('전건 0은 보유 확정·스냅샷 0·run held·종속 계속이다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      let zero = false;
+      const counts: Record<string, number> = {};
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({
+          owned: () => (zero ? ownedPayload([{ appid: 30, total: 0 }]) : ownedPayload([{ appid: 30, total: 100 }])),
+          appdetails: (appid: string) => {
+            counts[appid] = (counts[appid] ?? 0) + 1;
+            return appdetailsPayload(appid, 'g30');
+          },
+        }),
+      });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      expect(
+        db.prepare('SELECT COUNT(*) AS n FROM playtime_snapshots').get(),
+      ).toEqual({ n: 1 });
+      zero = true;
+      service.resyncSource('owned', { locale: 'ko' });
+      service.resyncSource('meta', { locale: 'ko' });
+      await settled(service);
+      const owned = service.getSyncStatus().find((row) => row.source === 'owned');
+      expect(owned?.state).toBe('held');
+      expect(owned?.issue).toEqual({ code: 'HELD_TIME_ZERO', params: {} });
+      expect(
+        db.prepare('SELECT COUNT(*) AS n FROM playtime_snapshots').get(),
+      ).toEqual({ n: 1 });
+      expect(
+        db.prepare('SELECT COUNT(*) AS n FROM review_observations').get(),
+      ).toEqual({ n: 0 });
+      const openSpans = (
+        db.prepare('SELECT ended FROM ownership_spans').all() as { ended: number }[]
+      ).every((row) => row.ended === 0);
+      expect(openSpans).toBe(true);
+      expect(counts).toEqual({ 30: 1 });
+      const meta = service.getSyncStatus().find((row) => row.source === 'meta');
+      expect(meta?.state).not.toBe('held');
     } finally {
       db.close();
       resetSyncLocksForTest();
