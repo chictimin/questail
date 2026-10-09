@@ -161,7 +161,8 @@ describe('D params·로그 URL redacted', () => {
   });
 });
 
-describe('E process.env·argv 덤프 grep', () => {  it('덤프 문자열 scrub 시 키 없음(메커니즘)', () => {
+describe('E process.env·argv 덤프 grep', () => {
+  it('덤프 문자열 scrub 시 키 없음(메커니즘)', () => {
     const dump = JSON.stringify({ ...process.env, QUESTAIL_AUDIT_DUMMY: DUMMY_KEY });
     const scrubbed = scrubText(`${dump} ${process.argv.join(' ')}`, [DUMMY_KEY]);
     expect(scrubbed).not.toContain(DUMMY_KEY);
