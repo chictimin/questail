@@ -315,7 +315,9 @@ export function ConnectPage({
                 </label>
                 {keyError === null && <p>{text('connect.keyHint')}</p>}
                 {keyError !== null && (
-                  <p id="connect-key-error">{text(keyError)}</p>
+                  <p id="connect-key-error">
+                    <strong>{text('connect.errPrefix')}</strong> {text(keyError)}
+                  </p>
                 )}
                 <label>
                   <User size={16} aria-hidden />
@@ -334,7 +336,9 @@ export function ConnectPage({
                 </label>
                 {steamIdError === null && <p>{text('connect.idHint')}</p>}
                 {steamIdError !== null && (
-                  <p id="connect-steamid-error">{text(steamIdError)}</p>
+                  <p id="connect-steamid-error">
+                    <strong>{text('connect.errPrefix')}</strong> {text(steamIdError)}
+                  </p>
                 )}
                 {showExamples && (
                   <div>

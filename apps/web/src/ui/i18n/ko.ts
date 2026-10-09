@@ -107,6 +107,7 @@ ownership_status: "owned"
     exNum: '숫자 ID',
     exNumValue: '76561197960287930',
     exTitle: '이렇게 넣을 수 있어요',
+    errPrefix: '오류',
     needsTitle: '필요한 것',
     needsGames: '게임을 1개 이상 보유한 Steam 계정',
     needsUnlimited: '기능 제한이 풀린 계정',

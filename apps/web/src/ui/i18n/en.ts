@@ -107,6 +107,7 @@ ownership_status: "owned"
     exNum: 'Numeric ID',
     exNumValue: '76561197960287930',
     exTitle: 'Any of these work',
+    errPrefix: 'Error',
     needsTitle: 'You’ll need',
     needsGames: 'A Steam account that owns at least one game',
     needsUnlimited: 'An unrestricted account',

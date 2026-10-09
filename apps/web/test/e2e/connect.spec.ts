@@ -59,8 +59,9 @@ test('형태 오류 키 제출 → 원인 문구 표시', async ({ page }) => {
   await page.getByLabel('Steam Web API 키').fill('not-a-key');
   await page.getByLabel('프로필 주소 또는 SteamID').fill('76561198000000001');
   await page.getByRole('button', { name: '연결하고 물어오기' }).click();
+  await expect(page.locator('#connect-key-error strong')).toHaveText('오류');
   await expect(page.locator('#connect-key-error')).toHaveText(
-    'Steam이 이 키를 받지 않았어요. 키 페이지에서 다시 복사해 붙여 넣거나 새로 발급해 주세요.',
+    '오류 Steam이 이 키를 받지 않았어요. 키 페이지에서 다시 복사해 붙여 넣거나 새로 발급해 주세요.',
   );
   expect(await page.content()).not.toMatch(/\{[a-zA-Z]+\}/);
 });
