@@ -8,22 +8,30 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && playwright test",
+    "test": "vitest run && vite build && playwright test",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "vite build && playwright test",
+    "build:ui": "vite build"
   },
   "dependencies": {
     "@hono/node-server": "2.1.4",
     "better-sqlite3": "13.0.3",
     "drizzle-orm": "0.45.3",
-    "hono": "4.13.13"
+    "hono": "4.13.13",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "wouter": "3.13.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "22.20.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
     "drizzle-kit": "0.31.11",
     "typescript": "5.9.3",
+    "vite": "8.3.4",
     "vitest": "5.0.3"
   }
 }

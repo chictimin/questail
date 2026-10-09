@@ -1,0 +1,54 @@
+import { expect, test, type Page } from '@playwright/test';
+import { createServerApp } from '../../src/server/app.js';
+import { startServer, type StartedServer } from '../../src/server/serve.js';
+import { uiDistDir } from '../../src/server/static.js';
+
+let started: StartedServer;
+
+test.beforeAll(async () => {
+  // dist-ui는 test 스크립트가 playwright 전에 vite build로 만든다.
+  started = await startServer(
+    createServerApp({ staticRoot: uiDistDir() }),
+    0,
+  );
+});
+
+test.afterAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    started.server.close((error: Error | undefined) =>
+      error ? reject(error) : resolve(),
+    );
+  });
+});
+
+async function gotoRoute(page: Page, route: string) {
+  const response = await page.goto(`http://127.0.0.1:${started.port}${route}`);
+  expect(response?.status()).toBe(200);
+  await expect(page.locator(`main[data-route="${route.slice(1)}"] h1`)).toBeVisible();
+}
+
+test.describe('라우트 4개 진입', () => {
+  for (const route of ['/connect', '/sync', '/library', '/settings']) {
+    test(`${route} → 200 + 루트 요소`, async ({ page }) => {
+      await gotoRoute(page, route);
+    });
+  }
+});
+
+test.describe('로케일 전환', () => {
+  test.use({ locale: 'ko-KR' });
+  test('ko에서 반대 언어 문자열 0', async ({ page }) => {
+    await gotoRoute(page, '/library');
+    await expect(page.locator('h1')).toHaveText('별점 리스트');
+    expect(await page.content()).not.toContain('Ratings');
+  });
+});
+
+test.describe('로케일 전환 en', () => {
+  test.use({ locale: 'en-US' });
+  test('en에서 반대 언어 문자열 0', async ({ page }) => {
+    await gotoRoute(page, '/library');
+    await expect(page.locator('h1')).toHaveText('Ratings');
+    expect(await page.content()).not.toContain('별점 리스트');
+  });
+});

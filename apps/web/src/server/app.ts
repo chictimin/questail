@@ -4,6 +4,7 @@
  */
 import { Hono } from 'hono';
 import { hostCheck } from './middleware/host.js';
+import { wireStatic } from './static.js';
 
 export const HEALTH_PATH = '/api/health';
 
@@ -20,11 +21,15 @@ export type AppType = ReturnType<typeof createApp>;
 /**
  * 실서빙 합성 — Host/Origin 검사를 라우트보다 먼저 장착한다.
  * (Hono는 등록 순서대로 실행이라 use()가 get()보다 뒤면 검사가 빠진다.)
+ * staticRoot가 있으면 정적 서빙+fallback까지 장착한다(없으면 API만).
  */
-export function createServerApp(): Hono {
+export function createServerApp(opts?: { staticRoot?: string }): Hono {
   const app = new Hono();
   app.use(hostCheck);
   registerRoutes(app);
+  if (opts?.staticRoot !== undefined) {
+    wireStatic(app, opts.staticRoot);
+  }
   return app;
 }
 
