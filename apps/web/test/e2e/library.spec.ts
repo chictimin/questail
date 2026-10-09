@@ -58,6 +58,7 @@ test.describe('라이브러리 빈 상태', () => {
     expect(response?.status()).toBe(200);
     await expect(page.locator('main[data-route="library"] h1')).toContainText('라이브러리');
     await expect(page.getByText('보유한 게임이 없어요')).toBeVisible();
+    expect(await page.content()).not.toMatch(/\{[a-zA-Z]+\}/);
   });
 });
 

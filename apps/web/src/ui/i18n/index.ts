@@ -32,7 +32,8 @@ export function t(
   let text = table[name] ?? key;
   if (params !== undefined) {
     for (const [k, v] of Object.entries(params)) {
-      text = text.replace(`{${k}}`, String(v));
+      // 같은 자리표시가 2번 나오는 값(export.eq)도 전부 치환한다.
+      text = text.replaceAll(`{${k}}`, String(v));
     }
   }
   return text;

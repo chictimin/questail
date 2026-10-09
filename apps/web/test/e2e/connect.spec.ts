@@ -62,6 +62,7 @@ test('형태 오류 키 제출 → 원인 문구 표시', async ({ page }) => {
   await expect(page.locator('#connect-key-error')).toHaveText(
     'Steam이 이 키를 받지 않았어요. 키 페이지에서 다시 복사해 붙여 넣거나 새로 발급해 주세요.',
   );
+  expect(await page.content()).not.toMatch(/\{[a-zA-Z]+\}/);
 });
 
 test('미연동 /sync 진입 → /connect 리다이렉트', async ({ page }) => {

@@ -58,6 +58,7 @@ test.describe('설정 빈 상태', () => {
     await expect(page.getByText('업적 함께 물어오기')).toBeVisible();
     await expect(page.getByText('꺼짐')).toBeVisible();
     await expect(page.getByText('표시 언어')).toBeVisible();
+    expect(await page.content()).not.toMatch(/\{[a-zA-Z]+\}/);
   });
 
   test('언어 변경 → 이전 언어 유지 안내', async ({ page }) => {
