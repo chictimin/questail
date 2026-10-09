@@ -1,0 +1,2 @@
+body { margin: 0; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); } a:hover { color: var(--qt-white); }

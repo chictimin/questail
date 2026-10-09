@@ -1,0 +1,18 @@
+:root {
+  --font-sans: Inter, Pretendard, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --text-11: 11px; --text-12: 12px; --text-13: 13px; --text-14: 14px; --text-18: 18px;
+  --text-20: 20px; --text-24: 24px; --text-32: 32px; --text-40: 40px; --text-64: 64px;
+  /* Semantic roles */
+  --type-hero: 600 40px/44px var(--font-sans);        /* player type, splash wordmark */
+  --type-title: 600 24px/32px var(--font-sans);       /* page greeting, KPI value */
+  --type-heading: 600 14px/20px var(--font-sans);     /* card titles */
+  --type-body: 400 14px/22px var(--font-sans);
+  --type-small: 400 13px/18px var(--font-sans);       /* list rows */
+  --type-caption: 400 12px/16px var(--font-sans);     /* labels, meta */
+  --type-micro: 400 11px/14px var(--font-sans);       /* timestamps, axis */
+  --type-code: 400 12px/24px var(--font-mono);        /* .env, CLI, filenames */
+  --tracking-hero: -0.8px;
+}

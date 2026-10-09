@@ -1,0 +1,27 @@
+/**
+ * W5-UI 연동 2열 — 토큰 변수만 사용(인라인 style 없음). 좁은 폭 1열.
+ * 후크는 data-route + 클래스 1개. 수치는 토큰, 분기점만 고정.
+ */
+main[data-route='connect'] .connect-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--grid-gap);
+}
+
+main[data-route='connect'] .connect-layout > div {
+  background: var(--surface-card);
+  border-radius: var(--corner-24);
+  padding: var(--space-24);
+}
+
+main[data-route='connect'] .connect-layout > section {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--corner-24);
+  padding: var(--space-24);
+}
+
+@media (max-width: 768px) {
+  main[data-route='connect'] .connect-layout {
+    grid-template-columns: 1fr;
+  }
+}

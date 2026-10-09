@@ -1,0 +1,7 @@
+/** 디자인 토큰 진입점 — 원문 복사 5종 + 시스템 폰트. fonts.css(CDN)는 이식하지 않는다. */
+@import './tokens/base.css';
+@import './tokens/colors.css';
+@import './tokens/spacing.css';
+@import './tokens/typography.css';
+@import './tokens/motion.css';
+@import './tokens/fonts-system.css';

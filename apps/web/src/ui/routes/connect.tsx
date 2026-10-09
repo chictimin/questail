@@ -1,7 +1,14 @@
-/** W5 연동 화면 — 입력 → 검증 → 원인 안내. 기능 단위만(시맨틱 HTML·role/aria·포커스). */
+/**
+ * W5-UI 연동 화면 — 7상태(design s1): 기본·검증 중·키 거절·프로필 못 찾음·네트워크·429·성공.
+ * Alert 박스(폼 밖) vs 필드 오류(입력칸 아래) vs 사전 안내 분리. 문구는 ④까지 기존 키 유지.
+ */
 import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Check, CircleNotch, Key, User } from '@phosphor-icons/react';
+import { useLocation } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import { STEAM_LINKS } from '../connectLinks.js';
+import { parseSteamIdInput } from '../steamId.js';
+import '../connect.css';
 
 type Connected = { steamId: string; permissionEnforced: boolean };
 
@@ -16,27 +23,44 @@ type SubmitBody = { connected?: unknown; code?: unknown };
 export function ConnectPage(): React.JSX.Element {
   const { text } = useLocale();
   type TextKey = Parameters<typeof text>[0];
+  const [, navigate] = useLocation();
   const [checking, setChecking] = useState(true);
   const [connected, setConnected] = useState<Connected | null>(null);
   const [editing, setEditing] = useState(false);
   const [keyText, setKeyText] = useState('');
   const [steamId, setSteamId] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [errorKey, setErrorKey] = useState<TextKey | null>(null);
-  const alertRef = useRef<HTMLParagraphElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [succeeded, setSucceeded] = useState(false);
+  const [keyError, setKeyError] = useState<TextKey | null>(null);
+  const [steamIdError, setSteamIdError] = useState<TextKey | null>(null);
+  const [showExamples, setShowExamples] = useState(false);
+  const [noticeKey, setNoticeKey] = useState<TextKey | null>(null);
+  const keyRef = useRef<HTMLInputElement>(null);
+  const steamIdRef = useRef<HTMLInputElement>(null);
+  const noticeRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (errorKey !== null) {
-      alertRef.current?.focus();
+    if (keyError !== null) {
+      keyRef.current?.focus();
+    } else if (steamIdError !== null) {
+      steamIdRef.current?.focus();
+    } else if (noticeKey !== null) {
+      noticeRef.current?.focus();
     }
-  }, [errorKey]);
+  }, [keyError, steamIdError, noticeKey]);
 
   useEffect(() => {
     let cancelled = false;
     const load = async (): Promise<void> => {
       try {
         const response = await fetch('/api/connect/status');
+        if (!response.ok) {
+          if (!cancelled) {
+            setConnected(null);
+          }
+          return;
+        }
         const body = (await response.json()) as StatusBody;
         if (cancelled) {
           return;
@@ -52,7 +76,7 @@ export function ConnectPage(): React.JSX.Element {
         }
       } catch {
         if (!cancelled) {
-          setErrorKey('connect.submitFailed');
+          setNoticeKey('connect.submitFailed');
         }
       } finally {
         if (!cancelled) {
@@ -66,118 +90,228 @@ export function ConnectPage(): React.JSX.Element {
     };
   }, []);
 
-  const submit = async (event: React.FormEvent): Promise<void> => {
-    event.preventDefault();
-    if (submitting) {
+  useEffect(() => {
+    if (!succeeded) {
       return;
     }
-    setSubmitting(true);
-    setErrorKey(null);
+    const timer = setTimeout(() => {
+      navigate('/library');
+    }, 600);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [succeeded, navigate]);
+
+  const submit = async (event: React.FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (busy) {
+      return;
+    }
+    const parsed = parseSteamIdInput(steamId);
+    if (parsed.blocked) {
+      setKeyError(null);
+      setSteamIdError('connect.customBlocked');
+      setShowExamples(true);
+      setNoticeKey(null);
+      return;
+    }
+    const idToSend = parsed.steamId;
+    setBusy(true);
+    setKeyError(null);
+    setSteamIdError(null);
+    setShowExamples(false);
+    setNoticeKey(null);
     try {
       const response = await fetch('/api/connect', {
         method: 'POST',
-        body: JSON.stringify({ keyText, steamId }),
+        body: JSON.stringify({ keyText, steamId: idToSend }),
       });
       const body = (await response.json()) as SubmitBody;
       if (response.ok && body.connected === true) {
         setConnected((prev) => ({
-          steamId,
+          steamId: idToSend,
           permissionEnforced: prev?.permissionEnforced ?? true,
         }));
         setEditing(false);
         setKeyText('');
+        setSucceeded(true);
         statusRef.current?.focus();
-      } else if (typeof body.code === 'string') {
-        setErrorKey(`error.${body.code}` as TextKey);
+        return;
+      }
+      setBusy(false);
+      if (typeof body.code !== 'string') {
+        setNoticeKey('connect.submitFailed');
+        return;
+      }
+      if (body.code === 'AUTH_INVALID_KEY') {
+        setKeyError(`error.${body.code}` as TextKey);
+      } else if (
+        body.code === 'AUTH_ID_MISMATCH' ||
+        body.code === 'KEY_STORE_FAILED'
+      ) {
+        setSteamIdError(`error.${body.code}` as TextKey);
       } else {
-        setErrorKey('connect.submitFailed');
+        setNoticeKey(`error.${body.code}` as TextKey);
+      }
+      if (body.code === 'AUTH_ID_MISMATCH') {
+        setShowExamples(true);
       }
     } catch {
-      setErrorKey('connect.submitFailed');
-    } finally {
-      setSubmitting(false);
+      setBusy(false);
+      setNoticeKey('connect.submitFailed');
     }
   };
 
   const showForm = connected === null || editing;
 
+  const guide = (
+    <section>
+      <h2>{text('connect.issueTitle')}</h2>
+      <ol>
+        <li>
+          <a href={STEAM_LINKS.apiKey}>{text('connect.issueStep1')}</a>
+        </li>
+        <li>
+          {text('connect.issueStep2a')}{' '}
+          <code>{text('connect.issueDomain')}</code>
+          {text('connect.issueStep2b')}
+        </li>
+        <li>
+          {text('connect.issueStep3')}{' '}
+          <a href={STEAM_LINKS.apiTerms}>{text('connect.termsLinkText')}</a>
+        </li>
+      </ol>
+      <details>
+        <summary>{text('connect.accIssue')}</summary>
+        <p>
+          {text('connect.issueLimited')}{' '}
+          <a href={STEAM_LINKS.limitedFaq}>{text('connect.faqLinkText')}</a>
+        </p>
+      </details>
+      <p>{text('connect.valveNotice')}</p>
+      <p>{text('connect.revokeNotice')}</p>
+    </section>
+  );
+
   return (
     <main data-route="connect">
       <h1>{text('nav.connect')}</h1>
+      <p>{text('connect.sub')}</p>
       {checking ? (
         <p aria-live="polite">{text('connect.checking')}</p>
       ) : (
         <div>
-          {errorKey !== null && (
-            <p ref={alertRef} role="alert" tabIndex={-1}>
-              {text(errorKey)}
-            </p>
+          {noticeKey !== null && (
+            <div ref={noticeRef} role="alert" tabIndex={-1}>
+              <p>{text(noticeKey)}</p>
+            </div>
           )}
           {!showForm && connected !== null ? (
-            <section ref={statusRef} aria-live="polite" tabIndex={-1}>
-              <p>{text('connect.success')}</p>
-              <p>{text('connect.connectedAs', { steamId: connected.steamId })}</p>
-              {!connected.permissionEnforced && (
-                <p>{text('connect.noPermissionNote')}</p>
-              )}
-              <p>{text('connect.fixedIdNotice')}</p>
-              <button
-                onClick={() => {
-                  setEditing(true);
-                  setErrorKey(null);
+            <div>
+              <section ref={statusRef} aria-live="polite" tabIndex={-1}>
+                <p>{text('connect.success')}</p>
+                <p>{text('connect.connectedAs', { steamId: connected.steamId })}</p>
+                {!connected.permissionEnforced && (
+                  <p>{text('connect.noPermissionNote')}</p>
+                )}
+                <p>{text('connect.fixedIdNotice')}</p>
+                <button
+                  onClick={() => {
+                    setEditing(true);
+                    setKeyError(null);
+                    setSteamIdError(null);
+                    setNoticeKey(null);
+                  }}
+                >
+                  {text('connect.reEnter')}
+                </button>
+              </section>
+              {guide}
+            </div>
+          ) : (
+            <div className="connect-layout">
+              <div>
+                <form
+                onSubmit={(event) => {
+                  void submit(event);
                 }}
               >
-                {text('connect.reEnter')}
-              </button>
-            </section>
-          ) : (
-            <form
-              onSubmit={(event) => {
-                void submit(event);
-              }}
-            >
-              <label>
-                {text('connect.keyLabel')}
-                <input
-                  type="password"
-                  value={keyText}
-                  disabled={submitting}
-                  onChange={(event) => {
-                    setKeyText(event.currentTarget.value);
-                  }}
-                />
-              </label>
-              <label>
-                {text('connect.steamIdLabel')}
-                <input
-                  value={steamId}
-                  disabled={submitting || connected !== null}
-                  onChange={(event) => {
-                    setSteamId(event.currentTarget.value);
-                  }}
-                />
-              </label>
-              <button disabled={submitting}>
-                {text(submitting ? 'connect.verifying' : 'connect.submit')}
-              </button>
-            </form>
+                <label>
+                  <Key size={16} aria-hidden />
+                  {text('connect.keyLabel')}
+                  <input
+                    ref={keyRef}
+                    type="password"
+                    value={keyText}
+                    placeholder={text('connect.keyPh')}
+                    disabled={busy}
+                    aria-invalid={keyError !== null}
+                    aria-describedby="connect-key-error"
+                    onChange={(event) => {
+                      setKeyText(event.currentTarget.value);
+                    }}
+                  />
+                </label>
+                {keyError === null && <p>{text('connect.keyHint')}</p>}
+                {keyError !== null && (
+                  <p id="connect-key-error">{text(keyError)}</p>
+                )}
+                <label>
+                  <User size={16} aria-hidden />
+                  {text('connect.steamIdLabel')}
+                  <input
+                    ref={steamIdRef}
+                    value={steamId}
+                    placeholder={text('connect.idPh')}
+                    disabled={busy || connected !== null}
+                    aria-invalid={steamIdError !== null}
+                    aria-describedby="connect-steamid-error"
+                    onChange={(event) => {
+                      setSteamId(event.currentTarget.value);
+                    }}
+                  />
+                </label>
+                {steamIdError === null && <p>{text('connect.idHint')}</p>}
+                {steamIdError !== null && (
+                  <p id="connect-steamid-error">{text(steamIdError)}</p>
+                )}
+                {showExamples && (
+                  <ul>
+                    <li>
+                      <span>{text('connect.exUrl')}</span>{' '}
+                      <span>{text('connect.exUrlValue')}</span>
+                    </li>
+                    <li>
+                      <span>{text('connect.exCustom')}</span>{' '}
+                      <span>{text('connect.exCustomValue')}</span>
+                    </li>
+                    <li>
+                      <span>{text('connect.exNum')}</span>{' '}
+                      <span>{text('connect.exNumValue')}</span>
+                    </li>
+                  </ul>
+                )}
+                <button disabled={busy} aria-busy={busy}>
+                  {succeeded ? (
+                    <Check size={16} aria-hidden />
+                  ) : busy ? (
+                    <CircleNotch size={16} aria-hidden />
+                  ) : (
+                    <ArrowRight size={16} aria-hidden />
+                  )}
+                  {text(
+                    succeeded
+                      ? 'connect.success'
+                      : busy
+                        ? 'connect.verifying'
+                        : 'connect.submit',
+                  )}
+                </button>
+                </form>
+              </div>
+              {guide}
+            </div>
           )}
-          <section>
-            <h2>{text('connect.issueTitle')}</h2>
-            <p>{text('connect.issueKey')}</p>
-            <p>
-              {text('connect.issueLimited')}{' '}
-              <a href={STEAM_LINKS.limitedFaq}>{text('connect.faqLinkText')}</a>
-            </p>
-            <p>
-              <a href={STEAM_LINKS.apiKey}>{text('connect.steamLinkText')}</a>
-            </p>
-            <p>
-              <a href={STEAM_LINKS.apiTerms}>{text('connect.termsLinkText')}</a>
-            </p>
-            <p>{text('connect.valveNotice')}</p>
-            <p>{text('connect.revokeNotice')}</p>
-          </section>
         </div>
       )}
     </main>

@@ -1,0 +1,25 @@
+:root {
+  --ease-out-soft: cubic-bezier(.2,.7,.2,1);
+  --dur-fast: 200ms; --dur-screen: 500ms; --dur-intro: 1100ms;
+  --dur-header: 280ms;   /* R1: mobile header collapse / float */
+  --dur-swap: 520ms;     /* R1: button label swap */
+  --dur-shimmer: 2800ms; /* R1: in-progress text highlight */
+}
+@keyframes qtBlurIn { from { opacity: 0; filter: blur(12px); } to { opacity: 1; filter: blur(0); } }
+@keyframes qtBlurOut { from { opacity: 1; filter: blur(0); } to { opacity: 0; filter: blur(12px); } }
+@keyframes qtPaw { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1); } 100% { opacity: 0; filter: blur(4px); } }
+
+/* R1: label swap — new label enters left→right (matches the → icon) */
+@keyframes qtSwap { from { opacity: 0; filter: blur(6px); transform: translateX(-10px); } to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes qtSpin { to { transform: rotate(360deg); } }
+
+/* R1: shimmer — highlight alpha 0 → 0.5 (center) → 0, symmetric travel so the loop has no seam.
+   Usage: background-image: linear-gradient(90deg, transparent 35%, rgba(255,255,255,var(--qtA)) 50%, transparent 65%), linear-gradient(<text color>, <text color>);
+          background-size: 300% 100%, 100% 100%; background-repeat: no-repeat; background-clip: text; color: transparent;
+          animation: qtShimmer var(--dur-shimmer) linear infinite; */
+@property --qtA { syntax: '<number>'; inherits: false; initial-value: 0; }
+@keyframes qtShimmer { 0% { background-position: 100% 0, 0 0; --qtA: 0; } 50% { --qtA: .5; } 100% { background-position: 0% 0, 0 0; --qtA: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}

@@ -111,12 +111,20 @@ describe('UI 하드코딩 문자열 0', () => {
     'error', // i18n 섹션 식별자
     'export', // i18n 섹션 식별자
     'connect', // i18n 섹션 식별자
+    'shell', // i18n 섹션 식별자
+    'connect-layout', // 2열 후크(화면 미노출)
     '/api/connect', // API 경로
     '/api/connect/status', // API 경로
     'POST', // fetch 메서드
     'password', // input 타입
     'polite', // aria-live 값
     'alert', // role 값
+    'CONNECT_IN_PROGRESS', // 서버 코드 분기(화면 미노출)
+    'AUTH_INVALID_KEY', // 서버 코드 분기(화면 미노출)
+    'AUTH_ID_MISMATCH', // 서버 코드 분기(화면 미노출)
+    'KEY_STORE_FAILED', // 서버 코드 분기(화면 미노출)
+    'connect-key-error', // 필드 오류 연결
+    'connect-steamid-error', // 필드 오류 연결
     'string', // typeof 검사(화면 미노출)
     'https://steamcommunity.com/dev/apikey', // Steam 링크 상수(번역 대상 아님)
     'https://steamcommunity.com/dev/apiterms', // Steam 링크 상수(번역 대상 아님)
@@ -183,6 +191,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'loading', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'ready', // 로드 상태 식별자(ui 내부) — 화면 미노출
     'failed', // 로드 상태 식별자(ui 내부) — 화면 미노출
+    'https://store.steampowered.com/', // Steam 링크 상수(번역 대상 아님)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
   ]);

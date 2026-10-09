@@ -1,4 +1,6 @@
 /* W14 최소 리셋 — word-break keep-all 1줄 포함. 디자인 토큰 0. */
+@import '../styles/tokens.css';
+
 * {
   box-sizing: border-box;
 }

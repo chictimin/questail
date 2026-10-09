@@ -1,0 +1,21 @@
+:root {
+  --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px;
+  --space-16: 16px; --space-20: 20px; --space-24: 24px; --space-28: 28px; --space-32: 32px; --space-40: 40px;
+  --radius-6: 6px;   /* cover thumbnails, chips */
+  --radius-8: 8px;   /* buttons, search, nav pills */
+  --radius-12: 12px; /* inputs, nav items, tiles */
+  --radius-16: 16px; /* inset code blocks, small cards */
+  --radius-24: 24px; /* primary cards */
+  --radius-full: 999px;
+  /* Diagonal corners — QuestTail's signature: top-left + bottom-right square, the other two rounded.
+     Use for every box (cards, inputs, buttons, tiles, code). Keep full radius only for pills, dots, avatars; images keep --radius-6. */
+  --corner-8: 0 8px 0 8px;
+  --corner-12: 0 12px 0 12px;
+  --corner-16: 0 16px 0 16px;
+  --corner-24: 0 24px 0 24px;
+  --rail-width: 68px;
+  --right-rail-width: 280px;
+  --page-padding: 28px;
+  --grid-gap: 24px;
+  --control-sm: 32px; --control-md: 40px; --control-lg: 44px;
+}

@@ -1,0 +1,63 @@
+:root {
+  /* Base neutrals (SnowUI dark) */
+  --qt-black: #1C1C1C;
+  --qt-black-raised: #262626;
+  --qt-white: #FFFFFF;
+  --qt-white-3: rgba(255,255,255,0.03);
+  --qt-white-5: rgba(255,255,255,0.05);
+  --qt-white-8: rgba(255,255,255,0.08);
+  --qt-white-10: rgba(255,255,255,0.1);
+  --qt-white-15: rgba(255,255,255,0.15);
+  --qt-white-20: rgba(255,255,255,0.2);
+  --qt-white-40: rgba(255,255,255,0.4);
+  --qt-white-60: rgba(255,255,255,0.6);
+  --qt-black-8: rgba(28,28,28,0.08);
+  --qt-black-12: rgba(28,28,28,0.12);
+  --qt-black-20: rgba(28,28,28,0.2);
+  --qt-black-60: rgba(28,28,28,0.6);
+  --qt-black-80: rgba(28,28,28,0.8);
+
+  /* Pastels — always carry black text */
+  --qt-purple: #C6C7F8;
+  --qt-blue: #E3F5FF;
+  --qt-blue-gray: #E5ECF6;
+  --qt-steel: #A8C5DA;
+  --qt-mint: #A1E3CB;
+  --qt-indigo: #95A4FC;
+  --qt-yellow: #FFC555;
+  --qt-red: #FF9B9B;      /* R1: error — 8.5:1 under #1C1C1C text, 7.4:1 as text on card */
+  --qt-orange: #FFC98A;   /* R1: warn — 12.3:1 / 10.8:1 */
+  --qt-white-56: rgba(255,255,255,0.56);
+
+  /* Semantic */
+  --bg-app: var(--qt-black);
+  --surface-card: var(--qt-white-5);
+  --surface-inset: var(--qt-black-raised);
+  --surface-selected: var(--qt-white-10);
+  --surface-accent: var(--qt-purple);
+  --surface-info: var(--qt-blue);
+  --surface-quiet: var(--qt-blue-gray);
+  --border-subtle: var(--qt-white-10);
+  --border-focus: var(--qt-purple);
+  --text-primary: var(--qt-white);
+  --text-secondary: var(--qt-white-56); /* R1: was 40% (3.8:1, fails) → 6.1:1 */
+  --text-placeholder: rgba(255,255,255,0.5);
+  --text-disabled: var(--qt-white-20);
+  --text-on-pastel: var(--qt-black);
+  --text-on-pastel-muted: var(--qt-black-60);
+  --accent: var(--qt-purple);
+  --success: var(--qt-mint);
+  --warn: var(--qt-orange);
+  --error: var(--qt-red);
+  --info: var(--qt-blue);
+  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--qt-purple); /* 10.5:1 */
+  --focus-ring-on-pastel: 0 0 0 2px currentColor, 0 0 0 4px var(--qt-black);
+  --rating: var(--qt-yellow);
+  --rating-empty: var(--qt-white-40); /* R1: 3:1 non-text */
+  --rating-preview: var(--qt-purple);
+  --chart-1: var(--qt-purple);
+  --chart-2: var(--qt-steel);
+  --chart-3: var(--qt-mint);
+  --chart-4: var(--qt-indigo);
+  --chart-rest: var(--qt-white-15);
+}
