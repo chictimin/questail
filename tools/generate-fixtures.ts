@@ -12,6 +12,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -76,8 +77,21 @@ async function main(): Promise<void> {
   );
 }
 
-const IS_ENTRY =
-  process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+/**
+ * 직접 실행 판정. 심링크 경로로 실행해도 실경로로 환원해 비교한다.
+ * realpath 실패 경계는 기존 판정으로 폴백한다(판정 자체를 숨기지 않음).
+ * import만으로는 false를 유지한다.
+ */
+export function isDirectEntry(argv1: string | undefined, selfPath: string): boolean {
+  if (argv1 === undefined) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(selfPath);
+  } catch {
+    return resolve(argv1) === selfPath;
+  }
+}
+
+const IS_ENTRY = isDirectEntry(process.argv[1], fileURLToPath(import.meta.url));
 
 if (IS_ENTRY) {
   try {
