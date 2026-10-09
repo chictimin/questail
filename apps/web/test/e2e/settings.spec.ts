@@ -59,4 +59,13 @@ test.describe('설정 빈 상태', () => {
     await expect(page.getByText('꺼짐')).toBeVisible();
     await expect(page.getByText('표시 언어')).toBeVisible();
   });
+
+  test('언어 변경 → 이전 언어 유지 안내', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${started.port}/settings`);
+    await page.getByRole('button', { name: 'English' }).click();
+    // 표시 언어가 바뀌어 안내는 영어로 보인다.
+    await expect(page.getByRole('status')).toHaveText(
+      'Previously fetched game info stays in the earlier language until it is fetched again.',
+    );
+  });
 });

@@ -82,6 +82,7 @@ ownership_status: "owned"
     connectedAs: 'Connected Steam ID: {steamId}',
     reEnter: 'Replace key',
     fixedIdNotice: 'Fixed to the first connected ID. Other IDs are rejected',
+    localeNotice: 'Game info is fetched in the display language. Check the language first.',
     issueTitle: 'How to get a key',
     issueStep1: 'Open Steam’s key registration page.',
     issueStep2a: 'Enter',
@@ -175,5 +176,6 @@ ownership_status: "owned"
     langKo: '한국어',
     langEn: 'English',
     saveFailed: 'Could not save the achievement setting. Try again.',
+    localeChangedNote: 'Previously fetched game info stays in the earlier language until it is fetched again.',
   },
 } as const;

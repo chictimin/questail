@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, CircleNotch, Key, User } from '@phosphor-icons/react';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import { STEAM_LINKS } from '../connectLinks.js';
 import { parseSteamIdInput } from '../steamId.js';
@@ -227,6 +227,10 @@ export function ConnectPage({
                   <p>{text('connect.noPermissionNote')}</p>
                 )}
                 <p>{text('connect.fixedIdNotice')}</p>
+                <p>
+                  {text('connect.localeNotice')}{' '}
+                  <Link href="/settings">{text('nav.settings')}</Link>
+                </p>
                 <button
                   onClick={() => {
                     setEditing(true);

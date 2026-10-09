@@ -77,6 +77,14 @@ test('가짜 Steam 검증 → 연동 성공 + steam.key 생성', async ({ page }
     await page.getByRole('button', { name: '연결하고 물어오기' }).click();
     await expect(page.getByText('연결했어요')).toBeVisible();
     expect(existsSync(join(dataDir, 'steam.key'))).toBe(true);
+    // 언어 안내: 성공 분기에 표시 언어 기준 안내 + 설정 링크.
+    await expect(
+      page.getByText('표시 언어 기준으로 게임 정보를 가져와요. 먼저 언어를 확인해 주세요.'),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: '설정' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
     // P7W-F1: 성공 후 셸 상태가 갱신돼 /library에 머문다(미연동 리다이렉트 없음).
     await expect(page).toHaveURL(/\/library$/);
     await expect(

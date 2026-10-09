@@ -6,12 +6,14 @@ import { detectLocale, type Locale } from '../i18n/index.js';
 export function Language(): React.JSX.Element {
   const { locale, setLocale, text } = useLocale();
   const [failed, setFailed] = useState(false);
+  const [changed, setChanged] = useState(false);
   const [pending, setPending] = useState(false);
 
   async function change(next: Locale): Promise<void> {
     if (next === locale || pending) return;
     setPending(true);
     setFailed(false);
+    setChanged(false);
     try {
       const response = await fetch(
         `/api/prefs?fallback=${detectLocale(navigator.language)}`,
@@ -25,6 +27,7 @@ export function Language(): React.JSX.Element {
         throw new Error(`[web] 언어 저장 실패: ${response.status}`);
       }
       setLocale(next);
+      setChanged(true);
     } catch {
       setFailed(true);
     } finally {
@@ -49,6 +52,7 @@ export function Language(): React.JSX.Element {
         ))}
       </div>
       {failed ? <p role="status">{text('settings.saveFailed')}</p> : null}
+      {changed ? <p role="status">{text('settings.localeChangedNote')}</p> : null}
     </section>
   );
 }

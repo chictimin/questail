@@ -82,6 +82,7 @@ ownership_status: "owned"
     connectedAs: '내 Steam ID는 {steamId}예요.',
     reEnter: '키 교체',
     fixedIdNotice: '처음 연결한 ID로 고정돼요. 다른 ID를 입력하면 거부돼요.',
+    localeNotice: '표시 언어 기준으로 게임 정보를 가져와요. 먼저 언어를 확인해 주세요.',
     issueTitle: '키 발급 안내',
     issueStep1: 'Steam 키 발급 페이지를 열어요.',
     issueStep2a: '도메인 이름 칸에',
@@ -175,5 +176,6 @@ ownership_status: "owned"
     langKo: '한국어',
     langEn: 'English',
     saveFailed: '업적 설정을 저장하지 못했어요. 다시 시도해 주세요.',
+    localeChangedNote: '이미 받은 게임 정보는 새로 받기 전까지 이전 언어로 보여요.',
   },
 } as const;
