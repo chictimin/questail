@@ -148,6 +148,30 @@ describe('fetchSteamSpyUserTags', () => {
     expect(calls).toBe(0);
   });
 
+  it('손상 캐시는 miss로 보고 재요청하고 성공 시 덮어쓴다', async () => {
+    const cacheDir = freshCacheDir();
+    writeFileSync(
+      join(cacheDir, '45.json'),
+      JSON.stringify({ v: 1, appId: '45', fetchedAt: 1, raw: 'bad' }),
+      'utf8',
+    );
+    let calls = 0;
+    const counting: SteamSpyFetchFn = async () => {
+      calls += 1;
+      return { status: 200, json: async () => tagsBody({ Fresh: 3 }) };
+    };
+    const result = await fetchSteamSpyUserTags({
+      appId: '45',
+      cacheDir,
+      fetchFn: counting,
+      limiter: createSteamSpyLimiter(),
+    });
+    expect(result).toEqual({ status: 'ready', tags: [{ tag: 'Fresh', votes: 3 }] });
+    expect(calls).toBe(1);
+    const stored = JSON.parse(readFileSync(join(cacheDir, '45.json'), 'utf8')) as { raw: unknown };
+    expect(stored.raw).toEqual(tagsBody({ Fresh: 3 }));
+  });
+
   it('bypass는 캐시를 읽지 않고 성공 시 새로 쓴다', async () => {
     const cacheDir = freshCacheDir();
     writeFileSync(
