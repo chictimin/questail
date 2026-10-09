@@ -13,6 +13,11 @@ import { resolvePort, startServer, type StartedServer } from './serve.js';
 
 /** 데이터 디렉터리 환경변수 (PM 확정). 기본 = 저장소 루트 data/ (캡틴 결정, PM #61920). */
 export const DATA_DIR_ENV = 'QUESTAIL_DATA_DIR';
+/**
+ * 키 금지 선언 (W4) — Steam 키는 env·argv에 싣지 않는다.
+ * 키는 키 파일(KEY_FILE_NAME)에만 두고 경로를 명시 주입한다.
+ * process.env·process.argv를 로그·응답에 덤프하지 않는다.
+ */
 export const WORKSPACE_MARKER = 'pnpm-workspace.yaml';
 export const DATA_DIR_NAME = 'data';
 

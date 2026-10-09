@@ -4,6 +4,7 @@
  * 거부: 403 + {code, params}.
  */
 import type { Context, Next } from 'hono';
+import { REDACTED } from '../redact.js';
 import type { RequestDeniedBody } from '../request-errors.js';
 
 const ALLOWED_HOSTS = new Set(['127.0.0.1', 'localhost']);
@@ -39,7 +40,7 @@ export async function hostCheck(c: Context, next: Next): Promise<Response | void
   if (hostName === null || !ALLOWED_HOSTS.has(hostName)) {
     const body: RequestDeniedBody = {
       code: 'INVALID_HOST',
-      params: { host: c.req.header('host') ?? '' },
+      params: { host: REDACTED },
     };
     return c.json(body, 403);
   }
@@ -47,7 +48,7 @@ export async function hostCheck(c: Context, next: Next): Promise<Response | void
   if (origin !== undefined && !isAllowedOrigin(origin)) {
     const body: RequestDeniedBody = {
       code: 'INVALID_ORIGIN',
-      params: { origin },
+      params: { origin: REDACTED },
     };
     return c.json(body, 403);
   }

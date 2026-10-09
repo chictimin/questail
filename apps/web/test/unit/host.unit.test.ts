@@ -51,7 +51,7 @@ describe('hostCheck (합성 앱 request — Host는 URL이 아니라 헤더로 �
     expect(response.status).toBe(403);
     expect((await response.json()) as { code: string }).toEqual({
       code: 'INVALID_HOST',
-      params: { host: '' },
+      params: { host: '[redacted]' },
     });
   });
 
@@ -65,7 +65,7 @@ describe('hostCheck (합성 앱 request — Host는 URL이 아니라 헤더로 �
       params: { host: string };
     };
     expect(body.code).toBe('INVALID_HOST');
-    expect(body.params.host).toBe('evil.com');
+    expect(body.params.host).toBe('[redacted]');
   });
 
   it('악성 Origin → 403 {code: INVALID_ORIGIN}', async () => {

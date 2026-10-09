@@ -5,7 +5,8 @@
 export type RequestErrorCode =
   | 'INVALID_HOST'
   | 'INVALID_ORIGIN'
-  | 'INVALID_BODY';
+  | 'INVALID_BODY'
+  | 'INTERNAL';
 
 export type RequestDeniedBody = {
   code: RequestErrorCode;
