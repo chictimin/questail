@@ -91,20 +91,29 @@ function serviceWith(
     fetchFn?: FetchLike;
     now?: () => number;
     skipKey?: boolean;
+    storeBaseUrl?: string;
   } = {},
+  urlSeen?: string[],
 ) {
   if (!opts.skipKey) {
     writeFileSync(join(dir, 'steam.key'), KEY, { mode: 0o600 });
   }
   db.prepare('INSERT INTO account (id, steam_id, created_at) VALUES (1, ?, 1)').run(SID);
+  const fetchFn = opts.fetchFn ?? routeFetch({ owned: () => ownedPayload([{ appid: 1, total: 100 }]) });
   return createSyncService({
     db,
     keyPath: join(dir, 'steam.key'),
     cacheDir: join(dir, 'cache'),
     baseUrl: BASE,
-    fetchFn: opts.fetchFn ?? routeFetch({ owned: () => ownedPayload([{ appid: 1, total: 100 }]) }),
+    fetchFn: urlSeen
+      ? async (url: string) => {
+          urlSeen.push(url);
+          return fetchFn(url);
+        }
+      : fetchFn,
     now: opts.now,
     timeZone: 'Asia/Seoul',
+    storeBaseUrl: opts.storeBaseUrl,
     executor: (ctx) => createJobExecutor(ctx),
   });
 }
@@ -854,6 +863,72 @@ describe('jobs collect', () => {
         'steam:770001:meta',
       ]);
       expect(buildQueue(db, { source: 'achievements', generation: 1, mode: 'resume' })).toEqual([]);
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('storeBaseUrl 주입이면 meta 요청이 그 base로 간다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const seen: string[] = [];
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({
+          owned: () => ownedPayload([{ appid: 60, total: 1 }]),
+          appdetails: () => ({}),
+        }),
+        storeBaseUrl: 'http://127.0.0.1:9/',
+      }, seen);
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      service.resyncSource('meta', { locale: 'ko' });
+      await settled(service);
+      const metaUrls = seen.filter((url) => url.includes('appdetails'));
+      expect(metaUrls.length).toBeGreaterThan(0);
+      for (const url of metaUrls) {
+        expect(url.startsWith('http://127.0.0.1:9/api/appdetails?')).toBe(true);
+      }
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('미주입이면 meta 요청이 공식 store로 간다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const seen: string[] = [];
+      const service = serviceWith(db, dir, {
+        fetchFn: routeFetch({
+          owned: () => ownedPayload([{ appid: 61, total: 1 }]),
+          appdetails: () => ({}),
+        }),
+      }, seen);
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      service.resyncSource('meta', { locale: 'ko' });
+      await settled(service);
+      const metaUrls = seen.filter((url) => url.includes('appdetails'));
+      expect(metaUrls.length).toBeGreaterThan(0);
+      for (const url of metaUrls) {
+        expect(url.startsWith('https://store.steampowered.com/api/appdetails?')).toBe(true);
+      }
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('비루프백 storeBaseUrl은 생성 시 throw한다', () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      expect(() =>
+        serviceWith(db, dir, { storeBaseUrl: 'https://example.com/' }),
+      ).toThrow(RangeError);
     } finally {
       db.close();
       resetSyncLocksForTest();

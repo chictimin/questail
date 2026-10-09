@@ -15,6 +15,7 @@ import {
 } from './sync.js';
 import type { CollectSource } from './syncRuns.js';
 import type { FetchLike } from './connection.js';
+import { normalizeSteamBaseUrl } from './connection.js';
 import type { JobExecutor } from '../jobs/collect.js';
 
 /**
@@ -32,6 +33,8 @@ export interface SyncServiceDeps {
   fetchFn?: FetchLike;
   now?: () => number;
   timeZone: string;
+  /** 테스트 store base. 없으면 공식 store. 루프백만 허용한다. */
+  storeBaseUrl?: string;
   executor?: (ctx: ExecutorDeps) => JobExecutor;
 }
 
@@ -49,6 +52,7 @@ export interface ExecutorDeps {
   fetchFn?: FetchLike;
   now?: () => number;
   timeZone: string;
+  storeBaseUrl?: string;
 }
 
 export interface SyncService {
@@ -76,6 +80,9 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   } catch {
     throw new RangeError('timeZone은 IANA 시간대다(호출 계약 위반)');
   }
+  if (deps.storeBaseUrl !== undefined && normalizeSteamBaseUrl(deps.storeBaseUrl) === null) {
+    throw new RangeError('storeBaseUrl은 http(s) 루프백 URL이다(호출 계약 위반)');
+  }
   const { db } = deps;
   let executor: JobExecutor | null = null;
   const executorOf = (): JobExecutor | null => {
@@ -94,6 +101,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       fetchFn: deps.fetchFn,
       now: deps.now,
       timeZone: deps.timeZone,
+      storeBaseUrl: deps.storeBaseUrl,
     });
     return executor;
   };

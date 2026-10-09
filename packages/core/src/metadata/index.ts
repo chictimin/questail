@@ -31,7 +31,8 @@ import { join, resolve } from 'node:path';
 
 import type { GameMeta } from '../types.js';
 
-const APPDETAILS_BASE = 'https://store.steampowered.com/api/appdetails';
+const STORE_API_BASE = 'https://store.steampowered.com';
+const APPDETAILS_PATH = '/api/appdetails';
 const FETCH_TIMEOUT_MS = 15_000;
 
 /** 요청 간격. D-07 기본 2초 + 설정으로 대체됐다. */
@@ -402,6 +403,8 @@ export interface MetaFetchOptions {
   sleepFn?: (ms: number) => Promise<void>;
   signal?: AbortSignal;
   bypassCache?: boolean;
+  /** 테스트 base. 없으면 공식 store. 뒤에 /api/appdetails를 붙인다. */
+  baseUrl?: string;
 }
 
 /** 원천 상태. not_collected는 호출 측(미시도)이라 함수 밖에서 다룬다. */
@@ -422,6 +425,7 @@ interface ResolvedMetaOptions {
   sleepFn: (ms: number) => Promise<void>;
   signal?: AbortSignal;
   bypassCache: boolean;
+  baseUrl: string;
 }
 
 function resolveMetaOptions(options?: MetaFetchOptions): ResolvedMetaOptions {
@@ -434,6 +438,7 @@ function resolveMetaOptions(options?: MetaFetchOptions): ResolvedMetaOptions {
     sleepFn: options?.sleepFn ?? sleep,
     signal: options?.signal,
     bypassCache: options?.bypassCache ?? false,
+    baseUrl: (options?.baseUrl ?? STORE_API_BASE).replace(/\/+$/, ''),
   };
 }
 
@@ -537,7 +542,7 @@ export async function fetchAppMetaStatus(
   try {
     let res: Response;
     try {
-      res = await throttledFetch(`${APPDETAILS_BASE}?appids=${appId}&l=${langParam}`, cfg, linked.signal);
+      res = await throttledFetch(`${cfg.baseUrl}${APPDETAILS_PATH}?appids=${appId}&l=${langParam}`, cfg, linked.signal);
     } catch (e) {
       if (e instanceof AppMetaRateLimitedError) throw e;
       if (linked.signal?.aborted) throw e;

@@ -74,6 +74,7 @@ export interface ExecutorContext {
   fetchFn?: FetchLike;
   now?: () => number;
   timeZone: string;
+  storeBaseUrl?: string;
 }
 
 export interface JobExecutor {
@@ -552,6 +553,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         const result = await fetchAppMetaStatus(appid, {
           cacheDir: ctx.cacheDir,
           locale: job.locale as 'ko' | 'en',
+          baseUrl: ctx.storeBaseUrl,
           fetchFn: (url: string, init: { signal: AbortSignal }) =>
             raceWithSignal(authedFetch(init.signal)(url), init.signal).then(
               (res) =>
