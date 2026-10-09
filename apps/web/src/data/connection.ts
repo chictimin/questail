@@ -17,6 +17,44 @@ import { account } from '../db/schema.js';
 /** 키 파일명. A가 export하고 B가 같은 상수를 import한다 (P-3). */
 export const KEY_FILE_NAME = 'steam.key';
 
+/** 제품 기본 공식 URL. README에 노출하지 않는다 (P-6). */
+export const DEFAULT_STEAM_API_BASE = 'https://api.steampowered.com';
+
+/** 공식 기본 호스트. */
+const OFFICIAL_HOST = 'api.steampowered.com';
+
+/** 테스트용 루프백 호스트. 공식 기본 외에는 이것만 허용한다 (P-6). */
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+
+/**
+ * baseURL 정규화 (P-6). 스킴 http·https, 끝 slash 제거.
+ * userinfo·query·fragment 있으면 null 거부. port·path 접두 허용.
+ * 공식 기본이 아니면 루프백만 허용한다. 실패는 null이다.
+ */
+export function normalizeSteamBaseUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  if (parsed.username !== '' || parsed.password !== '' || parsed.search !== '' || parsed.hash !== '') {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase();
+  const bracketed = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+  const isOfficial = host === OFFICIAL_HOST && parsed.port === '';
+  if (!isOfficial && !LOOPBACK_HOSTS.has(host) && !LOOPBACK_HOSTS.has(bracketed)) {
+    return null;
+  }
+  const path = parsed.pathname.replace(/\/+$/, '');
+  const port = parsed.port === '' ? '' : `:${parsed.port}`;
+  return `${parsed.protocol}//${bracketed}${port}${path}`;
+}
+
 export type IssueParams = Record<string, string | number>;
 
 export type SaveResult =
@@ -93,17 +131,25 @@ export function saveConnection(input: {
   steamId: string;
   fetchFn?: VerifyFetchFn;
   signal?: AbortSignal;
+  /** 테스트 주입용. 없으면 공식 기본. 형태 불일치는 저장 없이 반환한다(제안). */
+  baseUrl?: string;
 }): Promise<SaveResult> {
   return (async (): Promise<SaveResult> => {
     const key = input.keyText.trim();
     if (!isKeyShapeValid(key)) {
       return { ok: false, code: 'AUTH_INVALID_KEY', params: { reason: 'format' } };
     }
+    const base =
+      input.baseUrl === undefined ? DEFAULT_STEAM_API_BASE : normalizeSteamBaseUrl(input.baseUrl);
+    if (base === null) {
+      return { ok: false, code: 'NETWORK', params: { reason: 'upstream' } };
+    }
     const existing = storedSteamId(input.db);
     if (existing !== null && existing !== input.steamId) {
       return { ok: false, code: 'AUTH_ID_MISMATCH', params: { reason: 'fixed_id' } };
     }
     const verified = await verifyKeyOnce({
+      base,
       key,
       steamId: input.steamId,
       fetchFn: input.fetchFn ?? fetch,
@@ -164,7 +210,7 @@ export type VerifyFetchFn = (
 /** 검증 상한(PM 선택 #66868). 초과는 NETWORK로 반환하고 저장하지 않는다. */
 const VERIFY_TIMEOUT_MS = 10_000;
 
-const VERIFY_URL = 'https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/';
+const VERIFY_PATH = '/ISteamUser/GetPlayerSummaries/v2/';
 
 type VerifyOutcome = SaveResult;
 
@@ -182,6 +228,7 @@ function isPlayerRow(value: unknown): value is { steamid: string } {
  * 실패는 code+params만 낸다(URL·원인·키 미반향).
  */
 async function verifyKeyOnce(input: {
+  base: string;
   key: string;
   steamId: string;
   fetchFn: VerifyFetchFn;
@@ -200,7 +247,7 @@ async function verifyKeyOnce(input: {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const url =
-      `${VERIFY_URL}?key=${encodeURIComponent(input.key)}` +
+      `${input.base}${VERIFY_PATH}?key=${encodeURIComponent(input.key)}` +
       `&steamids=${encodeURIComponent(input.steamId)}`;
     const pending = input.fetchFn(url, { signal: ctrl.signal });
     void pending.catch(() => {
@@ -253,8 +300,13 @@ async function verifyKeyOnce(input: {
  * 인증 요청 ctx. 경로 + 요청 함수만 보관한다.
  * 각 요청에서 키 파일을 읽고 사용 후 해제한다. 키 string 반환 없음.
  */
-export function createSteamRequest(opts: { keyPath: string; fetchFn?: FetchLike }): {
-  request: (buildPath: (key: string) => string) => Promise<KeyedRequestResult>;
+export function createSteamRequest(opts: {
+  keyPath: string;
+  fetchFn?: FetchLike;
+  /** 테스트 주입용. 없으면 공식 기본. 형태 불일치는 요청마다 실패 반환한다. */
+  baseUrl?: string;
+}): {
+  request: (buildPath: (key: string, base: string) => string) => Promise<KeyedRequestResult>;
   containsSecret: (text: string) => boolean;
 } {
   const readKey = (): string | null => readKeyFile(opts.keyPath);
@@ -265,6 +317,11 @@ export function createSteamRequest(opts: { keyPath: string; fetchFn?: FetchLike 
   });
   return {
     request: async (buildPath) => {
+      const base =
+        opts.baseUrl === undefined ? DEFAULT_STEAM_API_BASE : normalizeSteamBaseUrl(opts.baseUrl);
+      if (base === null) {
+        return fail('NETWORK', { reason: 'upstream' });
+      }
       const stored = readKey();
       if (stored === null) {
         return fail('KEY_STORE_FAILED', { reason: 'permission' });
@@ -273,7 +330,7 @@ export function createSteamRequest(opts: { keyPath: string; fetchFn?: FetchLike 
       let res: { status: number; json: () => Promise<unknown> };
       try {
         const fetchFn = opts.fetchFn ?? fetch;
-        res = await fetchFn(buildPath(key));
+        res = await fetchFn(buildPath(key, base));
       } catch {
         return fail('NETWORK', {});
       }
