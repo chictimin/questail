@@ -20,40 +20,10 @@ export const KEY_FILE_NAME = 'steam.key';
 /** 제품 기본 공식 URL. README에 노출하지 않는다 (P-6). */
 export const DEFAULT_STEAM_API_BASE = 'https://api.steampowered.com';
 
-/** 공식 기본 호스트. */
-const OFFICIAL_HOST = 'api.steampowered.com';
+/** baseURL 정규화 단일 구현(core). 웹 호출 변경 없이 재수출한다 (P-6). */
+import { normalizeSteamBaseUrl } from '@questail/core';
 
-/** 테스트용 루프백 호스트. 공식 기본 외에는 이것만 허용한다 (P-6). */
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-
-/**
- * baseURL 정규화 (P-6). 스킴 http·https, 끝 slash 제거.
- * userinfo·query·fragment 있으면 null 거부. port·path 접두 허용.
- * 공식 기본이 아니면 루프백만 허용한다. 실패는 null이다.
- */
-export function normalizeSteamBaseUrl(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (trimmed.length === 0) return null;
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-  if (parsed.username !== '' || parsed.password !== '' || parsed.search !== '' || parsed.hash !== '') {
-    return null;
-  }
-  const host = parsed.hostname.toLowerCase();
-  const bracketed = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
-  const isOfficial = host === OFFICIAL_HOST && parsed.port === '';
-  if (!isOfficial && !LOOPBACK_HOSTS.has(host) && !LOOPBACK_HOSTS.has(bracketed)) {
-    return null;
-  }
-  const path = parsed.pathname.replace(/\/+$/, '');
-  const port = parsed.port === '' ? '' : `:${parsed.port}`;
-  return `${parsed.protocol}//${bracketed}${port}${path}`;
-}
+export { normalizeSteamBaseUrl };
 
 export type IssueParams = Record<string, string | number>;
 

@@ -450,7 +450,7 @@ export type VanityFetchFn = (
  * url_type=1. 자동 재시도·캐시 없음. 같은 키·10초 상한·P-5 매핑 재사용.
  * 알려진 0건(success 42)은 not_found 잠정(PRE-4 재검토).
  * success!=1 일괄 not_found 추정 금지, 그 외 깨짐은 PAYLOAD_CORRUPT.
- * baseUrl 형태는 http·https 파싱만 본다(호스트 정책은 데이터 측).
+ * baseUrl 형태는 P-6 단일 구현(normalizeSteamBaseUrl)을 쓴다.
  */
 export function resolveVanityName(input: {
   vanity: string;
@@ -466,7 +466,7 @@ export function resolveVanityName(input: {
     }
     let base = VANITY_DEFAULT_BASE;
     if (input.baseUrl !== undefined) {
-      const parsed = parseHttpBase(input.baseUrl);
+      const parsed = normalizeSteamBaseUrl(input.baseUrl);
       if (parsed === null) {
         return { ok: false, code: 'NETWORK', params: { reason: 'upstream' } };
       }
@@ -539,7 +539,13 @@ export function resolveVanityName(input: {
   })();
 }
 
-function parseHttpBase(raw: string): string | null {
+/**
+ * baseURL 정규화 (P-6, 단일 구현. 웹 data/connection이 재수출한다).
+ * 스킴 http·https, 끝 slash 제거. userinfo·query·fragment 있으면 null 거부.
+ * 공식 기본(api.steampowered.com, 포트 없음)이 아니면 루프백만 허용한다.
+ * 실패는 null이다.
+ */
+export function normalizeSteamBaseUrl(raw: string): string | null {
   const trimmed = raw.trim();
   if (trimmed.length === 0) return null;
   let parsed: URL;
@@ -549,8 +555,6 @@ function parseHttpBase(raw: string): string | null {
     return null;
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-  // P-6 정책과 같은 경계(데이터 측 normalizeSteamBaseUrl과 중복.
-  // core→web 역참조가 금지라 공통 추출 대신 둔다. 통합은 별도 범위).
   if (parsed.username !== '' || parsed.password !== '' || parsed.search !== '' || parsed.hash !== '') {
     return null;
   }
