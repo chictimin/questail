@@ -1,0 +1,33 @@
+/**
+ * W2 Hono 앱 팩토리 — 라우트 등록만 한다. listen은 serve.ts가 맡는다(기동 순서 본체는 W3).
+ * Host/Origin 검사는 middleware/host.ts가 맡고, 합성은 createServerApp(묶음 ③)이 한다.
+ */
+import { Hono } from 'hono';
+import { hostCheck } from './middleware/host.js';
+
+export const HEALTH_PATH = '/api/health';
+
+/** bare 앱 — health 라우트만. 테스트·합성의 재료다. */
+export function createApp(): Hono {
+  const app = new Hono();
+  registerRoutes(app);
+  return app;
+}
+
+/** hc 클라이언트용 앱 타입 (W2) */
+export type AppType = ReturnType<typeof createApp>;
+
+/**
+ * 실서빙 합성 — Host/Origin 검사를 라우트보다 먼저 장착한다.
+ * (Hono는 등록 순서대로 실행이라 use()가 get()보다 뒤면 검사가 빠진다.)
+ */
+export function createServerApp(): Hono {
+  const app = new Hono();
+  app.use(hostCheck);
+  registerRoutes(app);
+  return app;
+}
+
+function registerRoutes(app: Hono): void {
+  app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
+}

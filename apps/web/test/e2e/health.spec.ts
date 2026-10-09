@@ -1,23 +1,34 @@
 import { expect, test } from '@playwright/test';
-import type { Server } from 'node:http';
-import { HEALTH_PATH, createServer, listen } from '../../src/server.js';
+import { HEALTH_PATH, createServerApp } from '../../src/server/app.js';
+import { startServer, type StartedServer } from '../../src/server/serve.js';
 
-let server: Server;
-let port: number;
+let started: StartedServer;
 
 test.beforeAll(async () => {
-  server = createServer();
-  port = await listen(server);
+  // E2E는 임시 포트(기동 기본 4747과 무관 — 포트 충돌 방지).
+  started = await startServer(createServerApp(), 0);
 });
 
 test.afterAll(async () => {
   await new Promise<void>((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
+    started.server.close((error: Error | undefined) =>
+      error ? reject(error) : resolve(),
+    );
   });
 });
 
-test('browser → GET /api/health → 200', async ({ page }) => {
-  const response = await page.goto(`http://127.0.0.1:${port}${HEALTH_PATH}`);
+test('browser → 127.0.0.1 → GET /api/health → 200', async ({ page }) => {
+  const response = await page.goto(
+    `http://127.0.0.1:${started.port}${HEALTH_PATH}`,
+  );
+  expect(response?.status()).toBe(200);
+  expect(await response?.json()).toEqual({ status: 'ok' });
+});
+
+test('browser → localhost → GET /api/health → 200', async ({ page }) => {
+  const response = await page.goto(
+    `http://localhost:${started.port}${HEALTH_PATH}`,
+  );
   expect(response?.status()).toBe(200);
   expect(await response?.json()).toEqual({ status: 'ok' });
 });

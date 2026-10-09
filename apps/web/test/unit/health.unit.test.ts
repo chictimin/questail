@@ -1,42 +1,32 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Server } from 'node:http';
-import { HEALTH_PATH, createServer, listen, matchRoute } from '../../src/server.js';
+import { describe, expect, it } from 'vitest';
+import { HEALTH_PATH, createApp } from '../../src/server/app.js';
+import { resolvePort } from '../../src/server/serve.js';
 
-describe('matchRoute (pure)', () => {
-  it('GET /api/health → 200 { status: ok }', () => {
-    expect(matchRoute('GET', HEALTH_PATH)).toEqual({
-      status: 200,
-      body: { status: 'ok' },
-    });
+describe('GET /api/health (app.request)', () => {
+  it('→ 200 { status: ok }', async () => {
+    const response = await createApp().request(HEALTH_PATH);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'ok' });
   });
 
-  it('unknown path → 404', () => {
-    expect(matchRoute('GET', '/api/nope').status).toBe(404);
-  });
-
-  it('non-GET on health → 404', () => {
-    expect(matchRoute('POST', HEALTH_PATH).status).toBe(404);
+  it('unknown path → 404', async () => {
+    const response = await createApp().request('/api/nope');
+    expect(response.status).toBe(404);
   });
 });
 
-describe('health endpoint over loopback http', () => {
-  let server: Server;
-  let port: number;
-
-  beforeAll(async () => {
-    server = createServer();
-    port = await listen(server);
+describe('resolvePort', () => {
+  it('미지정 → 4747', () => {
+    expect(resolvePort({})).toBe(4747);
   });
 
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => (error ? reject(error) : resolve()));
-    });
+  it('QUESTAIL_PORT 숫자 → 그대로', () => {
+    expect(resolvePort({ QUESTAIL_PORT: '5000' })).toBe(5000);
   });
 
-  it('GET /api/health → 200', async () => {
-    const response = await fetch(`http://127.0.0.1:${port}${HEALTH_PATH}`);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: 'ok' });
+  it('비숫자·범위 밖 → throw', () => {
+    expect(() => resolvePort({ QUESTAIL_PORT: 'abc' })).toThrow();
+    expect(() => resolvePort({ QUESTAIL_PORT: '0' })).toThrow();
+    expect(() => resolvePort({ QUESTAIL_PORT: '65536' })).toThrow();
   });
 });
