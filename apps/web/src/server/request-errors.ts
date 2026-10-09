@@ -6,7 +6,8 @@ export type RequestErrorCode =
   | 'INVALID_HOST'
   | 'INVALID_ORIGIN'
   | 'INVALID_BODY'
-  | 'INTERNAL';
+  | 'INTERNAL'
+  | 'EXPORT_FAILED';
 
 export type RequestDeniedBody = {
   code: RequestErrorCode;

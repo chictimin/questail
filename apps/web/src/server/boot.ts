@@ -6,6 +6,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type Database from 'better-sqlite3';
 import type { Hono } from 'hono';
 import type { ServerType } from '@hono/node-server';
 import { createServerApp } from './app.js';
@@ -64,6 +65,12 @@ export type BootDatabase = { close: () => Promise<void> };
 /** 리스너 close 유예 — 안에 끝나지 않으면 강제 절단한다(PM #62944). */
 export const SHUTDOWN_GRACE_MS = 5000;
 
+/** createApp 주입 컨텍스트 — db는 마이그레이션이 반환한 같은 open 핸들이다(PM #63860). */
+export type AppContext = {
+  db: Database.Database | undefined;
+  dataDir: string;
+};
+
 export type BootDeps = {
   backupDatabase: (dataDir: string) => Promise<void>;
   migrateDatabase: (dataDir: string) => Promise<BootDatabase>;
@@ -71,7 +78,7 @@ export type BootDeps = {
   isConnected: () => boolean | Promise<boolean>;
   runOverdueSnapshot: (signal: AbortSignal) => Promise<void>;
   registerCron: () => CronHandle;
-  createApp?: () => Hono;
+  createApp?: (ctx: AppContext) => Hono;
   listen?: (app: Hono, port: number) => Promise<StartedServer>;
   env?: NodeJS.ProcessEnv;
   /** B 소유 — 리스너 close 유예(ms) 오버라이드, 테스트용. 미지정 시 SHUTDOWN_GRACE_MS. */
@@ -95,7 +102,11 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
   const dataDir = resolveDataDir(env);
   await deps.backupDatabase(dataDir);
   const db = await deps.migrateDatabase(dataDir);
-  const app = (deps.createApp ?? createServerApp)();
+  const rawDb = (db as Partial<{ db: Database.Database }>).db;
+  const app = (deps.createApp ?? (() => createServerApp()))({
+    db: rawDb,
+    dataDir,
+  });
   const { server, port } = await (deps.listen ?? startServer)(
     app,
     resolvePort(env),
