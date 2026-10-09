@@ -81,6 +81,7 @@ function writeAccount(db: Database.Database, steamId: string): void {
 /**
  * 연결 저장. 검증 + SteamID 고정 + 원자 저장.
  * 키 파일 경로는 호출 측이 명시 주입한다. 키 문자열을 반환하지 않는다.
+ * 검증·저장·사용은 trim한 값 하나로 통일한다(정규화 저장).
  * 실패는 code+params만 낸다(원문·키 미반향).
  */
 export function saveConnection(input: {
@@ -89,7 +90,8 @@ export function saveConnection(input: {
   keyText: string;
   steamId: string;
 }): SaveResult {
-  if (!isKeyShapeValid(input.keyText)) {
+  const key = input.keyText.trim();
+  if (!isKeyShapeValid(key)) {
     return { ok: false, code: 'AUTH_INVALID_KEY', params: { reason: 'format' } };
   }
   const existing = storedSteamId(input.db);
@@ -100,7 +102,7 @@ export function saveConnection(input: {
     mkdirSync(dirname(input.keyPath), { recursive: true });
     const tmpPath = `${input.keyPath}.${process.pid}.tmp`;
     try {
-      writeFileSync(tmpPath, input.keyText, { mode: 0o600 });
+      writeFileSync(tmpPath, key, { mode: 0o600 });
       if (!isWindows()) {
         chmodSync(tmpPath, 0o600);
       }
@@ -156,10 +158,11 @@ export function createSteamRequest(opts: { keyPath: string; fetchFn?: FetchLike 
   });
   return {
     request: async (buildPath) => {
-      const key = readKey();
-      if (key === null) {
+      const stored = readKey();
+      if (stored === null) {
         return fail('KEY_STORE_FAILED', { reason: 'permission' });
       }
+      const key = stored.trim();
       let res: { status: number; json: () => Promise<unknown> };
       try {
         const fetchFn = opts.fetchFn ?? fetch;

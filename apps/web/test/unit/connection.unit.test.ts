@@ -139,4 +139,37 @@ describe('connection', () => {
       db.close();
     }
   });
+
+  it('앞뒤 공백 키는 trim값으로 저장한다(파일에 공백 0)', () => {
+    const { dir, db } = freshDb();
+    try {
+      const keyPath = join(dir, KEY_FILE_NAME);
+      expect(
+        saveConnection({ db, keyPath, keyText: `  ${DUMMY}  `, steamId: '76561197960287930' }),
+      ).toEqual({ ok: true });
+      expect(readFileSync(keyPath, 'utf8')).toBe(DUMMY);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('요청 URL에는 trim값 하나만 쓴다(앞뒤 공백 0)', async () => {
+    const { dir, db } = freshDb();
+    try {
+      const keyPath = join(dir, KEY_FILE_NAME);
+      saveConnection({ db, keyPath, keyText: `  ${DUMMY}  `, steamId: '76561197960287930' });
+      let seenUrl = '';
+      const ctx = createSteamRequest({
+        keyPath,
+        fetchFn: async (url: string) => {
+          seenUrl = url;
+          return { status: 200, json: async () => ({}) };
+        },
+      });
+      await ctx.request((key) => `https://example.invalid/x?key=${key}`);
+      expect(seenUrl).toBe(`https://example.invalid/x?key=${DUMMY}`);
+    } finally {
+      db.close();
+    }
+  });
 });
