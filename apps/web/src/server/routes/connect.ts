@@ -58,6 +58,7 @@ function statusFor(code: SyncErrorCode): 400 | 409 | 429 | 500 | 502 {
     case 'AUTH_INVALID_KEY':
       return 400;
     case 'AUTH_ID_MISMATCH':
+      // 고정 계정·대상 계정과의 충돌로 본다 — not_found 포함, 계약 v1.4.1 P-5
       return 409;
     case 'KEY_STORE_FAILED':
       return 500;
