@@ -75,6 +75,7 @@ export interface ExecutorContext {
   now?: () => number;
   timeZone: string;
   storeBaseUrl?: string;
+  steamSpyBaseUrl?: string;
 }
 
 export interface JobExecutor {
@@ -495,6 +496,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           fetchFn: (url, init) => raceWithSignal(baseFetch(url), init.signal),
           clock: steamSpyTestHooks?.clock,
           limiter: steamSpyTestHooks?.limiter ?? spyLimiter,
+          baseUrl: ctx.steamSpyBaseUrl,
         });
         saveCollectedTags(
           ctx.db,

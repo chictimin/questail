@@ -66,7 +66,7 @@ function routeFetch(opts: {
     if (url.includes('GetWishlist')) {
       return { status: 200, json: async () => ({ response: { items: [] } }) };
     }
-    if (url.includes('steamspy.com')) {
+    if (url.includes('steamspy.com') || url.includes('/api.php')) {
       const appid = new URL(url).searchParams.get('appid') ?? '?';
       return { status: 200, json: async () => (opts.steamspy ? opts.steamspy(appid) : { tags: {} }) };
     }
@@ -92,6 +92,7 @@ function serviceWith(
     now?: () => number;
     skipKey?: boolean;
     storeBaseUrl?: string;
+    steamSpyBaseUrl?: string;
   } = {},
   urlSeen?: string[],
 ) {
@@ -114,6 +115,7 @@ function serviceWith(
     now: opts.now,
     timeZone: 'Asia/Seoul',
     storeBaseUrl: opts.storeBaseUrl,
+    steamSpyBaseUrl: opts.steamSpyBaseUrl,
     executor: (ctx) => createJobExecutor(ctx),
   });
 }
@@ -994,4 +996,77 @@ describe('jobs collect', () => {
       resetSyncLocksForTest();
     }
   }, 30_000);
+
+  it('steamSpyBaseUrl 주입이면 spy 요청이 그 base로 간다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const seen: string[] = [];
+      const service = serviceWith(
+        db,
+        dir,
+        {
+          fetchFn: routeFetch({
+            owned: () => ownedPayload([{ appid: 70, total: 1 }]),
+            steamspy: () => ({ tags: { S: 2 } }),
+          }),
+          steamSpyBaseUrl: 'http://127.0.0.1:9/',
+        },
+        seen,
+      );
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      service.resyncSource('steamspy', { locale: 'ko' });
+      await settled(service);
+      const spyUrls = seen.filter((url) => url.includes('/api.php'));
+      expect(spyUrls.length).toBeGreaterThan(0);
+      for (const url of spyUrls) {
+        expect(url.startsWith('http://127.0.0.1:9/api.php?request=appdetails&appid=')).toBe(true);
+      }
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('미주입이면 spy 요청이 기존 주소와 바이트 동일하다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      const seen: string[] = [];
+      const service = serviceWith(
+        db,
+        dir,
+        {
+          fetchFn: routeFetch({
+            owned: () => ownedPayload([{ appid: 71, total: 1 }]),
+            steamspy: () => ({ tags: { S: 2 } }),
+          }),
+        },
+        seen,
+      );
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      await settled(service);
+      service.resyncSource('steamspy', { locale: 'ko' });
+      await settled(service);
+      const spyUrls = seen.filter((url) => url.includes('/api.php'));
+      expect(spyUrls).toEqual(['https://steamspy.com/api.php?request=appdetails&appid=71']);
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
+
+  it('비루프백 steamSpyBaseUrl은 생성 시 throw한다', () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d06-'));
+    try {
+      expect(() =>
+        serviceWith(db, dir, { steamSpyBaseUrl: 'https://example.com/' }),
+      ).toThrow(RangeError);
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  });
 });

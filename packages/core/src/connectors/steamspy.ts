@@ -20,7 +20,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-const STEAMSPY_BASE = 'https://steamspy.com/api.php';
+const STEAMSPY_API_BASE = 'https://steamspy.com';
+const STEAMSPY_PATH = '/api.php';
 const FETCH_TIMEOUT_MS = 15_000;
 
 /** SteamSpy 상한 — 1req/sec */
@@ -84,6 +85,8 @@ export interface SteamSpyFetchOptions {
   fetchFn?: SteamSpyFetchFn;
   clock?: SteamSpyClock;
   limiter?: SteamSpyLimiter;
+  /** 테스트 base. 없으면 공식 steamspy. 뒤에 /api.php를 붙인다. */
+  baseUrl?: string;
 }
 
 const defaultClock: SteamSpyClock = {
@@ -219,7 +222,8 @@ export async function fetchSteamSpyUserTags(
     : AbortSignal.timeout(FETCH_TIMEOUT_MS);
   let res: { status: number; json: () => Promise<unknown> };
   try {
-    res = await fetchFn(`${STEAMSPY_BASE}?request=appdetails&appid=${opts.appId}`, { signal });
+    const root = (opts.baseUrl ?? STEAMSPY_API_BASE).replace(/\/+$/, '');
+    res = await fetchFn(`${root}${STEAMSPY_PATH}?request=appdetails&appid=${opts.appId}`, { signal });
   } catch {
     return failed;
   }

@@ -35,6 +35,7 @@ export interface SyncServiceDeps {
   timeZone: string;
   /** 테스트 store base. 없으면 공식 store. 루프백만 허용한다. */
   storeBaseUrl?: string;
+  steamSpyBaseUrl?: string;
   executor?: (ctx: ExecutorDeps) => JobExecutor;
 }
 
@@ -53,6 +54,7 @@ export interface ExecutorDeps {
   now?: () => number;
   timeZone: string;
   storeBaseUrl?: string;
+  steamSpyBaseUrl?: string;
 }
 
 export interface SyncService {
@@ -83,6 +85,9 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   if (deps.storeBaseUrl !== undefined && normalizeSteamBaseUrl(deps.storeBaseUrl) === null) {
     throw new RangeError('storeBaseUrl은 http(s) 루프백 URL이다(호출 계약 위반)');
   }
+  if (deps.steamSpyBaseUrl !== undefined && normalizeSteamBaseUrl(deps.steamSpyBaseUrl) === null) {
+    throw new RangeError('steamSpyBaseUrl은 http(s) 루프백 URL이다(호출 계약 위반)');
+  }
   const { db } = deps;
   let executor: JobExecutor | null = null;
   const executorOf = (): JobExecutor | null => {
@@ -102,6 +107,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       now: deps.now,
       timeZone: deps.timeZone,
       storeBaseUrl: deps.storeBaseUrl,
+      steamSpyBaseUrl: deps.steamSpyBaseUrl,
     });
     return executor;
   };

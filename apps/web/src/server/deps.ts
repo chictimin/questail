@@ -97,17 +97,18 @@ export function resolveSteamApiBaseUrl(
 }
 
 /**
- * W-store: 테스트 base가 있으면 baseUrl·storeBaseUrl 둘 다 같은 값,
- * 없으면 둘 다 미지정(공식 기본). 새 env 0.
+ * W-store: 테스트 base가 있으면 baseUrl·storeBaseUrl·steamSpyBaseUrl 모두 같은 값,
+ * 없으면 모두 미지정(공식 기본). 새 env 0.
  */
 export function storeBasePair(baseUrl: string | undefined): {
   baseUrl?: string;
   storeBaseUrl?: string;
+  steamSpyBaseUrl?: string;
 } {
   if (baseUrl === undefined) {
     return {};
   }
-  return { baseUrl, storeBaseUrl: baseUrl };
+  return { baseUrl, storeBaseUrl: baseUrl, steamSpyBaseUrl: baseUrl };
 }
 
 /** 제품 마이그레이션 폴더 — <루트>/apps/web/drizzle 절대 경로(cwd 무관). */

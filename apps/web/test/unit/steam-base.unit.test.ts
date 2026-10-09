@@ -45,10 +45,11 @@ describe('resolveSteamApiBaseUrl', () => {
 });
 
 describe('storeBasePair', () => {
-  it('base 있음 → 두 값이 같음', () => {
+  it('base 있음 → 세 값이 같음', () => {
     expect(storeBasePair('http://127.0.0.1:9')).toEqual({
       baseUrl: 'http://127.0.0.1:9',
       storeBaseUrl: 'http://127.0.0.1:9',
+      steamSpyBaseUrl: 'http://127.0.0.1:9',
     });
   });
 
