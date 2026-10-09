@@ -7,7 +7,7 @@
  */
 import { join } from 'node:path';
 import type Database from 'better-sqlite3';
-import type { SyncErrorCode } from '@questail/core';
+import { resolveVanityName, type SyncErrorCode } from '@questail/core';
 import type { Hono } from 'hono';
 import type { VerifyFetchFn } from '../../data/connection.js';
 import { KEY_FILE_NAME, getConnection, saveConnection } from '../../data/index.js';
@@ -35,9 +35,12 @@ type ConnectFailBody = {
   params: Record<string, string | number>;
 };
 
-type ConnectRequest = { keyText: string; steamId: string };
+type ConnectRequest = { keyText: string; steamId: string; vanity?: string };
 
-/** 타입 검사만 한다. 형태 검사는 saveConnection이 맡긴다(결정 3). 키 원문은 params에 싣지 않는다. */
+/**
+ * 타입 검사만 한다. 형태 검사는 saveConnection이 맡긴다(결정 3). 키 원문은 params에 싣지 않는다.
+ * vanity는 선택 — 있으면 비어 있지 않은 문자열만, 빈 값은 INVALID_BODY.
+ */
 const connectBodyGuard: BodyGuard<ConnectRequest> = (unknownBody) => {
   if (typeof unknownBody !== 'object' || unknownBody === null) {
     return { ok: false, params: { reason: 'body' } };
@@ -50,6 +53,15 @@ const connectBodyGuard: BodyGuard<ConnectRequest> = (unknownBody) => {
     record.steamId === ''
   ) {
     return { ok: false, params: { reason: 'body' } };
+  }
+  if (record.vanity !== undefined) {
+    if (typeof record.vanity !== 'string' || record.vanity === '') {
+      return { ok: false, params: { reason: 'body' } };
+    }
+    return {
+      ok: true,
+      value: { keyText: record.keyText, steamId: record.steamId, vanity: record.vanity },
+    };
   }
   return { ok: true, value: { keyText: record.keyText, steamId: record.steamId } };
 };
@@ -96,21 +108,38 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps): void {
     inFlight = true;
     // 요청 스코프 로거 — 이 요청의 keyText만 알고 요청 종료 후 보관 없음.
     const log = createLogger([parsed.value.keyText]);
+    // P-7: vanity가 있으면 steamId를 무시하고 resolve 결과 id만 쓴다. 파싱 위치는 UI 하나.
+    const fail = (code: SyncErrorCode, params: Record<string, string | number>): Response => {
+      log.error(`[web] connect 실패: ${code}`);
+      const body: ConnectFailBody = { code, params };
+      return c.json(body, statusFor(code));
+    };
     try {
+      let steamId = parsed.value.steamId;
+      if (parsed.value.vanity !== undefined) {
+        const resolved = await resolveVanityName({
+          vanity: parsed.value.vanity,
+          keyText: parsed.value.keyText,
+          baseUrl: deps.baseUrl,
+          fetchFn: deps.fetchFn,
+        });
+        if (!resolved.ok) {
+          return fail(resolved.code, resolved.params);
+        }
+        steamId = resolved.steamId;
+      }
       const result = await saveConnection({
         db: deps.db,
         keyPath: deps.keyPath,
         keyText: parsed.value.keyText,
-        steamId: parsed.value.steamId,
+        steamId,
         fetchFn: deps.fetchFn,
         baseUrl: deps.baseUrl,
       });
       if (result.ok) {
         return c.json({ connected: true }, 200);
       }
-      log.error(`[web] connect 실패: ${result.code}`);
-      const body: ConnectFailBody = { code: result.code, params: result.params };
-      return c.json(body, statusFor(result.code));
+      return fail(result.code, result.params);
     } catch (error) {
       log.error('[web] connect 예외');
       throw error;

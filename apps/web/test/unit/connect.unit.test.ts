@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -266,6 +266,152 @@ describe('POST /api/connect', () => {
     } finally {
       db.close();
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('POST /api/connect vanity(P-7)', () => {
+  function vanityFetch(
+    vanityBody: unknown,
+    playersBody?: unknown,
+  ): VerifyFetchFn {
+    return async (url: string) => {
+      if (url.includes('/ISteamUser/ResolveVanityURL/v0001/')) {
+        return { status: 200, json: async () => vanityBody };
+      }
+      return {
+        status: 200,
+        json: async () =>
+          playersBody ?? { response: { players: [{ steamid: STEAM_ID }] } },
+      };
+    };
+  }
+
+  it('vanity 성공 → 해결 id로 연결', async () => {
+    const { dir, db } = freshDb();
+    try {
+      const keyPath = connectKeyPath(dir);
+      const app = createApp(undefined, {
+        db,
+        keyPath,
+        fetchFn: vanityFetch({ response: { success: 1, steamid: STEAM_ID } }),
+      });
+      const response = await postConnect(app, {
+        keyText: DUMMY_KEY,
+        steamId: 'steamcommunity.com/id/yourname',
+        vanity: 'yourname',
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ connected: true });
+      const status = await app.request(CONNECT_STATUS_PATH, { headers: HOST });
+      expect(await status.json()).toEqual({
+        connected: true,
+        steamId: STEAM_ID,
+        permissionEnforced: process.platform !== 'win32',
+      });
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('vanity 0건(success 42) → 409 AUTH_ID_MISMATCH{not_found}', async () => {
+    const { dir, db } = freshDb();
+    try {
+      const app = createApp(undefined, {
+        db,
+        keyPath: connectKeyPath(dir),
+        fetchFn: vanityFetch({ response: { success: 42 } }),
+      });
+      const response = await postConnect(app, {
+        keyText: DUMMY_KEY,
+        steamId: 'steamcommunity.com/id/nobody',
+        vanity: 'nobody',
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        code: 'AUTH_ID_MISMATCH',
+        params: { reason: 'not_found' },
+      });
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('vanity 거부(401) → 400 AUTH_INVALID_KEY{rejected}', async () => {
+    const { dir, db } = freshDb();
+    try {
+      const app = createApp(undefined, {
+        db,
+        keyPath: connectKeyPath(dir),
+        fetchFn: async (url: string) => {
+          if (url.includes('/ISteamUser/ResolveVanityURL/v0001/')) {
+            return { status: 401, json: async () => ({}) };
+          }
+          return { status: 200, json: async () => ({}) };
+        },
+      });
+      const response = await postConnect(app, {
+        keyText: DUMMY_KEY,
+        steamId: 'steamcommunity.com/id/yourname',
+        vanity: 'yourname',
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        code: 'AUTH_INVALID_KEY',
+        params: { reason: 'rejected' },
+      });
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('빈 vanity → 400 INVALID_BODY', async () => {
+    const { dir, db } = freshDb();
+    try {
+      const app = createApp(undefined, { db, keyPath: connectKeyPath(dir) });
+      const response = await postConnect(app, {
+        keyText: DUMMY_KEY,
+        steamId: 'steamcommunity.com/id/',
+        vanity: '',
+      });
+      expect(response.status).toBe(400);
+      const text = await response.text();
+      expect(text).toContain('INVALID_BODY');
+      expect(text).not.toContain(DUMMY_KEY);
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('검증 무응답 → 가짜 타이머 10초로 NETWORK{timeout}(실시간 대기 없음)', async () => {
+    vi.useFakeTimers();
+    try {
+      const { dir, db } = freshDb();
+      try {
+        const hanging: VerifyFetchFn = () => new Promise(() => {});
+        const app = createApp(undefined, {
+          db,
+          keyPath: connectKeyPath(dir),
+          fetchFn: hanging,
+        });
+        const pending = postConnect(app, { keyText: DUMMY_KEY, steamId: STEAM_ID });
+        await vi.advanceTimersByTimeAsync(10000);
+        const response = await pending;
+        expect(response.status).toBe(502);
+        expect(await response.json()).toEqual({
+          code: 'NETWORK',
+          params: { reason: 'timeout' },
+        });
+      } finally {
+        db.close();
+        rmSync(dir, { recursive: true, force: true });
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 });
