@@ -9,181 +9,92 @@
 
 > English · [한국어](./README.ko.md)
 
-> A personal-first tool that gathers game history scattered across platforms (Steam/PSN/Xbox) into Markdown archives and provides personal taste analysis via LLM.
+> A local web app that archives your Steam library on your own computer and lets you rate the games.
 
-**Current phase: M2 (v0.3.0)** — CLI that exports your Steam library to Markdown files and generates a taste analysis report.
+**Current phase: R1** — local server (Hono + React + SQLite, single process) with library ratings, hidden games, and Markdown export.
+
+## Prerequisites
+
+- Node.js >= 22.13
+- pnpm 10.28.2
+- A Steam account that owns at least one game, plus a Steam Web API key
+  - Issue a key on the [Steam API key page](https://steamcommunity.com/dev/apikey). Enter `localhost` in the domain name field, then agree to the [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) and register.
+  - If the page blocks issuance ("limited user account" notice), the account cannot receive a key yet. See the [Steam support page](https://help.steampowered.com/en/faqs/view/71D3-35C2-AD96-AA3A).
 
 ## Quick Start
 
+<!-- ci:run -->
 ```bash
 git clone https://github.com/chictimin/questail.git
 cd questail
-pnpm install
-pnpm build
-
-# Global install (optional)
-pnpm link --global
+pnpm install && pnpm start
 ```
 
-## Consuming `@questail/core` as a library
+After startup, open `http://127.0.0.1:4747` in a browser. The connect screen appears — enter the API key and a profile address or SteamID.
 
-`@questail/core` is not on the npm registry yet. Pinned builds are attached to GitHub Releases — install by URL:
+## Data Directory
+
+- Default: `data/` under the repository root. Set the `QUESTAIL_DATA_DIR` environment variable to store it elsewhere, then restart the app.
+- Warning: deleting the repository folder or running `git clean -fdx` deletes `data/` together with it.
+
+## Backup
+
+- Manual backup: quit the app, then copy the whole data folder (SQLite files).
+
+## Port
+
+- Default port is `4747`. Set the `QUESTAIL_PORT` environment variable to change it. If the port is already in use, startup fails with a message.
+
+## Stopping
+
+- Stop with Ctrl+C.
+- For background or service use, build once with `pnpm start`, then run the server directly:
 
 ```bash
-pnpm add https://github.com/chictimin/questail/releases/download/v0.3.0/questail-core-0.3.0.tgz
+node apps/web/dist/src/server/run.js
 ```
 
-The tarball contains the built `dist/`, so no build step is needed on the consumer side. To upgrade, replace the version in the URL and run `pnpm install`. Until an npm publish happens, the git tag is the source of truth for versions.
+`pnpm` does not forward SIGTERM to its child process, so stopping through `pnpm` can leave the server behind.
 
-> Note: the agent layer (`packages/core/src/agent`, deterministic tool router) is Korean-only — English questions don't error but silently route worse (no ranking, schema fallback, or direct escalate). See [tools/eval/README.md](./tools/eval/README.md).
+## Achievements
 
-## Usage
+- Achievement records are collected only when "Game details" on the Steam profile is public. If it is private, those games are skipped. This is an account setting, not an app failure.
+- If achievements are not recorded, the gamer type (TBTI) result and some titles will be affected later.
 
-```bash
-# 1. Register API key & SteamID (first time only)
-questail sniff
+## Key Handling
 
-# 2. Gather your Steam library
-questail gather steam
+- The API key is stored only in the `steam.key` file inside the data directory.
+- Do not share the API key. If it leaks, revoke it on the key page, register a new one, and replace it in the app.
+- On Windows, key file permission checks (600) do not apply. The permission check is skipped.
 
-# 3. Analyze your taste
-questail analyze
+## Notes
 
-# 4. Manage configuration
-questail config set language en
-questail config get steam-api-key
-```
+- Questail is not affiliated with or endorsed by Valve Corporation. Steam is a trademark of Valve Corporation.
 
-### Detailed Walkthrough
+## Shelved v0.3 Features
 
-**`questail sniff`** — Interactive setup. Registers your Steam Web API key and SteamID in one go.
-
-- SteamID accepts profile URLs (`https://steamcommunity.com/id/xxx`), vanity names, or numeric SteamID64 (auto-resolved via ResolveVanityURL API)
-- Saved to `~/.config/questail/.env` — skipped on subsequent runs
-- After the Steam setup, an LLM setup step follows: `1. OpenAI / 2. Local OpenAI-compatible (Ollama·LM Studio) / 3. Skip`. Your choice is stored as `QUESTAIL_LLM_BASE_URL` / `QUESTAIL_LLM_API_KEY` / `QUESTAIL_LLM_MODEL` in the same file (questail-namespaced so they don't collide with other tools sharing the global env file). Skipping means quantitative-only reports with no AI analysis.
-- Prompts whether to proceed with `gather steam` right after setup
-
-**`questail gather steam [<id>] [-o <dir>]`** — Fetches your Steam library and enriches it.
-
-- Omitting `<id>` uses the steam-id stored in config
-- `-o <dir>` output directory (default: `./games/`)
-- Game metadata (genres, developers, publishers, release date, cover image) is auto-enriched via Steam appdetails
-- Achievement completion rate is fetched per game — requires your Steam profile's "Game details" to be set to Public; otherwise it's silently skipped. Every game coming back achievement-less? Enable Steam → Settings → Privacy → Game details — that's an account setting, not a questail issue.
-- Writes `library.md` (the canonical index of objective data) and appends a playtime snapshot to `history.jsonl` in the output directory
-- Re-running is non-destructive: objective fields in `games/*.md` are refreshed while subjective fields (ratings and notes, once added) are preserved
-
-**`questail analyze [-o <dir>]`** — Builds a taste profile from `<outputDir>/library.md` and saves the report to `<outputDir>/reports/<YYYY-MM-DD-HHmm>.md`.
-
-- If `library.md` is missing, it tells you to run `gather` first and exits
-- Works without LLM setup: the quantitative report is always generated in full — only the AI interpretation section is left out. With LLM configured, an AI analysis is layered on top.
-
-**`questail config`** — Configuration management:
-
-| Command | Description |
-|---------|-------------|
-| `questail config set <key> <value>` | Save a key-value pair |
-| `questail config get <key>` | Retrieve a value (secrets masked) |
-| `questail config delete <key>` | Delete a value |
-
-### Configuration Keys
-
-| Key | Description | Example |
-|-----|-------------|---------|
-| `steam-api-key` | Steam Web API key | `ABCDEF1234567890` |
-| `steam-id` | SteamID64 (numeric) | `76561197960287930` |
-| `language` | Output language (`ko` / `en`) | `en` |
-| `QUESTAIL_LLM_BASE_URL` | LLM endpoint (set via `sniff`) | `https://api.openai.com/v1` |
-| `QUESTAIL_LLM_API_KEY` | LLM API key (optional for localhost) | `sk-...` |
-| `QUESTAIL_LLM_MODEL` | LLM model name (set via `sniff`) | `gpt-4o-mini` |
-
-## Output Example
-
-`gather` + `analyze` produce four kinds of files under the output directory (default `./games/`):
-
-- `*.md` — per-game notes; re-running refreshes objective fields while subjective fields (`rating`, `note`) are preserved
-- `library.md` — every game × every axis in one index, the canonical source of objective data
-- `history.jsonl` — playtime snapshot log, appended on every run
-- `reports/<YYYY-MM-DD-HHmm>.md` — `analyze` output (report headings are in Korean regardless of locale)
-
-Each game is written as a Markdown file in `./games/`:
-
-```markdown
----
-title: ELDEN RING
-game_id: 1245620
-platform: steam
-source: auto
-playtime_minutes: 9840
-achievement_pct: 62
-last_played: 1712345678
-image: https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg
-genres: [RPG, Souls-like]
-developers: [FromSoftware Inc.]
-publishers: [FromSoftware Inc., Bandai Namco Entertainment]
-release_date: 24 Feb, 2022
----
-
-> Auto-imported from Steam.
-```
-
-File naming: `{appId}-{title-slug}.md` (e.g. `1245620-elden-ring.md`)
-
-Enrichment fields (`achievement_pct`, `genres`, `developers`, `publishers`, `release_date`, `image`) appear only when the data is available. Re-running `gather` refreshes these objective fields; subjective fields (`rating`, `note`) are preserved once added.
-
-A report always carries the full quantitative section — total playtime, top 10 games by playtime, playtime-weighted genre distribution, playtime 5-number summary (hours), concentration (top 10/20/40 share), games per playtime bucket, achievement summary (when data exists), wishlist — plus an AI interpretation when LLM is configured. Excerpt below uses fictional data (illustrative example):
-
-```markdown
-# QuestTail 취향 리포트
-
-- 생성: 2026-09-16T09:00:00.000Z
-- 게임 수: 42개, 총 플레이타임: 1180시간
-
-## 플레이타임 상위 10
-
-| 순위 | 제목 | 시간 | 비중 |
-| --- | --- | --- | --- |
-| 1 | Monster Hunter Wilds | 214.5h | 18.2% |
-| 2 | Terraria | 96.0h | 8.1% |
-| 3 | Stardew Valley | 88.5h | 7.5% |
-| ... | ... | ... | ... |
-
-## AI 해석
-
-(...fictional interpretation omitted...)
-```
+- The `packages/core` CLI (`sniff`, `gather`, `analyze`, `config`) and the agent layer are shelved in R1. The R1 entry point is `pnpm start`.
 
 ## Project Structure
 
 ```
 questail/
-├── packages/
-│   └── core/                  # @questail/core
+├── apps/
+│   └── web/                     # R1 app (Hono server + React UI + SQLite)
 │       ├── src/
-│       │   ├── config/        # Global LLM settings (QUESTAIL_LLM_*)
-│       │   ├── llm/           # LLM adapter (single endpoint + no-LLM fallback)
-│       │   ├── connectors/    # Platform adapters (Steam)
-│       │   ├── metadata/      # appdetails enrichment (cached)
-│       │   ├── normalize/     # Standard schema transformation
-│       │   ├── storage/       # Markdown serialization
-│       │   ├── profile/       # Taste profile aggregation
-│       │   ├── analyze/       # Quantitative stats + LLM interpretation
-│       │   ├── i18n.ts        # Internationalization
-│       │   └── cli.ts         # CLI entry point
-│       └── package.json
+│       │   ├── server/          # HTTP routes, boot sequence
+│       │   ├── ui/              # React screens (connect, sync, library, settings)
+│       │   ├── data/            # library, ratings, view state services
+│       │   └── db/              # schema, migrations, open/backup/migrate
+│       └── test/                # unit, e2e, performance harnesses
+├── packages/
+│   └── core/                    # shared contracts and evaluation tools
 ├── pnpm-workspace.yaml
 └── package.json
 ```
 
-## Roadmap
-
-| Phase | Goal |
-|-------|------|
-| **M1** ✅ | Steam library → Markdown CLI |
-| **M2** ✅ | AI taste analysis report CLI (v0.2.0) |
-| M2.5 | Agent reinforcement loop |
-| M3 | Web UI + ratings |
-| M4+ | PSN/Xbox connectors, manual entries, advanced analytics |
-
 ## License
 
 MIT
+
+Third-party notices: [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
