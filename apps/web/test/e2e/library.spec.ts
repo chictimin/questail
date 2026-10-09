@@ -9,6 +9,18 @@ import { startServer, type StartedServer } from '../../src/server/serve.js';
 import { uiDistDir } from '../../src/server/static.js';
 import { EXPORT_DIR_NAME } from '../../src/server/export.js';
 
+/** TEST-F1-F1: keep-alive 유휴 연결이 close 콜백을 붙잡는 hang 방지. 유휴 연결 끊고 닫기. */
+async function stopServer(server: StartedServer): Promise<void> {
+  if ('closeAllConnections' in server.server) {
+    server.server.closeAllConnections();
+  }
+  await new Promise<void>((resolve, reject) => {
+    server.server.close((error: Error | undefined) =>
+      error ? reject(error) : resolve(),
+    );
+  });
+}
+
 /** W7 ④ /library 빈 DB 렌더 1건. 시드 주행은 D-16 합성 생성기 뒤다. */
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -42,11 +54,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    started.server.close((error: Error | undefined) =>
-      error ? reject(error) : resolve(),
-    );
-  });
+  await stopServer(started);
   db.close();
   rmSync(workDir, { recursive: true, force: true });
 });
@@ -104,11 +112,7 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
   });
 
   test.afterEach(async () => {
-    await new Promise<void>((resolve, reject) => {
-      seeded.server.close((error: Error | undefined) =>
-        error ? reject(error) : resolve(),
-      );
-    });
+    await stopServer(seeded);
     seededDb.close();
     rmSync(seededDir, { recursive: true, force: true });
   });
@@ -205,11 +209,7 @@ test.describe('가상 스크롤 렌더 상한', () => {
   });
 
   test.afterEach(async () => {
-    await new Promise<void>((resolve, reject) => {
-      capped.server.close((error: Error | undefined) =>
-        error ? reject(error) : resolve(),
-      );
-    });
+    await stopServer(capped);
     cappedDb.close();
     rmSync(cappedDir, { recursive: true, force: true });
   });
