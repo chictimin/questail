@@ -36,5 +36,6 @@ await main({
               keyPath: connectKeyPath(ctx.dataDir),
               baseUrl: steamApiBaseUrl,
             },
+      settingsDeps: { dataDir: ctx.dataDir, version: ctx.version },
     }),
 });

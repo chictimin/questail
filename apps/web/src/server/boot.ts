@@ -3,8 +3,8 @@
  * → 4 listen → 5 백그라운드(막지 않음) → 6 종료(신호→shutdown, main.ts).
  * A 함수(백업·마이그레이션·잡·스냅샷·cron·DB)는 BootDeps 주입 + 스텁. apps/web/src/{db,data,jobs}/는 A 소유라 만들지 않는다.
  */
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import type { Hono } from 'hono';
@@ -49,13 +49,16 @@ export function defaultDataDir(fromDir?: string): string {
   return join(findRepoRoot(fromDir), DATA_DIR_NAME);
 }
 
-/** 1단계 — 환경변수, 없으면 기본 위치. */
+/** 1단계 — 환경변수, 없으면 기본 위치. env 상대경로는 절대화(표시·동작 동일 기준). */
 export function resolveDataDir(
   env: NodeJS.ProcessEnv = process.env,
   fromDir?: string,
 ): string {
   const raw = env[DATA_DIR_ENV];
-  return raw === undefined || raw === '' ? defaultDataDir(fromDir) : raw;
+  if (raw === undefined || raw === '') {
+    return defaultDataDir(fromDir);
+  }
+  return resolve(raw);
 }
 
 export type Cancellable = { cancel: () => void | Promise<void> };
@@ -69,7 +72,25 @@ export const SHUTDOWN_GRACE_MS = 5000;
 export type AppContext = {
   db: Database.Database | undefined;
   dataDir: string;
+  /** 사용자 표시용 앱 버전 — apps/web/package.json, boot 1회 읽기. */
+  version: string;
 };
+
+/**
+ * 웹 package.json 버전 1회 읽기. 루트 package.json에는 version이 없다.
+ * 읽기에 실패하면 기동 실패(버전 없는 표시를 내보내지 않는다).
+ */
+export function readWebVersion(fromDir?: string): string {
+  const raw = readFileSync(
+    join(findRepoRoot(fromDir), 'apps', 'web', 'package.json'),
+    'utf8',
+  );
+  const parsed = JSON.parse(raw) as { version?: unknown };
+  if (typeof parsed.version !== 'string' || parsed.version === '') {
+    throw new Error('[web] 앱 버전 확인 실패');
+  }
+  return parsed.version;
+}
 
 export type BootDeps = {
   backupDatabase: (dataDir: string) => Promise<void>;
@@ -106,6 +127,7 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
   const app = (deps.createApp ?? (() => createServerApp()))({
     db: rawDb,
     dataDir,
+    version: readWebVersion(),
   });
   const { server, port } = await (deps.listen ?? startServer)(
     app,

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { connect } from 'node:net';
+import { resolve } from 'node:path';
 import { Hono } from 'hono';
 import {
   boot,
@@ -304,6 +305,19 @@ describe('resolveDataDir', () => {
     expect(
       resolveDataDir({ QUESTAIL_DATA_DIR: '/tmp/w3-data' }),
     ).toBe('/tmp/w3-data');
+  });
+
+  it('상대 env → 절대 반환(표시용, 동작 위치 동일)', () => {
+    const prev = process.cwd();
+    try {
+      process.chdir('/tmp');
+      // /tmp 심링크(/private/tmp)까지 확정 — 하드코딩 금지.
+      expect(resolveDataDir({ QUESTAIL_DATA_DIR: 'rel-data' })).toBe(
+        resolve('rel-data'),
+      );
+    } finally {
+      process.chdir(prev);
+    }
   });
 
   it('미지정 → <루트>/data (cwd가 apps/web이어도, 루트여도)', () => {

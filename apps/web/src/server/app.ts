@@ -22,6 +22,10 @@ import {
 } from './export.js';
 import { wireStatic } from './static.js';
 import { registerConnectRoutes, type ConnectDeps } from './routes/connect.js';
+import {
+  registerSettingsInfoRoutes,
+  type SettingsDeps,
+} from './routes/settings-info.js';
 import { parseJsonBody, type BodyGuard } from './validate.js';
 
 export const HEALTH_PATH = '/api/health';
@@ -178,9 +182,13 @@ function isForeignKeyError(error: unknown): boolean {
 }
 
 /** bare 앱 — 라우트만. 테스트·합성의 재료다. */
-export function createApp(exportDeps?: ExportDeps, connectDeps?: ConnectDeps): Hono {
+export function createApp(
+  exportDeps?: ExportDeps,
+  connectDeps?: ConnectDeps,
+  settingsDeps?: SettingsDeps,
+): Hono {
   const app = new Hono();
-  registerRoutes(app, exportDeps, connectDeps);
+  registerRoutes(app, exportDeps, connectDeps, settingsDeps);
   return app;
 }
 
@@ -196,6 +204,7 @@ export function createServerApp(opts?: {
   staticRoot?: string;
   exportDeps?: ExportDeps;
   connectDeps?: ConnectDeps;
+  settingsDeps?: SettingsDeps;
 }): Hono {
   const app = new Hono();
   app.use(hostCheck);
@@ -208,16 +217,22 @@ export function createServerApp(opts?: {
     const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
     return c.json(body, 500);
   });
-  registerRoutes(app, opts?.exportDeps, opts?.connectDeps);
+  registerRoutes(app, opts?.exportDeps, opts?.connectDeps, opts?.settingsDeps);
   if (opts?.staticRoot !== undefined) {
     wireStatic(app, opts.staticRoot);
   }
   return app;
 }
 
-function registerRoutes(app: Hono, exportDeps?: ExportDeps, connectDeps?: ConnectDeps): void {
+function registerRoutes(
+  app: Hono,
+  exportDeps?: ExportDeps,
+  connectDeps?: ConnectDeps,
+  settingsDeps?: SettingsDeps,
+): void {
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
   registerConnectRoutes(app, connectDeps);
+  registerSettingsInfoRoutes(app, settingsDeps);
   app.get(LIBRARY_PATH, (c) => {
     if (exportDeps === undefined) {
       return internalError(c);
