@@ -64,7 +64,7 @@ ownership_status: "owned"
     again: 'Export again',
     wordDone: 'Done',
     wordFail: 'Error',
-    copyDir: 'Copy folder path',
+    copyDir: 'Copy path',
     copied: 'Folder path copied',
     copyFallback: 'Copy failed. Copy the address above directly.',
     noKey: 'Your key is never included.',

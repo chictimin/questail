@@ -64,7 +64,7 @@ ownership_status: "owned"
     again: '다시 내보내기',
     wordDone: '완료',
     wordFail: '오류',
-    copyDir: '폴더 경로 복사',
+    copyDir: '경로 복사',
     copied: '폴더 경로를 복사했어요',
     copyFallback: '복사에 실패했어요. 위 주소를 직접 복사해 주세요.',
     noKey: '키는 포함되지 않아요.',
