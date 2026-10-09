@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +30,7 @@ function migrationRecordCount(dir: string): number {
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'db');
 
 function tmpDir(): string {
-  return mkdtempSync(join(tmpdir(), 'questail-d08-zolu-'));
+  return mkdtempSync(join(tmpdir(), 'questail-nozi-d08-'));
 }
 
 function seedV1(dir: string): void {
@@ -230,7 +230,7 @@ describe('db lifecycle', () => {
   });
 
   it('0002는 기존 sync_runs 행을 보존한다', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'questail-d08-zolu-'));
+    const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-d08-'));
     const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
     const initial = readdirSync(join(webDir, 'drizzle')).find((name) =>
       name.startsWith('0000_'),
@@ -285,6 +285,83 @@ describe('db lifecycle', () => {
       } finally {
         check.close();
       }
+    } finally {
+      await handle.close();
+    }
+  });
+
+  it('pending 있으면 백업 후 적용한다(KEEP-1: v1→v2 백업 ≥1)', async () => {
+    const dir = tmpDir();
+    await seedV1ByMigration(dir);
+    let calls = 0;
+    const handle = await migrateDatabase(dir, join(FIXTURES, 'migrations'), async () => {
+      calls += 1;
+      await backupDatabase(dir, new Date('2026-10-09T00:00:00Z'));
+    });
+    try {
+      expect(calls).toBe(1);
+      const files = readdirSync(join(dir, 'backups'));
+      expect(files.length).toBeGreaterThanOrEqual(1);
+      const check = new Database(join(dir, 'questail.db'), { readonly: true });
+      try {
+        expect(
+          check.prepare("SELECT name FROM sqlite_master WHERE name = 'legacy_extra'").get(),
+        ).toBeTruthy();
+      } finally {
+        check.close();
+      }
+    } finally {
+      await handle.close();
+    }
+  });
+
+  it('pending 없으면 백업 호출 0이다', async () => {
+    const dir = tmpDir();
+    await seedV1ByMigration(dir);
+    const first = await migrateDatabase(dir, join(FIXTURES, 'migrations-v1'));
+    await first.close();
+    let calls = 0;
+    const second = await migrateDatabase(dir, join(FIXTURES, 'migrations-v1'), async () => {
+      calls += 1;
+    });
+    try {
+      expect(calls).toBe(0);
+      expect(existsSync(join(dir, 'backups'))).toBe(false);
+    } finally {
+      await second.close();
+    }
+  });
+
+  it('백업 실패하면 BEGIN 전 중단하고 원본을 그대로 둔다', async () => {
+    const dir = tmpDir();
+    seedV1(dir);
+    const snap = logicalSnapshot(dir);
+    await expect(
+      migrateDatabase(dir, join(FIXTURES, 'migrations'), async () => {
+        throw new Error('backup failed');
+      }),
+    ).rejects.toThrow('backup failed');
+    expect(logicalSnapshot(dir)).toEqual(snap);
+    const check = new Database(join(dir, 'questail.db'), { readonly: true });
+    try {
+      expect(
+        check.prepare("SELECT name FROM sqlite_master WHERE name = '__drizzle_migrations'").get(),
+      ).toBeUndefined();
+    } finally {
+      check.close();
+    }
+  });
+
+  it('첫 설치(DB 파일 없음)는 백업 호출 0으로 적용만 한다', async () => {
+    const dir = tmpDir();
+    let calls = 0;
+    const handle = await migrateDatabase(dir, join(FIXTURES, 'migrations-v1'), async () => {
+      calls += 1;
+    });
+    try {
+      expect(calls).toBe(0);
+      expect(migrationRecordCount(dir)).toBeGreaterThan(0);
+      expect(existsSync(join(dir, 'backups'))).toBe(false);
     } finally {
       await handle.close();
     }

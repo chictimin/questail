@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { connect } from 'node:net';
-import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { Hono } from 'hono';
 import {
   boot,
@@ -25,11 +26,15 @@ function stubDeps(calls: string[]): BootDeps {
     },
   };
   return {
-    env: { QUESTAIL_DATA_DIR: '/tmp/w3-test' },
+    env: { QUESTAIL_DATA_DIR: join(tmpdir(), 'questail-nozi-boot') },
     backupDatabase: async (dataDir: string) => {
       calls.push(`backup:${dataDir}`);
     },
-    migrateDatabase: async () => {
+    migrateDatabase: async (
+      _dataDir: string,
+      opts?: { backupBeforeApply?: () => Promise<void> },
+    ) => {
+      await opts?.backupBeforeApply?.();
       calls.push('migrate');
       return db;
     },
@@ -71,7 +76,7 @@ describe('boot 순서', () => {
     const booted = await boot(stubDeps(calls));
     await booted.background;
     expect(calls).toEqual([
-      'backup:/tmp/w3-test',
+      `backup:${join(tmpdir(), 'questail-nozi-boot')}`,
       'migrate',
       'listen',
       'recover',
@@ -302,9 +307,8 @@ describe('boot 종료', () => {
 
 describe('resolveDataDir', () => {
   it('환경변수 지정 → 그 경로', () => {
-    expect(
-      resolveDataDir({ QUESTAIL_DATA_DIR: '/tmp/w3-data' }),
-    ).toBe('/tmp/w3-data');
+    const dir = join(tmpdir(), 'questail-nozi-boot-data');
+    expect(resolveDataDir({ QUESTAIL_DATA_DIR: dir })).toBe(dir);
   });
 
   it('상대 env → 절대 반환(표시용, 동작 위치 동일)', () => {

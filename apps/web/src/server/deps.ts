@@ -41,8 +41,8 @@ export function productionDeps(env: NodeJS.ProcessEnv = process.env): BootDeps {
   return {
     env,
     backupDatabase: (dataDir: string) => backupDatabase(dataDir),
-    migrateDatabase: (dataDir: string) =>
-      migrateDatabase(dataDir, productMigrationsFolder()),
+    migrateDatabase: (dataDir: string, opts?: { backupBeforeApply?: () => Promise<void> }) =>
+      migrateDatabase(dataDir, productMigrationsFolder(), opts?.backupBeforeApply),
     recoverInterruptedJobs: async () => undefined,
     isConnected: () => false,
     runOverdueSnapshot: async () => undefined,

@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -33,7 +33,7 @@ async function freePort(): Promise<number> {
 }
 
 function tempEnv(): NodeJS.ProcessEnv {
-  const dir = mkdtempSync(join(tmpdir(), 'w3-wire-'));
+  const dir = mkdtempSync(join(tmpdir(), 'questail-nozi-wire-'));
   tempDirs.push(dir);
   return {
     QUESTAIL_DATA_DIR: dir,
@@ -69,7 +69,7 @@ describe('W3 실배선 통합', () => {
     reopen.close();
   });
 
-  it('(b) 기존 DB 기동 → backups/ 백업 1개 후 기동', async () => {
+  it('(b) 재기동(pending 없음) → 백업 0', async () => {
     const env = tempEnv();
     env.QUESTAIL_PORT = String(await freePort());
     const first = await boot(productionDeps(env));
@@ -77,10 +77,8 @@ describe('W3 실배선 통합', () => {
     await first.shutdown();
     const second = await boot(productionDeps(env));
     void second.background.catch(() => undefined);
-    const backups = readdirSync(
-      join(env.QUESTAIL_DATA_DIR as string, 'backups'),
-    );
-    expect(backups).toHaveLength(1);
+    // 첫 기동(첫 설치)도 재기동(pending 없음)도 백업을 만들지 않는다.
+    expect(existsSync(join(env.QUESTAIL_DATA_DIR as string, 'backups'))).toBe(false);
     await second.shutdown();
     expect(
       (second.server as unknown as { listening: boolean }).listening,

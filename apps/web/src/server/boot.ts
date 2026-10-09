@@ -94,7 +94,10 @@ export function readWebVersion(fromDir?: string): string {
 
 export type BootDeps = {
   backupDatabase: (dataDir: string) => Promise<void>;
-  migrateDatabase: (dataDir: string) => Promise<BootDatabase>;
+  migrateDatabase: (
+    dataDir: string,
+    opts?: { backupBeforeApply?: () => Promise<void> },
+  ) => Promise<BootDatabase>;
   recoverInterruptedJobs: (signal: AbortSignal) => Promise<void>;
   isConnected: () => boolean | Promise<boolean>;
   runOverdueSnapshot: (signal: AbortSignal) => Promise<void>;
@@ -121,8 +124,9 @@ export type BootedServer = {
 export async function boot(deps: BootDeps): Promise<BootedServer> {
   const env = deps.env ?? process.env;
   const dataDir = resolveDataDir(env);
-  await deps.backupDatabase(dataDir);
-  const db = await deps.migrateDatabase(dataDir);
+  const db = await deps.migrateDatabase(dataDir, {
+    backupBeforeApply: () => deps.backupDatabase(dataDir),
+  });
   const rawDb = (db as Partial<{ db: Database.Database }>).db;
   const app = (deps.createApp ?? (() => createServerApp()))({
     db: rawDb,
