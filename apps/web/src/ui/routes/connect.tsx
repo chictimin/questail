@@ -52,7 +52,7 @@ export function ConnectPage({
 }: {
   onConnected(): Promise<void>;
 }): React.JSX.Element {
-  const { text } = useLocale();
+  const { locale, text } = useLocale();
   type TextKey = Parameters<typeof text>[0];
   const [, navigate] = useLocation();
   const [checking, setChecking] = useState(true);
@@ -125,6 +125,13 @@ export function ConnectPage({
     if (!succeeded) {
       return;
     }
+    // AUTO-SYNC: 연동 직후 첫 수집 1회 (plan-r1.md:50). 202·409·실패 모두
+    // 아래 600ms 이동대로 간다 — await하지 않아 이동이 늦어지지 않는다.
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ locale }),
+    }).catch(() => undefined);
     const timer = setTimeout(() => {
       // App 셸의 연동 상태를 먼저 갱신해야 /library 리다이렉트에 안 걸린다.
       void onConnected().finally(() => {
@@ -134,7 +141,7 @@ export function ConnectPage({
     return () => {
       clearTimeout(timer);
     };
-  }, [succeeded, navigate, onConnected]);
+  }, [succeeded, navigate, onConnected, locale]);
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
