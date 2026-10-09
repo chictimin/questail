@@ -66,7 +66,6 @@ export const ko = {
     noPermissionNote: 'Windows에서는 키 파일 권한 검사를 하지 않아요.',
     revokeNotice: '키를 폐기하거나 새로 발급받으면 다시 입력해 주세요.',
     submitFailed: 'Steam에 연결하지 못했어요. 입력한 내용은 그대로 두었으니 인터넷 연결을 확인한 뒤 다시 눌러 주세요.',
-    customBlocked: '커스텀 주소는 직접 넣지 못해요. 숫자 ID나 profiles 주소를 넣어 주세요.',
     accIssue: '발급 페이지에서 막혀요',
     exUrl: '프로필 URL',
     exUrlValue: 'steamcommunity.com/profiles/76561197960287930',

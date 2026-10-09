@@ -108,14 +108,15 @@ export function ConnectPage(): React.JSX.Element {
       return;
     }
     const parsed = parseSteamIdInput(steamId);
-    if (parsed.blocked) {
+    if (parsed.blocked && parsed.vanity === null) {
       setKeyError(null);
-      setSteamIdError('connect.customBlocked');
+      setSteamIdError('error.INVALID_BODY');
       setShowExamples(true);
       setNoticeKey(null);
       return;
     }
-    const idToSend = parsed.steamId;
+    const idToSend = parsed.blocked ? steamId : parsed.steamId;
+    const vanityToSend = parsed.blocked ? parsed.vanity : undefined;
     setBusy(true);
     setKeyError(null);
     setSteamIdError(null);
@@ -124,7 +125,11 @@ export function ConnectPage(): React.JSX.Element {
     try {
       const response = await fetch('/api/connect', {
         method: 'POST',
-        body: JSON.stringify({ keyText, steamId: idToSend }),
+        body: JSON.stringify(
+          vanityToSend === undefined
+            ? { keyText, steamId: idToSend }
+            : { keyText, steamId: idToSend, vanity: vanityToSend },
+        ),
       });
       const body = (await response.json()) as SubmitBody;
       if (response.ok && body.connected === true) {

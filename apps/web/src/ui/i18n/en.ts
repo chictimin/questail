@@ -66,7 +66,6 @@ export const en = {
     noPermissionNote: 'Key file permission check is skipped on Windows',
     revokeNotice: 'Re-enter after revoking or reissuing the key',
     submitFailed: 'Couldn’t reach Steam. Your entries are kept — check your connection and try again.',
-    customBlocked: 'Custom URLs cannot be used directly. Enter a numeric ID or a profiles URL.',
     accIssue: 'I’m stuck on the registration page',
     exUrl: 'Profile URL',
     exUrlValue: 'steamcommunity.com/profiles/76561197960287930',

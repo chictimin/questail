@@ -3,14 +3,9 @@
  * /id/ 커스텀은 차단(P-7 전 요청 없음), 그 외는 원문 그대로 서버 판정에 맡긴다.
  * 문자열 구분자 없이 불리언 형태로 답한다(UI 하드코딩 스캔 대응).
  */
-export type ParsedSteamId = {
-  /** true면 요청 없이 차단 안내 */
-  blocked: boolean;
-  /** blocked=false일 때 전송할 값 */
-  steamId: string;
-  /** /id/ vanity (P-7 연결용, blocked일 때만 의미) */
-  vanity: string | null;
-};
+export type ParsedSteamId =
+  | { blocked: true; steamId: string; vanity: string | null }
+  | { blocked: false; steamId: string; vanity: null };
 
 /**
  * /id/ 형태에서 vanity 단일 이름 추출(P-7 연결용).
