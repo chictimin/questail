@@ -10,7 +10,7 @@ import { createLogger } from './logging.js';
 import { readExportGames } from '../data/export.js';
 import { listLibrary } from '../data/library.js';
 import { setRating, type ScoreValue } from '../data/ratings.js';
-import { getPrefs, setPrefs } from '../data/viewState.js';
+import { getAchievementSettings, getPrefs, setAchievementSettings, setPrefs } from '../data/viewState.js';
 import type { Locale } from '../ui/i18n/index.js';
 import { hostCheck } from './middleware/host.js';
 import type { RequestDeniedBody } from './request-errors.js';
@@ -28,6 +28,7 @@ export const HEALTH_PATH = '/api/health';
 export const EXPORT_PATH = '/api/export';
 export const LIBRARY_PATH = '/api/library';
 export const PREFS_PATH = '/api/prefs';
+export const ACHIEVEMENTS_PATH = '/api/settings/achievements';
 
 /** 내보내기 의존 — boot가 마이그레이션 후 가진 핸들과 데이터 디렉터리에서 준다. */
 export type ExportDeps = {
@@ -59,9 +60,7 @@ const exportBodyGuard: BodyGuard<ExportRequest> = (unknownBody) => {
   return { ok: true, value: { locale } };
 };
 
-type RatingRequest = { score: ScoreValue | null };
-
-function isScoreValue(value: unknown): value is ScoreValue {
+type RatingRequest = { score: ScoreValue | null };function isScoreValue(value: unknown): value is ScoreValue {
   return (
     typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10
   );
@@ -138,6 +137,19 @@ const prefsBodyGuard: BodyGuard<PrefsPatch> = (unknownBody) => {
         : { sortPerFilter: body['sortPerFilter'] as PrefsPatch['sortPerFilter'] }),
     },
   };
+};
+
+type AchievementsRequest = { enabled: boolean };
+
+const achievementsBodyGuard: BodyGuard<AchievementsRequest> = (unknownBody) => {
+  if (typeof unknownBody !== 'object' || unknownBody === null) {
+    return { ok: false, params: { reason: 'achievements' } };
+  }
+  const enabled = (unknownBody as { enabled?: unknown }).enabled;
+  if (typeof enabled !== 'boolean') {
+    return { ok: false, params: { reason: 'enabled' } };
+  }
+  return { ok: true, value: { enabled } };
 };
 
 /** ?fallback=ko|en 필수 query (P-1). 없거나 잘못되면 null이다. */
@@ -270,6 +282,23 @@ function registerRoutes(app: Hono, exportDeps?: ExportDeps, connectDeps?: Connec
     }
     setPrefs(exportDeps.db, parsed.value);
     return c.json(getPrefs(exportDeps.db, fallback));
+  });
+  app.get(ACHIEVEMENTS_PATH, (c) => {
+    if (exportDeps === undefined) {
+      return internalError(c);
+    }
+    return c.json(getAchievementSettings(exportDeps.db));
+  });
+  app.put(ACHIEVEMENTS_PATH, async (c) => {
+    const parsed = await parseJsonBody(c, achievementsBodyGuard);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (exportDeps === undefined) {
+      return internalError(c);
+    }
+    setAchievementSettings(exportDeps.db, parsed.value);
+    return c.json(getAchievementSettings(exportDeps.db));
   });
   app.post(EXPORT_PATH, async (c) => {
     const parsed = await parseJsonBody(c, exportBodyGuard);

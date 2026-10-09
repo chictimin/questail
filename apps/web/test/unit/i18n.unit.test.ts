@@ -113,6 +113,10 @@ describe('UI 하드코딩 문자열 0', () => {
     'export', // i18n 섹션 식별자
     'connect', // i18n 섹션 식별자
     'shell', // i18n 섹션 식별자
+    'settings', // i18n 섹션 식별자
+    '/api/settings/achievements', // API 경로 — 화면 미노출
+    'achievements-heading', // aria-labelledby 식별자 — 화면 미노출
+    'language-heading', // aria-labelledby 식별자 — 화면 미노출
     'connect-layout', // 2열 후크(화면 미노출)
     '/api/connect', // API 경로
     '/api/connect/status', // API 경로

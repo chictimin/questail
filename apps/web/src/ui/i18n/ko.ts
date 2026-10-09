@@ -133,4 +133,18 @@ export const ko = {
     logoAlt: 'Questail 로고',
     storeLink: 'Steam 스토어',
   },
+  settings: {
+    achTitle: '업적 기록',
+    achRow: '업적 함께 물어오기',
+    achDesc: '게임별 업적 달성 기록을 수집해요.',
+    achPublic: '업적은 Steam 프로필의 "게임 세부 정보"가 공개일 때만 받을 수 있어요. 공개로 바꾸면 몇 분 지나 반영돼요.',
+    achFail: '게임 세부 정보가 비공개라 업적을 받지 못했어요. 프로필 공개 설정을 바꾼 뒤 수집 상태에서 다시 수집해 주세요.',
+    tbtiNote: '업적을 기록하지 않으면 나중에 게이머 유형(TBTI) 결과와 일부 칭호에 영향이 있어요.',
+    on: '켜짐',
+    off: '꺼짐',
+    langRow: '표시 언어',
+    langKo: '한국어',
+    langEn: 'English',
+    saveFailed: '업적 설정을 저장하지 못했어요. 다시 시도해 주세요.',
+  },
 } as const;
