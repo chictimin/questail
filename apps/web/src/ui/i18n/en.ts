@@ -5,6 +5,7 @@ export const en = {
     sync: 'Collection status',
     library: 'Library',
     settings: 'Settings',
+    export: 'Export',
   },
   error: {
     AUTH_INVALID_KEY: 'Steam didn’t accept this key. Copy it again from the key page, or register a new one.',
@@ -36,6 +37,34 @@ export const en = {
     tags: 'Tags',
     minutes: 'min',
     none: 'None',
+    title: 'Export',
+    sub: 'Creates one Markdown file per owned game, ready to open in note apps like Obsidian.',
+    folder: 'Output folder',
+    eq: '{n} owned games = {n} files',
+    sample: 'Sample file',
+    sampleBody: `---
+platform: steam
+external_id: "990011"
+name: "Example"
+title_ko: null
+developer: null
+release_date: null
+genres: []
+tags: []
+playtime_minutes: 0
+last_played: null
+rating: null
+rated_at: null
+library_added_at: null
+ownership_status: "owned"
+---`,
+    go: 'Export as Markdown',
+    exporting: 'Exporting',
+    done: 'Created {n} files',
+    copyDir: 'Copy folder path',
+    copied: 'Folder path copied',
+    copyFallback: 'Copy failed. Copy the address above directly.',
+    noKey: 'Keys are not included',
   },
   connect: {
     title: 'Connect Steam',

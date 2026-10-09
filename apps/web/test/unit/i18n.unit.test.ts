@@ -119,6 +119,9 @@ describe('UI 하드코딩 문자열 0', () => {
     'language-heading', // aria-labelledby 식별자 — 화면 미노출
     'connect-layout', // 2열 후크(화면 미노출)
     '/api/connect', // API 경로
+    '/api/export', // API 경로
+    '/export', // 라우트 경로
+    '/api/library?includeEnded=false', // API 경로
     '/api/connect/status', // API 경로
     'POST', // fetch 메서드
     'password', // input 타입
@@ -131,6 +134,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'connect-key-error', // 필드 오류 연결
     'connect-steamid-error', // 필드 오류 연결
     'string', // typeof 검사(화면 미노출)
+    'number', // typeof 검사(화면 미노출)
     'https://steamcommunity.com/dev/apikey', // Steam 링크 상수(번역 대상 아님)
     'https://steamcommunity.com/dev/apiterms', // Steam 링크 상수(번역 대상 아님)
     'https://help.steampowered.com/en/faqs/view/71D3-35C2-AD96-AA3A', // Steam 링크 상수(번역 대상 아님)

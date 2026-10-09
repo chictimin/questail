@@ -11,6 +11,7 @@ export function NavHeader(): React.JSX.Element {
         <Link href="/sync">{text('nav.sync')}</Link>
         <Link href="/library">{text('nav.library')}</Link>
         <Link href="/settings">{text('nav.settings')}</Link>
+        <Link href="/export">{text('nav.export')}</Link>
       </nav>
     </header>
   );

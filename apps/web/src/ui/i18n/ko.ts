@@ -5,6 +5,7 @@ export const ko = {
     sync: '수집 상태',
     library: '라이브러리',
     settings: '설정',
+    export: '내보내기',
   },
   error: {
     AUTH_INVALID_KEY: 'Steam이 이 키를 받지 않았어요. 키 페이지에서 다시 복사해 붙여 넣거나 새로 발급해 주세요.',
@@ -36,6 +37,34 @@ export const ko = {
     tags: '태그',
     minutes: '분',
     none: '없음',
+    title: '내보내기',
+    sub: '보유 게임마다 Markdown 파일 하나를 만들어요. Obsidian 같은 노트 앱에서 바로 열 수 있어요.',
+    folder: '출력 폴더',
+    eq: '현재 보유 {n}개 = 파일 {n}개',
+    sample: '파일 예시',
+    sampleBody: `---
+platform: steam
+external_id: "990011"
+name: "Example"
+title_ko: null
+developer: null
+release_date: null
+genres: []
+tags: []
+playtime_minutes: 0
+last_played: null
+rating: null
+rated_at: null
+library_added_at: null
+ownership_status: "owned"
+---`,
+    go: 'Markdown으로 내보내기',
+    exporting: '내보내는 중',
+    done: '{n}개 파일을 만들었어요',
+    copyDir: '폴더 경로 복사',
+    copied: '폴더 경로를 복사했어요',
+    copyFallback: '복사에 실패했어요. 위 주소를 직접 복사해 주세요.',
+    noKey: '키는 포함되지 않습니다',
   },
   connect: {
     title: 'Steam을 연결해요',

@@ -8,6 +8,7 @@ import { ConnectPage } from './routes/connect.js';
 import { SyncPage } from './routes/sync.js';
 import { LibraryPage } from './routes/library.js';
 import { SettingsPage } from './routes/settings.js';
+import { ExportPage } from './routes/export.js';
 import { LogoHeader } from './shell/header.js';
 import { NavHeader } from './shell/navHeader.js';
 import { SiteFooter } from './shell/footer.js';
@@ -17,6 +18,7 @@ export const ROUTES = [
   { path: '/sync', Page: SyncPage },
   { path: '/library', Page: LibraryPage },
   { path: '/settings', Page: SettingsPage },
+  { path: '/export', Page: ExportPage },
 ] as const;
 
 /** true=연동·false=미연동·null=미확인(fail-open). */
@@ -72,6 +74,7 @@ export function App(): React.JSX.Element {
         <Route path="/sync" component={SyncPage} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/export" component={ExportPage} />
       </Switch>
       <SiteFooter />
     </div>
