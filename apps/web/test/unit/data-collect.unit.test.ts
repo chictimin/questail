@@ -145,7 +145,7 @@ describe('data collect', () => {
     try {
       applyOwnedDiff(db, {
         verdict: { kind: 'ok' },
-        games: [{ appid: 1, playtimeForever: 10, lastPlayed: null, playtime2weeks: null }],
+        games: [{ appid: 1, playtimeForever: 10, lastPlayed: null, playtime2weeks: null, name: undefined }],
         clock: DAY1,
         syncRunId: null,
         isFirstCollection: true,

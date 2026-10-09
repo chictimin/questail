@@ -25,6 +25,7 @@ import { applyOwnedDiff } from '../data/ownership.js';
 import { applyWishlistDiff } from '../data/wishlist.js';
 import { recordPlaytimeSnapshot } from '../data/playtime.js';
 import { saveCollectedAchievements, toCollectedAchievements } from '../data/achievements.js';
+import { saveCollectedMeta } from '../data/meta.js';
 import { saveCollectedTags } from '../data/tags.js';
 import { getAchievementSettings } from '../data/viewState.js';
 import { createSteamRequest, getConnection, type FetchLike } from '../data/connection.js';
@@ -272,7 +273,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       const apply = ctx.db.transaction(() => {
         const applied = applyOwnedDiff(ctx.db, {
           verdict,
-          games: gamesList.map((game) => ({ ...game, name: undefined })),
+          games: gamesList,
           clock: { observedAt: Math.floor(at / 1000), observedDay: toLocalDay(at, ctx.timeZone), timezone: ctx.timeZone },
           syncRunId: job.runId,
           isFirstCollection: countOpen(ctx.db, ownershipSpans) === 0,
@@ -568,7 +569,16 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           now,
           signal,
         });
-        persistMeta(ctx.db, appid, result.meta, job);
+        saveCollectedMeta(
+          ctx.db,
+          { platform: 'steam', externalId: appid },
+          result,
+          {
+            locale: job.locale as 'ko' | 'en',
+            observedAt: Math.floor(now() / 1000),
+            syncRunId: job.runId,
+          },
+        );
         if (result.state === 'failed') failedItems += 1;
       } catch {
         if (signal.aborted && stopped) break;
@@ -608,15 +618,6 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         .all()
         .filter((row) => row.itemKey.endsWith(`:${job.source}`))
     ).length;
-  }
-
-  function persistMeta(
-    _db: Database.Database,
-    _appid: string,
-    _meta: { name?: string },
-    _job: CollectJob,
-  ): void {
-    // D-06 후속: game_genres·meta_states 기록. 현 범위 밖이라 두지 않는다.
   }
 
   return {

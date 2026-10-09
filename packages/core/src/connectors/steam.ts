@@ -327,6 +327,8 @@ export interface NormalizedOwnedGame {
   playtimeForever: number;
   lastPlayed: number | null;
   playtime2weeks: number | null;
+  /** include_appinfo 응답의 name. 문자열일 때만, 없으면 undefined(P-4) */
+  name: string | undefined;
 }
 
 export function normalizeOwnedGames(payload: unknown): NormalizedOwnedGame[] {
@@ -340,11 +342,13 @@ export function normalizeOwnedGames(payload: unknown): NormalizedOwnedGame[] {
     if (seen.has(appid)) continue;
     seen.add(appid);
     const forever = entry['playtime_forever'];
+    const entryName = entry['name'];
     out.push({
       appid,
       playtimeForever: typeof forever === 'number' ? forever : 0,
       lastPlayed: typeof entry['rtime_last_played'] === 'number' ? entry['rtime_last_played'] : null,
       playtime2weeks: typeof entry['playtime_2weeks'] === 'number' ? entry['playtime_2weeks'] : null,
+      name: typeof entryName === 'string' ? entryName : undefined,
     });
   }
   return out;

@@ -13,7 +13,7 @@ export interface OwnedClock {
 
 export interface OwnedGameInput extends NormalizedOwnedGame {
   /** appinfo 제공 이름. 없으면 null 저장한다(P-4, v1.3). */
-  name?: string;
+  name: string | undefined;
 }
 
 export interface ApplyOwnedInput {

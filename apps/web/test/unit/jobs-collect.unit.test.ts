@@ -9,6 +9,7 @@ import { resetSyncLocksForTest } from '../../src/data/sync.js';
 import { toLocalDay } from '../../src/data/syncRuns.js';
 import { startRun } from '../../src/data/syncRuns.js';
 import { createJobExecutor, setSteamSpyTestHooksForTest } from '../../src/jobs/collect.js';
+import { listLibrary } from '../../src/data/library.js';
 import { buildQueue } from '../../src/jobs/queue.js';
 import { createSteamSpyLimiter } from '@questail/core';
 import type { FetchLike } from '../../src/data/connection.js';
@@ -1069,4 +1070,193 @@ describe('jobs collect', () => {
       resetSyncLocksForTest();
     }
   });
+
+  it('runMeta 저장 — owned 이름 우선·meta 원문 덮어쓰기·listLibrary 확인', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-meta-persist-'));
+    try {
+      const APPID = '990082';
+      const koEnvelope = {
+        [APPID]: {
+          success: true,
+          data: {
+            name: '메타 게임 이름',
+            genres: [{ id: '1', description: '액션' }],
+            capsule_imagev5: 'http://127.0.0.1:9/cover82.jpg',
+          },
+        },
+      };
+      const body = (payload: unknown): Response =>
+        new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      const realFetch: FetchLike = async (url: string) => {
+        if (url.includes('GetOwnedGames')) {
+          return body({
+            response: {
+              game_count: 1,
+              games: [{ appid: Number(APPID), playtime_forever: 5, name: 'Owned Appinfo Name' }],
+            },
+          });
+        }
+        if (url.includes('appdetails')) {
+          return body(koEnvelope);
+        }
+        return body({});
+      };
+      const service = serviceWith(db, dir, { fetchFn: realFetch, storeBaseUrl: 'http://127.0.0.1:9/' });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(db.prepare('SELECT name FROM games').get()).toEqual({ name: 'Owned Appinfo Name' });
+      service.resyncSource('meta', { locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(service.getSyncStatus().find((row) => row.source === 'meta')).toMatchObject({
+        state: 'ok',
+        failedItems: 0,
+      });
+      const lib = listLibrary(db, { includeEnded: true });
+      expect(lib).toHaveLength(1);
+      expect(lib[0]).toMatchObject({
+        name: 'Owned Appinfo Name',
+        titleKo: '메타 게임 이름',
+        coverUrl: 'http://127.0.0.1:9/cover82.jpg',
+      });
+      expect(lib[0].genres).toEqual([{ genreId: '1', nameEn: null, nameKo: '액션' }]);
+      expect(db.prepare('SELECT state FROM meta_states').get()).toEqual({ state: 'ready' });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  }, 30_000);
+
+  it('이름 없는 보유는 meta 원문으로 채운다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-meta-persist-'));
+    try {
+      const APPID = '990084';
+      const koEnvelope = {
+        [APPID]: {
+          success: true,
+          data: {
+            name: '일반 게임 이름',
+            genres: [{ id: '1', description: '액션' }],
+          },
+        },
+      };
+      const body = (payload: unknown): Response =>
+        new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      const realFetch: FetchLike = async (url: string) => {
+        if (url.includes('GetOwnedGames')) {
+          return body(ownedPayload([{ appid: Number(APPID), total: 5 }]));
+        }
+        if (url.includes('appdetails')) {
+          return body(koEnvelope);
+        }
+        return body({});
+      };
+      const service = serviceWith(db, dir, { fetchFn: realFetch, storeBaseUrl: 'http://127.0.0.1:9/' });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(db.prepare('SELECT name FROM games').get()).toEqual({ name: null });
+      service.resyncSource('meta', { locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      const lib = listLibrary(db, { includeEnded: true });
+      expect(lib).toHaveLength(1);
+      expect(lib[0]).toMatchObject({ name: null, titleKo: '일반 게임 이름' });
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  }, 30_000);
+
+  it('en refresh는 번역을 보존하고 en 장르를 채운다', async () => {
+    const db = freshDb();
+    const dir = mkdtempSync(join(tmpdir(), 'questail-meta-persist-'));
+    try {
+      const APPID = '990083';
+      const koEnvelope = {
+        [APPID]: {
+          success: true,
+          data: {
+            name: '코 게임 83',
+            genres: [{ id: '1', description: '액션' }],
+            capsule_imagev5: 'http://127.0.0.1:9/cover83ko.jpg',
+          },
+        },
+      };
+      const enEnvelope = {
+        [APPID]: {
+          success: true,
+          data: {
+            name: 'EN Game 83',
+            genres: [{ id: '1', description: 'Action' }],
+            capsule_imagev5: 'http://127.0.0.1:9/cover83en.jpg',
+          },
+        },
+      };
+      let locale: string = 'ko';
+      const body = (payload: unknown): Response =>
+        new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      const realFetch: FetchLike = async (url: string) => {
+        if (url.includes('GetOwnedGames')) {
+          return body(ownedPayload([{ appid: Number(APPID), total: 5 }]));
+        }
+        if (url.includes('appdetails')) {
+          return body(locale === 'ko' ? koEnvelope : enEnvelope);
+        }
+        return body({});
+      };
+      const service = serviceWith(db, dir, { fetchFn: realFetch, storeBaseUrl: 'http://127.0.0.1:9/' });
+      service.startSync({ sources: ['owned'], locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      service.resyncSource('meta', { locale: 'ko' });
+      for (let i = 0; i < 1200; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      locale = 'en';
+      service.resyncSource('meta', { locale: 'en', mode: 'refresh' });
+      for (let i = 0; i < 2400; i++) {
+        if (service.getSyncStatus().every((row) => row.state !== 'running')) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(service.getSyncStatus().find((row) => row.source === 'meta')).toMatchObject({
+        state: 'ok',
+        failedItems: 0,
+      });
+      const lib = listLibrary(db, { includeEnded: true });
+      expect(lib).toHaveLength(1);
+      expect(lib[0]).toMatchObject({
+        name: 'EN Game 83',
+        titleKo: '코 게임 83',
+        coverUrl: 'http://127.0.0.1:9/cover83en.jpg',
+      });
+      expect(lib[0].genres).toEqual([{ genreId: '1', nameEn: 'Action', nameKo: '액션' }]);
+    } finally {
+      db.close();
+      resetSyncLocksForTest();
+    }
+  }, 60_000);
 });
