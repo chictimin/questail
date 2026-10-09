@@ -3,19 +3,17 @@
  * 순서: hostCheck → /api/* → 정적 → SPA fallback(/api/* 제외, /api 미매칭은 404 유지).
  */
 import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { findRepoRoot } from './boot.js';
 
 export const UI_DIST_NAME = 'dist-ui';
 export const INDEX_FILE = 'index.html';
 
-/** 빌드 산출 디렉터리 — 모듈 위치 기준(boot.ts findRepoRoot와 같은 이유). */
+/** 빌드 산출 디렉터리 — 저장소 루트 기준(src·dist 레이아웃 무관). */
 export function uiDistDir(fromDir?: string): string {
-  const serverDir =
-    fromDir ?? dirname(fileURLToPath(import.meta.url));
-  return join(serverDir, '..', '..', UI_DIST_NAME);
+  return join(findRepoRoot(fromDir), 'apps', 'web', UI_DIST_NAME);
 }
 
 /** 정적 서빙 + SPA fallback을 장착한다. 실재 파일이면 서빙, 아니면 fallback이다. */
