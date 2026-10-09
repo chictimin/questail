@@ -3,7 +3,9 @@
  * Host/Origin 검사는 middleware/host.ts가 맡고, 합성은 createServerApp(묶음 ③)이 한다.
  */
 import { Hono } from 'hono';
+import { createLogger } from './logging.js';
 import { hostCheck } from './middleware/host.js';
+import type { RequestDeniedBody } from './request-errors.js';
 import { wireStatic } from './static.js';
 
 export const HEALTH_PATH = '/api/health';
@@ -26,6 +28,15 @@ export type AppType = ReturnType<typeof createApp>;
 export function createServerApp(opts?: { staticRoot?: string }): Hono {
   const app = new Hono();
   app.use(hostCheck);
+  // W4 — 500 본문은 {code:"INTERNAL",params:{}} 고정. 원문·키 미반향.
+  // 로그는 scrub 후 console 경유(stderr 직접 쓰기 없음).
+  app.onError((error, c) => {
+    createLogger().error(
+      `[web] unhandled: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
+    return c.json(body, 500);
+  });
   registerRoutes(app);
   if (opts?.staticRoot !== undefined) {
     wireStatic(app, opts.staticRoot);
