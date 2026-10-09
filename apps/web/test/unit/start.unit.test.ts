@@ -71,7 +71,7 @@ describe('pnpm start 실행', () => {
           setTimeout(() => resolve({ code: -1, signal: null }), 30000);
         });
         expect(exited.signal, out).toBe('SIGTERM');
-        // graceful 증거 — health down + 잔류 run.js 0.
+        // graceful 증거 — health down + 잔류 0.
         let healthDown = false;
         for (let i = 0; i < 20; i++) {
           try {
@@ -83,15 +83,32 @@ describe('pnpm start 실행', () => {
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
         expect(healthDown, out).toBe(true);
-        let residual = '';
-        try {
-          residual = execFileSync('pgrep', ['-f', 'dist/src/server/run.js'], {
-            encoding: 'utf-8',
-          }).trim();
-        } catch {
-          residual = '';
+        // 그룹 전체 종료 증거 — spawn한 detached 자식의 pgid에 남은
+        // 프로세스 0. 머신 전역 이름 매칭은 다른 세션·QA 클론
+        // 실행을 오탐한다(START-F1)라 쓰지 않는다. 다른 그룹은
+        // 읽기만 하고 종료하지 않는다.
+        const pgid = child.pid as number;
+        let residual: string[] = [];
+        for (let i = 0; i < 10; i++) {
+          let table = '';
+          try {
+            table = execFileSync('ps', ['-o', 'pid=,pgid='], {
+              encoding: 'utf-8',
+            });
+          } catch {
+            table = '';
+          }
+          residual = table
+            .split('\n')
+            .map((line) => line.trim().split(/\s+/))
+            .filter((parts) => parts.length === 2 && Number(parts[1]) === pgid)
+            .map((parts) => parts[0] as string);
+          if (residual.length === 0) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
-        expect(residual, out).toBe('');
+        expect(residual, out).toEqual([]);
       } finally {
         try {
           process.kill(-(child.pid as number), 'SIGKILL');
