@@ -1,0 +1,102 @@
+/**
+ * U5-[2] 설정 — 행(라벨 220px | 내용, 좁은 폭 1열) + 토글 44×26 + 언어 세그먼트 + 거부 대화상자.
+ * 색은 tokens/ 재사용, 새 색 0.
+ */
+.settings-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-10) var(--space-24);
+  align-items: start;
+  padding: var(--space-12) 0;
+}
+
+@media (max-width: 768px) {
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.settings-label {
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.settings-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  font-size: var(--text-14);
+}
+
+.settings-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--qt-mint);
+  font-weight: var(--weight-semibold);
+}
+
+.settings-dialog {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--corner-12);
+  background: var(--surface-card);
+  padding: var(--space-16);
+}
+
+.settings-switch {
+  width: 44px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--qt-white) 24%, transparent);
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+}
+
+.settings-switch[aria-checked='true'] {
+  background: var(--qt-purple);
+}
+
+.settings-switch-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--qt-white);
+  transition: left var(--dur-fast) var(--ease-out-soft);
+}
+
+.settings-switch[aria-checked='true'] .settings-switch-knob {
+  left: 22px;
+  background: var(--qt-black);
+}
+
+.settings-lang-seg {
+  display: inline-flex;
+  gap: var(--space-4);
+}
+
+.settings-lang-on,
+.settings-lang-off {
+  height: 32px;
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: var(--corner-8);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.settings-lang-on {
+  background: var(--qt-purple);
+  color: var(--text-on-pastel);
+}
+
+.settings-lang-off {
+  background: transparent;
+  color: color-mix(in srgb, var(--qt-white) 80%, transparent);
+}

@@ -31,10 +31,15 @@ test.beforeAll(async () => {
     setup.close();
   }
   db = new Database(join(dir, 'questail.db'));
+  db
+    .prepare('INSERT INTO account (id, steam_id, created_at) VALUES (?, ?, ?)')
+    .run(1, '76561198000000001', 1700000000);
   started = await startServer(
     createServerApp({
       staticRoot: uiDistDir(),
       exportDeps: { db, exportDir: join(dir, 'export') },
+      connectDeps: { db, keyPath: join(dir, 'steam.key') },
+      settingsDeps: { dataDir: dir, version: '0.1.0-test' },
     }),
     0,
   );
@@ -65,5 +70,37 @@ test.describe('설정 빈 상태', () => {
     await expect(page.getByRole('status')).toHaveText(
       'Previously fetched game info stays in the earlier language until it is fetched again.',
     );
+  });
+
+  test('연결 섹션 → 고정 표시 + 거부 대화상자 + 키 행', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${started.port}/settings`);
+    await expect(page.getByText('76561198000000001')).toBeVisible();
+    await expect(page.getByText('고정')).toBeVisible();
+    await page.getByRole('button', { name: '다른 계정으로 바꾸기' }).click();
+    await expect(
+      page.getByText('이 데이터 폴더에는 다른 계정을 연결할 수 없어요'),
+    ).toBeVisible();
+    await expect(page.getByText('한 데이터 폴더는 한 Steam 계정만 기록해요.')).toBeVisible();
+    await page.getByRole('button', { name: '확인' }).click();
+    await expect(page.getByText('저장됨')).toBeVisible();
+    await page.getByRole('button', { name: '다른 계정으로 바꾸기' }).click();
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('button', { name: '다른 계정으로 바꾸기' }),
+    ).toBeFocused();
+    await expect(page.getByRole('link', { name: 'Steam 키 페이지' })).toHaveAttribute(
+      'href',
+      'https://steamcommunity.com/dev/apikey',
+    );
+    await expect(page.getByRole('link', { name: '키 교체' })).toHaveAttribute(
+      'href',
+      '/connect',
+    );
+  });
+
+  test('정보 섹션 → 버전 + MIT', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${started.port}/settings`);
+    await expect(page.getByText('0.1.0-test')).toBeVisible();
+    await expect(page.getByText('MIT', { exact: true })).toBeVisible();
   });
 });

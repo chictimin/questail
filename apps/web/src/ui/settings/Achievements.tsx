@@ -1,6 +1,8 @@
 /** W8 업적 토글 — GET 표시 · PUT 확정(낙관적 반영 없음) · 실패 시 원값 + 재시도. */
 import { useEffect, useState } from 'react';
 import { useLocale } from '../i18n/context.js';
+import { Pill } from '../sync/Pill.js';
+import './settings.css';
 
 type LoadStatus = 'loading' | 'ready' | 'failed';
 
@@ -72,16 +74,22 @@ export function Achievements(): React.JSX.Element {
     <section aria-labelledby="achievements-heading">
       <h2 id="achievements-heading">{text('settings.achTitle')}</h2>
       <p>{text('settings.achDesc')}</p>
-      <label>
-        <input
-          type="checkbox"
-          checked={enabled}
-          disabled={pending}
-          onChange={() => void toggle()}
-        />
-        {text('settings.achRow')}
-      </label>
-      <span>{text(enabled ? 'settings.on' : 'settings.off')}</span>
+      <div className="settings-row">
+        <span className="settings-label">{text('settings.achRow')}</span>
+        <div className="settings-body">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            disabled={pending}
+            onClick={() => void toggle()}
+            className="settings-switch"
+          >
+            <span className="settings-switch-knob" />
+          </button>{' '}
+          <Pill pill={enabled ? 'done' : 'off'} />
+        </div>
+      </div>
       <p>{text('settings.achPublic')}</p>
       <p>{text('settings.tbtiNote')}</p>
       {failed ? <p role="status">{text('settings.saveFailed')}</p> : null}

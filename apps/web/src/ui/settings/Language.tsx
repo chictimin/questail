@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useLocale } from '../i18n/context.js';
 import { detectLocale, type Locale } from '../i18n/index.js';
+import './settings.css';
 
 export function Language(): React.JSX.Element {
   const { locale, setLocale, text } = useLocale();
@@ -38,7 +39,7 @@ export function Language(): React.JSX.Element {
   return (
     <section aria-labelledby="language-heading">
       <h2 id="language-heading">{text('settings.langRow')}</h2>
-      <div role="group">
+      <div role="group" className="settings-lang-seg">
         {(['ko', 'en'] as const).map((candidate) => (
           <button
             key={candidate}
@@ -46,6 +47,9 @@ export function Language(): React.JSX.Element {
             aria-pressed={locale === candidate}
             disabled={pending}
             onClick={() => void change(candidate)}
+            className={
+              locale === candidate ? 'settings-lang-on' : 'settings-lang-off'
+            }
           >
             {text(candidate === 'ko' ? 'settings.langKo' : 'settings.langEn')}
           </button>

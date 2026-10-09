@@ -324,6 +324,23 @@ describe('UI 하드코딩 문자열 0', () => {
     'export-sample-head', // CSS 클래스 식별자(화면 미노출)
     'export-sample-head-icon', // CSS 클래스 식별자(화면 미노출)
     'export-sample-pre', // CSS 클래스 식별자(화면 미노출)
+    '/api/settings/info', // API 경로
+    'settings-about-heading', // aria-labelledby 식별자 — 화면 미노출
+    'settings-conn-heading', // aria-labelledby 식별자 — 화면 미노출
+    'settings-conn-dialog-title', // aria-labelledby 식별자 — 화면 미노출
+    'switch', // ARIA role — 화면 미노출
+    'alertdialog', // ARIA role — 화면 미노출
+    'Tab', // DOM 키 식별자 — 화면 미노출
+    'settings-row', // CSS 클래스 식별자(화면 미노출)
+    'settings-label', // CSS 클래스 식별자(화면 미노출)
+    'settings-body', // CSS 클래스 식별자(화면 미노출)
+    'settings-saved', // CSS 클래스 식별자(화면 미노출)
+    'settings-dialog', // CSS 클래스 식별자(화면 미노출)
+    'settings-switch', // CSS 클래스 식별자(화면 미노출)
+    'settings-switch-knob', // CSS 클래스 식별자(화면 미노출)
+    'settings-lang-seg', // CSS 클래스 식별자(화면 미노출)
+    'settings-lang-on', // CSS 클래스 식별자(화면 미노출)
+    'settings-lang-off', // CSS 클래스 식별자(화면 미노출)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
     '\\u00A0', // 별점 줄 슬롯 예약 공백(aria-hidden, 판독 대상 아님)
