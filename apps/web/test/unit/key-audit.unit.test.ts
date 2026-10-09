@@ -3,11 +3,12 @@ import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import Database from 'better-sqlite3';
 import { describe, expect, it, vi } from 'vitest';
 import { KEY_FILE_NAME } from '../../src/data/index.js';
 import { LOG_SINKS } from '../../src/server/logging.js';
 import { REDACTED, scrubText } from '../../src/server/redact.js';
-import { createServerApp } from '../../src/server/app.js';
+import { EXPORT_PATH, createServerApp } from '../../src/server/app.js';
 
 /**
  * INST-3b 감사 테스트 (QA 표면 A~E + ①②③).
@@ -160,8 +161,7 @@ describe('D params·로그 URL redacted', () => {
   });
 });
 
-describe('E process.env·argv 덤프 grep', () => {
-  it('덤프 문자열 scrub 시 키 없음(메커니즘)', () => {
+describe('E process.env·argv 덤프 grep', () => {  it('덤프 문자열 scrub 시 키 없음(메커니즘)', () => {
     const dump = JSON.stringify({ ...process.env, QUESTAIL_AUDIT_DUMMY: DUMMY_KEY });
     const scrubbed = scrubText(`${dump} ${process.argv.join(' ')}`, [DUMMY_KEY]);
     expect(scrubbed).not.toContain(DUMMY_KEY);
@@ -184,5 +184,74 @@ describe('E process.env·argv 덤프 grep', () => {
     };
     walk(serverDir);
     expect(offenders).toEqual([]);
+  });
+});
+
+function sweepNeedleHits(dir: string, needles: string[]): string[] {
+  const hits: string[] = [];
+  const walk = (current: string): void => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile()) {
+        const text = readFileSync(full, 'utf8');
+        if (needles.some((needle) => text.includes(needle))) {
+          hits.push(full);
+        }
+      }
+    }
+  };
+  walk(dir);
+  return hits;
+}
+
+const KEY_NEEDLES = [DUMMY_KEY, encodeURIComponent(DUMMY_KEY)];
+
+describe('③ MD 내보내기 산출 grep(POST /api/export 경유)', () => {
+  it('실제 쓰기 → <dataDir>/export 아래 키 0회', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'key-audit-export-'));
+    const dbPath = join(dir, 'questail.db');
+    const webRoot = join(here, '..', '..');
+    const setup = new Database(dbPath);
+    try {
+      const journal = JSON.parse(
+        readFileSync(join(webRoot, 'drizzle', 'meta', '_journal.json'), 'utf8'),
+      ) as { entries: { tag: string }[] };
+      for (const entry of journal.entries) {
+        setup.exec(readFileSync(join(webRoot, 'drizzle', `${entry.tag}.sql`), 'utf8'));
+      }
+    } finally {
+      setup.close();
+    }
+    const db = new Database(dbPath);
+    try {
+      db.prepare(
+        'INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)',
+      ).run('steam', '990011', 'canary-export-game');
+      db.prepare(
+        'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run('steam', '990011', 'observed', 1700000000, 0, 0);
+      const exportDir = join(dir, 'export');
+      const app = createServerApp({ exportDeps: { db, exportDir } });
+      const response = await app.request(EXPORT_PATH, {
+        method: 'POST',
+        headers: { ...HOST_HEADERS, 'content-type': 'application/json' },
+        body: JSON.stringify({ locale: 'ko' }),
+      });
+      expect(response.status).toBe(200);
+      const created = readdirSync(exportDir);
+      expect(created.length).toBeGreaterThan(0);
+      expect(sweepNeedleHits(exportDir, KEY_NEEDLES)).toEqual([]);
+      // 탐지 공백 방지 positive control: 게임명 canary는 산출물에 있어야 한다
+      expect(sweepNeedleHits(exportDir, ['canary-export-game']).length).toBeGreaterThan(0);
+      // 탐지 동작 확인: 키를 직접 심으면 검출된다
+      const planted = join(exportDir, created[0] as string);
+      writeFileSync(planted, `\nleak ${DUMMY_KEY}\n`, { flag: 'a' });
+      expect(sweepNeedleHits(exportDir, KEY_NEEDLES)).toEqual([planted]);
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
