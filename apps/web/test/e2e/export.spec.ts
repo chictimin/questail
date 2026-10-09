@@ -60,8 +60,15 @@ test.afterAll(async () => {
 test('내보내기 성공 → 완료 문구 + 파일 생성', async ({ page }) => {
   await page.goto(`http://127.0.0.1:${started.port}/export`);
   await expect(page.getByText('현재 보유 1개 = 파일 1개')).toBeVisible();
+  await expect(page.getByText('키는 포함되지 않아요')).toBeVisible();
   await page.getByRole('button', { name: 'Markdown으로 내보내기' }).click();
-  await expect(page.getByText('1개 파일을 만들었어요')).toBeVisible();
+  await expect(
+    page.getByText('1개 파일을 만들었어요. 같은 이름의 파일은 새 내용으로 덮어썼어요.'),
+  ).toBeVisible();
   expect(readdirSync(exportDir).length).toBeGreaterThan(0);
   expect(await page.content()).not.toMatch(/\{[a-zA-Z]+\}/);
+  await page.getByRole('button', { name: '다시 내보내기' }).click();
+  await expect(
+    page.getByText('1개 파일을 만들었어요. 같은 이름의 파일은 새 내용으로 덮어썼어요.'),
+  ).toBeVisible();
 });
