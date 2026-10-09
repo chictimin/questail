@@ -162,6 +162,28 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     const box = await page.locator('article').first().boundingBox();
     expect(box?.height).toBe(72);
   });
+
+  test('미평가 탭 별점 → 행 내 잔류 안내 표시', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${seeded.port}/library`);
+    await page.getByRole('button', { name: '미평가만', exact: true }).click();
+    const row = page.locator('article', { hasText: 'game-100' });
+    await row.getByRole('slider').focus();
+    const [putResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/ratings/') &&
+          response.request().method() === 'PUT',
+      ),
+      (async () => {
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('Enter');
+      })(),
+    ]);
+    expect(putResponse.status()).toBe(200);
+    await expect(
+      row.getByText('탭을 다시 열면 이 목록에서 빠져요'),
+    ).toBeVisible();
+  });
 });
 
 test.describe('가상 스크롤 렌더 상한', () => {
@@ -279,5 +301,27 @@ test.describe('좁은 폭 행 높이 104', () => {
     await expect(page.locator('article').first()).toBeVisible();
     const box = await page.locator('article').first().boundingBox();
     expect(box?.height).toBe(104);
+  });
+
+  test('좁은 폭 잔류 안내 미표시', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${narrow.port}/library`);
+    await page.getByRole('button', { name: '미평가만', exact: true }).click();
+    const row = page.locator('article', { hasText: 'game-100' });
+    await row.getByRole('slider').focus();
+    const [putResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/ratings/') &&
+          response.request().method() === 'PUT',
+      ),
+      (async () => {
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('Enter');
+      })(),
+    ]);
+    expect(putResponse.status()).toBe(200);
+    await expect(
+      row.getByText('탭을 다시 열면 이 목록에서 빠져요'),
+    ).toBeHidden();
   });
 });

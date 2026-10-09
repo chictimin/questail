@@ -123,7 +123,20 @@ main[data-route='library'] .badge-spin {
   animation: qtSpin 900ms linear infinite;
 }
 
+main[data-route='library'] .game-just-note {
+  position: absolute;
+  left: 124px;
+  bottom: 4px;
+  font-size: 11px;
+  line-height: 14px;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
+  main[data-route='library'] .game-just-note {
+    display: none;
+  }
   main[data-route='library'] .game-row {
     height: 104px;
     flex-wrap: wrap;

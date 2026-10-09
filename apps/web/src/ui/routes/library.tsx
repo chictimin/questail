@@ -358,9 +358,6 @@ export function LibraryPage(): React.JSX.Element {
               ) : null}
             </section>
           ) : null}
-          {keep.length === 0 ? null : (
-            <p>{text('library.justNote')}</p>
-          )}
           <div
             ref={listRef}
             className="library-list"
@@ -401,6 +398,7 @@ export function LibraryPage(): React.JSX.Element {
                     <GameRow
                       facts={game}
                       justRated={keep.includes(id)}
+                      justNote={keep.includes(id) && filterKey === 'unrated'}
                       pending={pending.includes(id)}
                       nowSeconds={nowSeconds}
                       onRate={(nextScore) => rate(game, nextScore)}

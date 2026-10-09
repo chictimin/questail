@@ -41,6 +41,8 @@ export function displayGameName(facts: SortableGame, locale: Locale): string {
 export interface GameRowProps {
   facts: RowGame;
   justRated: boolean;
+  /** 미평가 탭 방금 매김 안내(넓은 폭만 표시, 좁은 폭 CSS 숨김). */
+  justNote: boolean;
   pending: boolean;
   nowSeconds: number;
   /** 저장 단위 1~10 또는 null(취소). */
@@ -51,6 +53,7 @@ export interface GameRowProps {
 export function GameRow({
   facts,
   justRated,
+  justNote,
   pending,
   nowSeconds,
   onRate,
@@ -60,10 +63,12 @@ export function GameRow({
   const stars = starsOf(facts.latestScore);
   const year = formatYear(facts);
   const badges = rowBadges(facts);
+  const noteId = `just-note-${facts.key.platform}-${facts.key.externalId}`;
 
   return (
     <article
       aria-labelledby={`title-${facts.key.platform}-${facts.key.externalId}`}
+      aria-describedby={justNote ? noteId : undefined}
       className="game-row"
       data-just-rated={justRated || undefined}
     >
@@ -150,6 +155,11 @@ export function GameRow({
             </a>
           ) : null}
         </div>
+      {justNote ? (
+        <span id={noteId} className="game-just-note">
+          {text('library.justNote')}
+        </span>
+      ) : null}
     </article>
   );
 }

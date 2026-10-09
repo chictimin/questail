@@ -354,6 +354,7 @@ describe('UI 하드코딩 문자열 0', () => {
     'game-row-rate', // CSS 클래스 식별자(화면 미노출)
     'game-row-num', // CSS 클래스 식별자(화면 미노출)
     'game-row-actions', // CSS 클래스 식별자(화면 미노출)
+    'game-just-note', // CSS 클래스 식별자(화면 미노출)
   ]);
 
   /** 소스 1건 스캔 → 위반 목록. 행 위치 무관, 태그 사이 텍스트(>…<)를 잡는다. */
