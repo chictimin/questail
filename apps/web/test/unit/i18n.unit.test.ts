@@ -215,6 +215,59 @@ describe('UI 하드코딩 문자열 0', () => {
     'connect-needs-heading', // aria-labelledby 식별자 — 화면 미노출
     'connect-warn-heading', // aria-labelledby 식별자 — 화면 미노출
     'https://store.steampowered.com/', // Steam 링크 상수(번역 대상 아님)
+    'wait', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
+    'run', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
+    'done', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
+    'hold', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
+    'fail', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
+    'off', // 수집 pill 상태 식별자(ui 내부) — 화면 노출은 문구 키
+    'owned', // 수집 소스 식별자(ui 내부) — 화면 노출은 문구 키
+    'info', // 수집 소스 식별자(ui 내부) — 화면 노출은 문구 키
+    'wish', // 수집 소스 식별자(ui 내부) — 화면 노출은 문구 키
+    'tags', // 수집 소스 식별자(ui 내부) — 화면 노출은 문구 키
+    'ach', // 수집 소스 식별자(ui 내부) — 화면 노출은 문구 키
+    'progress', // 행 본문 형태 식별자(ui 내부) — 화면 미노출
+    'cause', // 행 본문 형태 식별자(ui 내부) — 화면 미노출
+    'none', // 행 본문 형태 식별자(ui 내부) — 화면 미노출
+    'HELD_ZERO', // 서버 코드 분기(화면 미노출)
+    'HELD_TIME_ZERO', // 서버 코드 분기(화면 미노출)
+    'ACCESS_PRIVATE', // 서버 코드 분기(화면 미노출)
+    'RATE_LIMITED', // 서버 코드 분기(화면 미노출)
+    'progressbar', // ARIA role — 화면 미노출
+    'sync-rows', // CSS 클래스 식별자(화면 미노출)
+    'sync-row', // CSS 클래스 식별자(화면 미노출)
+    'sync-row-id', // CSS 클래스 식별자(화면 미노출)
+    'sync-iconbox', // CSS 클래스 식별자(화면 미노출)
+    'sync-row-name', // CSS 클래스 식별자(화면 미노출)
+    'sync-row-time', // CSS 클래스 식별자(화면 미노출)
+    'sync-row-body', // CSS 클래스 식별자(화면 미노출)
+    'sync-bar', // CSS 클래스 식별자(화면 미노출)
+    'sync-bar-track', // CSS 클래스 식별자(화면 미노출)
+    'sync-bar-fill', // CSS 클래스 식별자(화면 미노출)
+    'sync-bar-num', // CSS 클래스 식별자(화면 미노출)
+    'sync-cause', // CSS 클래스 식별자(화면 미노출)
+    'sync-cause-icon', // CSS 클래스 식별자(화면 미노출)
+    'sync-tail', // CSS 클래스 식별자(화면 미노출)
+    'sync-pill', // CSS 클래스 식별자(화면 미노출)
+    'sync-pill-spin', // CSS 클래스 식별자(화면 미노출)
+    'sync-pill-shimmer', // CSS 클래스 식별자(화면 미노출)
+    'sync-retry', // CSS 클래스 식별자(화면 미노출)
+    'sync-notice', // CSS 클래스 식별자(화면 미노출)
+    'sync-notice-icon', // CSS 클래스 식별자(화면 미노출)
+    'sync-notice-body', // CSS 클래스 식별자(화면 미노출)
+    'sync-notice-word', // CSS 클래스 식별자(화면 미노출)
+    'sync-notice-action', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-toggle', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-toggle-icon', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-label', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-list', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-item', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-text', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-title', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-desc', // CSS 클래스 식별자(화면 미노출)
+    'sync-review-empty', // CSS 클래스 식별자(화면 미노출)
+    'sync-note', // CSS 클래스 식별자(화면 미노출)
+    'sync-foot', // CSS 클래스 식별자(화면 미노출)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
   ]);
