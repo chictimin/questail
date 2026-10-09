@@ -133,3 +133,59 @@ test('별점 입력 → 내용 변경 1행', async ({ page }) => {
     await stopPerfServer(server);
   }
 });
+
+test('뱃지 추가 시 행 높이 동일', async ({ page }) => {
+  test.setTimeout(300000);
+  const server = await startPerfServer();
+  try {
+    await page.goto(`${server.baseUrl}/library`);
+    await expect(page.locator('li[data-game-key]').first()).toBeVisible();
+    // perf 시드는 전행 filling 뱃지라 0개 행이 없다. filling 1개 행을 매겨
+    // justRated 아이콘이 추가(1→2)돼도 높이가 같은지로 O1 메커니즘을 본다.
+    const targetKey = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('li[data-game-key]')];
+      const one = rows.find(
+        (li) => li.querySelectorAll('svg[aria-label]').length === 1,
+      );
+      return one?.getAttribute('data-game-key') ?? '';
+    });
+    expect(targetKey).not.toBe('');
+    const rowHeightOf = (key: string): Promise<number> =>
+      page.evaluate((k) => {
+        const li = document.querySelector(`li[data-game-key="${k}"]`);
+        return li instanceof HTMLElement ? li.offsetHeight : -1;
+      }, key);
+    const slider = page.locator(`li[data-game-key="${targetKey}"] [role="slider"]`);
+    await slider.focus();
+    if ((await latestScoreByKey(page, server.baseUrl, targetKey)) !== null) {
+      const [resetResponse] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/ratings/') &&
+            response.request().method() === 'PUT',
+        ),
+        page.keyboard.press('Delete'),
+      ]);
+      expect(resetResponse.status()).toBe(200);
+      await slider.focus();
+    }
+    const heightBefore = await rowHeightOf(targetKey);
+    const [putResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/ratings/') &&
+          response.request().method() === 'PUT',
+      ),
+      (async () => {
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('Enter');
+      })(),
+    ]);
+    expect(putResponse.status()).toBe(200);
+    await page.waitForTimeout(500);
+    // 고정 높이에서 Check 뱃지 출현도 높이를 바꾸지 않는다.
+    expect(await rowHeightOf(targetKey)).toBe(heightBefore);
+  } finally {
+    await stopPerfServer(server);
+  }
+});

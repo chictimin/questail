@@ -171,7 +171,12 @@ export function LibraryPage(): React.JSX.Element {
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => listRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    // 좁은 폭(768px 이하) 행 104 — 첫 스크롤 점프 방지. 측정 후엔 실측값 사용.
+    estimateSize: () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 768px)').matches
+        ? 104
+        : ROW_HEIGHT,
     overscan: 10,
     getItemKey: (index) => filterKeyOf(visible[index] as GameFacts),
   });
@@ -388,8 +393,8 @@ export function LibraryPage(): React.JSX.Element {
                       top: 0,
                       left: 0,
                       width: '100%',
-                      // 고정 height는 measureElement 실측을 막아 행이 겹친다. 바닥만 둔다.
-                      minHeight: `${item.size}px`,
+                      // U2b-F1 ② 고정 높이 — 행 내용이 fits + ellipsis라 실측 상수 유지.
+                      height: `${item.size}px`,
                       transform: `translateY(${item.start}px)`,
                     }}
                   >

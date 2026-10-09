@@ -72,22 +72,31 @@ export function GameRow({
         ) : (
           <img className="game-cover" src={facts.coverUrl} alt="" />
         )}
-        <h2 id={`title-${facts.key.platform}-${facts.key.externalId}`}>
-          {displayGameName(facts, locale)}
-        </h2>
-        <div>
-          {year === null ? null : <span>{year}</span>}
-          {facts.genres.length === 0 ? null : (
-            <span>{facts.genres.map((genre) => genre.nameEn).join(', ')}</span>
-          )}
-          <span>
+        <div className="game-row-main">
+          <h2
+            id={`title-${facts.key.platform}-${facts.key.externalId}`}
+            className="game-row-title"
+          >
+            {displayGameName(facts, locale)}
+          </h2>
+          <div className="game-row-meta">
+            {year === null ? null : <span>{year}</span>}
+            {facts.genres.length === 0 ? null : (
+              <span>{facts.genres.map((genre) => genre.nameEn).join(', ')}</span>
+            )}
+          </div>
+        </div>
+        <div className="game-row-sub">
+          <span className="game-row-hours">
             {formatPlaytime(facts.confirmedMinutes, locale)}
           </span>
           {facts.lastPlayed === null ? null : (
-            <span>{formatRelative(facts.lastPlayed, nowSeconds, locale)}</span>
+            <span className="game-row-last">
+              {formatRelative(facts.lastPlayed, nowSeconds, locale)}
+            </span>
           )}
         </div>
-        <div>
+        <div className="game-row-rate">
           <Stars
             value={facts.latestScore}
             disabled={pending}
@@ -96,13 +105,7 @@ export function GameRow({
               onRate(next === null ? null : Math.round(next * 2))
             }
           />
-          {stars === null ? (
-            // 별점 줄 슬롯 예약 — 미평가 때도 같은 줄 높이를 차지해 별점 변경이 행 높이를 바꾸지 않는다.
-            // nbsp는 판독 대상 아님(aria-hidden)이라 추가 aria 처리는 없다.
-            <span aria-hidden="true">{'\u00A0'}</span>
-          ) : (
-            <span>{stars}</span>
-          )}
+          {stars === null ? null : <span className="game-row-num">{stars}</span>}
         </div>
         <div>
           {badges.missing && (
@@ -128,7 +131,7 @@ export function GameRow({
             />
           )}
         </div>
-        <div>
+        <div className="game-row-actions">
           <button
             type="button"
             className="row-action"

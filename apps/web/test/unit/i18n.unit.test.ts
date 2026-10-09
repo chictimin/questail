@@ -195,6 +195,8 @@ describe('UI 하드코딩 문자열 0', () => {
     'digit', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
     'hover', // 별 상태 전이 액션 식별자(ui 내부) — 화면 미노출
     'object', // typeof 판정 — 화면 미노출
+    'undefined', // typeof 판정 — 화면 미노출
+    '(max-width: 768px)', // matchMedia 쿼리 — 화면 미노출
     'steam', // platform 계약값 — 화면 미노출
     'https://store.steampowered.com/app', // ui 상수 URL(Q5 승인) — 화면 미노출
     'missing', // 행 뱃지 타입 식별자(표시는 문구 키) — 화면 미노출
@@ -343,7 +345,15 @@ describe('UI 하드코딩 문자열 0', () => {
     'settings-lang-off', // CSS 클래스 식별자(화면 미노출)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
-    '\\u00A0', // 별점 줄 슬롯 예약 공백(aria-hidden, 판독 대상 아님)
+    'game-row-main', // CSS 클래스 식별자(화면 미노출)
+    'game-row-title', // CSS 클래스 식별자(화면 미노출)
+    'game-row-meta', // CSS 클래스 식별자(화면 미노출)
+    'game-row-sub', // CSS 클래스 식별자(화면 미노출)
+    'game-row-hours', // CSS 클래스 식별자(화면 미노출)
+    'game-row-last', // CSS 클래스 식별자(화면 미노출)
+    'game-row-rate', // CSS 클래스 식별자(화면 미노출)
+    'game-row-num', // CSS 클래스 식별자(화면 미노출)
+    'game-row-actions', // CSS 클래스 식별자(화면 미노출)
   ]);
 
   /** 소스 1건 스캔 → 위반 목록. 행 위치 무관, 태그 사이 텍스트(>…<)를 잡는다. */

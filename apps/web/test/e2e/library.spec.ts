@@ -155,6 +155,13 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
     expect(prefs.ok()).toBe(true);
     expect(((await prefs.json()) as { hidden: unknown[] }).hidden).toEqual([]);
   });
+
+  test('넓은 폭 행 높이 72', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${seeded.port}/library`);
+    await expect(page.locator('article').first()).toBeVisible();
+    const box = await page.locator('article').first().boundingBox();
+    expect(box?.height).toBe(72);
+  });
 });
 
 test.describe('가상 스크롤 렌더 상한', () => {
@@ -217,5 +224,60 @@ test.describe('가상 스크롤 렌더 상한', () => {
     await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-1000' }).first();
     await expect(row.getByRole('button', { name: '숨기기' })).toBeVisible();
+  });
+});
+
+test.describe('좁은 폭 행 높이 104', () => {
+  test.use({ locale: 'ko-KR', viewport: { width: 390, height: 700 } });
+  let narrow: StartedServer;
+  let narrowDb: Database.Database;
+  let narrowDir: string;
+
+  test.beforeEach(async () => {
+    narrowDir = mkdtempSync(join(tmpdir(), 'questail-u2bf1e2e-'));
+    const setup = new Database(join(narrowDir, 'questail.db'));
+    try {
+      const journal = JSON.parse(
+        readFileSync(join(WEB, 'drizzle', 'meta', '_journal.json'), 'utf8'),
+      ) as { entries: { tag: string }[] };
+      for (const entry of journal.entries) {
+        setup.exec(readFileSync(join(WEB, 'drizzle', `${entry.tag}.sql`), 'utf8'));
+      }
+      for (const externalId of ['100', '200']) {
+        setup
+          .prepare(
+            'INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)',
+          )
+          .run('steam', externalId, `game-${externalId}`);
+        setup
+          .prepare(
+            'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
+          )
+          .run('steam', externalId, 'observed', 1700000000, 0, 0);
+      }
+    } finally {
+      setup.close();
+    }
+    narrowDb = new Database(join(narrowDir, 'questail.db'));
+    narrow = await startServer(
+      createServerApp({
+        staticRoot: uiDistDir(),
+        exportDeps: { db: narrowDb, exportDir: join(narrowDir, 'export') },
+      }),
+      0,
+    );
+  });
+
+  test.afterEach(async () => {
+    await stopServer(narrow);
+    narrowDb.close();
+    rmSync(narrowDir, { recursive: true, force: true });
+  });
+
+  test('좁은 폭 행 높이 104', async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${narrow.port}/library`);
+    await expect(page.locator('article').first()).toBeVisible();
+    const box = await page.locator('article').first().boundingBox();
+    expect(box?.height).toBe(104);
   });
 });

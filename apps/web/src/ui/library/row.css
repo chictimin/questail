@@ -1,9 +1,17 @@
 /**
- * U2b 행 — 고정 높이 하한(넓은 폭 72 · 좁은 폭 104, F4 minHeight 측정 방식 유지).
- * 커버 96×45 / 72×34. justRated 행 배경 purple 7%. 행 액션 히트 36×36.
+ * U2b-F1 행 — ② 원본 고정 높이(넓은 폭 72 · 768px 이하 104).
+ * 고정 높이 + ellipsis라 별점·뱃지 증감이 높이를 바꾸지 않는다(RATE3-F2 슬롯 불필요).
+ * 넘침 가드 overflow:hidden — W7-F4 겹침 재발 방지.
  */
 main[data-route='library'] .game-row {
-  min-height: 72px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 72px;
+  padding: 0 12px;
+  overflow: hidden;
+  border-bottom: 1px solid color-mix(in srgb, var(--qt-white) 6%, transparent);
 }
 
 main[data-route='library'] .game-row[data-just-rated] {
@@ -11,12 +19,90 @@ main[data-route='library'] .game-row[data-just-rated] {
 }
 
 main[data-route='library'] .game-cover {
+  flex: none;
   width: 96px;
   height: 45px;
 }
 
 main[data-route='library'] .game-cover[data-placeholder] {
   background: var(--surface-sunken);
+}
+
+main[data-route='library'] .game-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+main[data-route='library'] .game-row-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+main[data-route='library'] .game-row-meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+main[data-route='library'] .game-row-sub {
+  flex: none;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+main[data-route='library'] .game-row-hours {
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+main[data-route='library'] .game-row-last {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+main[data-route='library'] .game-row-rate {
+  flex: none;
+  width: 236px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+main[data-route='library'] .game-row-num {
+  min-width: 28px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+main[data-route='library'] .game-row-actions {
+  flex: none;
+  display: flex;
+  gap: 2px;
 }
 
 main[data-route='library'] .row-action {
@@ -39,11 +125,27 @@ main[data-route='library'] .badge-spin {
 
 @media (max-width: 768px) {
   main[data-route='library'] .game-row {
-    min-height: 104px;
+    height: 104px;
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 4px;
   }
 
   main[data-route='library'] .game-cover {
     width: 72px;
     height: 34px;
+  }
+
+  main[data-route='library'] .game-row-main {
+    flex: 1 1 55%;
+  }
+
+  main[data-route='library'] .game-row-sub {
+    display: none;
+  }
+
+  main[data-route='library'] .game-row-rate {
+    flex: 1 1 60%;
+    width: auto;
   }
 }
