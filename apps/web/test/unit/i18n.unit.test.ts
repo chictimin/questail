@@ -89,6 +89,18 @@ describe('UI 하드코딩 문자열 0', () => {
     'nav', // i18n 섹션 식별자
     'error', // i18n 섹션 식별자
     'export', // i18n 섹션 식별자
+    'connect', // i18n 섹션 식별자
+    '/api/connect', // API 경로
+    '/api/connect/status', // API 경로
+    'POST', // fetch 메서드
+    'password', // input 타입
+    'polite', // aria-live 값
+    'alert', // role 값
+    'CONNECT_IN_PROGRESS', // 서버 코드 분기(화면 미노출)
+    'string', // typeof 검사(화면 미노출)
+    'https://steamcommunity.com/dev/apikey', // Steam 링크 상수(번역 대상 아님)
+    'https://steamcommunity.com/dev/apiterms', // Steam 링크 상수(번역 대상 아님)
+    'https://help.steampowered.com/en/faqs/view/71D3-35C2-AD96-AA3A', // Steam 링크 상수(번역 대상 아님)
     'useLocale는 LocaleProvider 안에서만 쓴다', // 개발자 전용 예외(화면 미노출)
     'root 요소 없음', // 개발자 전용 예외(화면 미노출)
   ]);

@@ -18,7 +18,10 @@ import {
 type LocaleValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  text: (key: Parameters<typeof t>[1]) => string;
+  text: (
+    key: Parameters<typeof t>[1],
+    params?: Parameters<typeof t>[2],
+  ) => string;
 };
 
 const LocaleContext = createContext<LocaleValue | null>(null);
@@ -42,7 +45,7 @@ export function LocaleProvider({
   };
   return (
     <LocaleContext.Provider
-      value={{ locale, setLocale, text: (key) => t(locale, key) }}
+      value={{ locale, setLocale, text: (key, params) => t(locale, key, params) }}
     >
       {children}
     </LocaleContext.Provider>
