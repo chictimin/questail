@@ -5,6 +5,7 @@ import { describe, expect, it, afterEach } from 'vitest';
 import type { GameFacts } from '../../src/data/library.js';
 import type { ExportFsOps } from '../../src/server/export.js';
 import {
+  EXPORT_DIR_NAME,
   ExportWriteError,
   exportFilename,
   exportRatedAt,
@@ -183,7 +184,7 @@ describe('exportFilename', () => {
 describe('writeExportFiles', () => {
   it('N개 쓰기 + 잔여 파일 제거', () => {
     const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
-    const target = join(dir, 'export');
+    const target = join(dir, EXPORT_DIR_NAME);
     const files = renderExportFiles(
       [
         makeFacts({ key: { platform: 'steam', externalId: '100' } }),
@@ -209,7 +210,7 @@ describe('writeExportFiles', () => {
 
   it('경로 탈출 파일명은 이전 결과 보존 + 실패', () => {
     const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
-    const target = join(dir, 'export');
+    const target = join(dir, EXPORT_DIR_NAME);
     const files = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '100' } })],
       'ko',
@@ -219,14 +220,14 @@ describe('writeExportFiles', () => {
       writeExportFiles(target, [{ filename: '../evil.md', content: 'x' }]),
     ).toThrow(ExportWriteError);
     expect(readdirSync(target)).toEqual([files[0].filename]);
-    expect(readdirSync(dir).sort()).toEqual(['export']);
+    expect(readdirSync(dir).sort()).toEqual([EXPORT_DIR_NAME]);
   });
 
   it('부모 없음은 write_failed + 대상 미생성', () => {
     const target = join(
       tmpdir(),
       'questail-no-such-parent',
-      'export',
+      EXPORT_DIR_NAME,
     );
     expect(() =>
       writeExportFiles(target, [
@@ -237,7 +238,7 @@ describe('writeExportFiles', () => {
 
   it('교체 단계 실패 시 이전 결과 복원', () => {
     const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
-    const target = join(dir, 'export');
+    const target = join(dir, EXPORT_DIR_NAME);
     const oldFiles = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '100' } })],
       'ko',
@@ -277,12 +278,12 @@ describe('writeExportFiles', () => {
     expect(readFileSync(join(target, oldFiles[0].filename), 'utf8')).toBe(
       oldFiles[0].content,
     );
-    expect(readdirSync(dir)).toEqual(['export']);
+    expect(readdirSync(dir)).toEqual([EXPORT_DIR_NAME]);
   });
 
   it('prev 삭제 실패해도 성공 응답 + 새 결과 유지, 다음 실행에서 잔여 정리', () => {
     const dir = track(mkdtempSync(join(tmpdir(), 'questail-export-')));
-    const target = join(dir, 'export');
+    const target = join(dir, EXPORT_DIR_NAME);
     const oldFiles = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '100' } })],
       'ko',
@@ -302,7 +303,7 @@ describe('writeExportFiles', () => {
       mkdtemp: (prefix) => mkdtempSync(prefix),
       writeFile: (path, content) => writeFileSync(path, content, 'utf8'),
       rm: (path) => {
-        if (basename(path).startsWith('export.prev-')) {
+        if (basename(path).startsWith(`${EXPORT_DIR_NAME}.prev-`)) {
           throw new Error('injected prev-rm failure');
         }
         rmSync(path, { recursive: true, force: true });
@@ -315,14 +316,14 @@ describe('writeExportFiles', () => {
     expect(readdirSync(target)).toEqual(
       nextFiles.map((file) => file.filename),
     );
-    const residue = readdirSync(dir).filter((entry) => entry !== 'export');
+    const residue = readdirSync(dir).filter((entry) => entry !== EXPORT_DIR_NAME);
     expect(residue).toHaveLength(1);
     const thirdFiles = renderExportFiles(
       [makeFacts({ key: { platform: 'steam', externalId: '300' } })],
       'ko',
     );
     expect(writeExportFiles(target, thirdFiles)).toEqual({ written: 1 });
-    expect(readdirSync(dir)).toEqual(['export']);
+    expect(readdirSync(dir)).toEqual([EXPORT_DIR_NAME]);
     expect(readdirSync(target)).toEqual(
       thirdFiles.map((file) => file.filename),
     );

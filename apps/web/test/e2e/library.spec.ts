@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createServerApp } from '../../src/server/app.js';
 import { startServer, type StartedServer } from '../../src/server/serve.js';
 import { uiDistDir } from '../../src/server/static.js';
+import { EXPORT_DIR_NAME } from '../../src/server/export.js';
 
 /** W7 ④ /library 빈 DB 렌더 1건. 시드 주행은 D-16 합성 생성기 뒤다. */
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -34,7 +35,7 @@ test.beforeAll(async () => {
   started = await startServer(
     createServerApp({
       staticRoot: uiDistDir(),
-      exportDeps: { db, exportDir: join(dir, 'export') },
+      exportDeps: { db, exportDir: join(dir, EXPORT_DIR_NAME) },
     }),
     0,
   );

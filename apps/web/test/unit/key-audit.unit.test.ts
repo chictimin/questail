@@ -9,6 +9,7 @@ import { KEY_FILE_NAME } from '../../src/data/index.js';
 import { LOG_SINKS } from '../../src/server/logging.js';
 import { REDACTED, scrubText } from '../../src/server/redact.js';
 import { EXPORT_PATH, createServerApp } from '../../src/server/app.js';
+import { EXPORT_DIR_NAME } from '../../src/server/export.js';
 
 /**
  * INST-3b 감사 테스트 (QA 표면 A~E + ①②③).
@@ -233,7 +234,7 @@ describe('③ MD 내보내기 산출 grep(POST /api/export 경유)', () => {
       db.prepare(
         'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
       ).run('steam', '990011', 'observed', 1700000000, 0, 0);
-      const exportDir = join(dir, 'export');
+      const exportDir = join(dir, EXPORT_DIR_NAME);
       const app = createServerApp({ exportDeps: { db, exportDir } });
       const response = await app.request(EXPORT_PATH, {
         method: 'POST',

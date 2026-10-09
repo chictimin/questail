@@ -16,6 +16,9 @@ export interface ExportFile {
   content: string;
 }
 
+/** 제품 출력 디렉터리 이름 — <dataDir> 직하. 디자인 원문 exports 폴더가 정본. */
+export const EXPORT_DIR_NAME = 'exports';
+
 export type ExportFailureReason =
   | 'duplicate_filename'
   | 'invalid_filename'

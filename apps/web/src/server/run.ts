@@ -5,6 +5,7 @@
 import { join } from 'node:path';
 import { main } from './main.js';
 import { createServerApp } from './app.js';
+import { EXPORT_DIR_NAME } from './export.js';
 import { productionDeps, resolveSteamApiBaseUrl } from './deps.js';
 import { connectKeyPath } from './routes/connect.js';
 import { uiDistDir } from './static.js';
@@ -26,7 +27,7 @@ await main({
       exportDeps:
         ctx.db === undefined
           ? undefined
-          : { db: ctx.db, exportDir: join(ctx.dataDir, 'export') },
+          : { db: ctx.db, exportDir: join(ctx.dataDir, EXPORT_DIR_NAME) },
       connectDeps:
         ctx.db === undefined
           ? undefined
