@@ -7,5 +7,5 @@
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": ["src", "test", "vitest.config.ts", "playwright.config.ts", "vite.config.ts"]
+  "include": ["src", "vitest.config.ts", "playwright.config.ts", "vite.config.ts"]
 }
