@@ -104,7 +104,7 @@ export function renderExportFile(
   const ratedAtEpoch = exportRatedAt(facts);
   const genres = facts.genres.map((genre) => genre.nameEn);
   const tags = facts.tags.map((entry) => entry.tag);
-  const displayName = facts.titleKo ?? facts.name;
+  const displayName = locale === 'ko' ? (facts.titleKo ?? facts.name) : facts.name;
   const none = t(locale, 'export.none');
 
   const frontmatter = [

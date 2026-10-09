@@ -106,10 +106,32 @@ describe('P-4 이름 규칙', () => {
     ]);
   });
 
-  it('titleKo 있으면 표시 이름, 대체 문구는 정렬 키 아님', () => {
+  it('표시 이름 locale 규칙 + 대체 문구는 정렬 키 아님', () => {
     const game = makeGame({ name: 'Store', titleKo: '한글' });
-    expect(displayNameOf(game)).toBe('한글');
-    expect(displayNameOf(makeGame({ name: null, titleKo: null }))).toBeNull();
+    expect(displayNameOf(game, 'ko')).toBe('한글');
+    expect(displayNameOf(game, 'en')).toBe('Store');
+    expect(displayNameOf(makeGame({ name: null, titleKo: null }), 'ko')).toBeNull();
+    expect(displayNameOf(makeGame({ name: null, titleKo: null }), 'en')).toBeNull();
+  });
+
+  it('en + name 없음 + titleKo만 있음 → 값 없음 그룹(P-9·PM #74479 확정)', () => {
+    // en 표시 = name만. 값 없음은 맨 뒤 + externalId 순(P-4도 현재 locale 표시 이름 기준으로 정리).
+    const onlyKo = makeGame({ key: { platform: 'steam', externalId: '50' }, name: null, titleKo: '한글' });
+    const named = makeGame({ key: { platform: 'steam', externalId: '60' }, name: 'Apple', titleKo: null });
+    expect(
+      ids(sortGames([onlyKo, named], 'en', { sortKey: 'name', direction: 'asc' })),
+    ).toEqual(['60', '50']);
+  });
+
+  it('en에서는 titleKo 있어도 name으로 정렬', () => {
+    const koFirst = makeGame({ key: { platform: 'steam', externalId: '1' }, name: 'Zebra', titleKo: '가' });
+    const enFirst = makeGame({ key: { platform: 'steam', externalId: '2' }, name: 'Apple', titleKo: '나' });
+    expect(
+      ids(sortGames([koFirst, enFirst], 'ko', { sortKey: 'name', direction: 'asc' })),
+    ).toEqual(['1', '2']);
+    expect(
+      ids(sortGames([koFirst, enFirst], 'en', { sortKey: 'name', direction: 'asc' })),
+    ).toEqual(['2', '1']);
   });
 
   it('이름 정렬은 Collator, 입력 배열 불변', () => {

@@ -40,7 +40,7 @@ export function rowBadges(facts: RowGame): RowBadge[] {
 /** 표시 이름 — titleKo 또는 name, 둘 다 없으면 game.untitled(P-4, 정렬 키 아님). */
 export function displayGameName(facts: SortableGame, locale: Locale): string {
   return (
-    displayNameOf(facts) ??
+    displayNameOf(facts, locale) ??
     t(locale, 'game.untitled', { externalId: facts.key.externalId })
   );
 }

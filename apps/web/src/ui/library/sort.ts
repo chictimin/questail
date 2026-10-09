@@ -39,9 +39,15 @@ export const SORT_OPTIONS: SortSpec[] = [
   { sortKey: 'name', direction: 'asc' },
 ];
 
-/** 표시 이름 — titleKo 또는 name, 둘 다 없으면 null(P-4). 정렬 키가 아니다. */
-export function displayNameOf(facts: SortableGame): string | null {
-  return facts.titleKo ?? facts.name;
+/**
+ * 표시 이름 — ko면 titleKo ?? name, en이면 name. 둘 다 없으면 null(P-9, P-4).
+ * 정렬 키가 아니다.
+ */
+export function displayNameOf(facts: SortableGame, locale: Locale): string | null {
+  if (locale === 'ko') {
+    return facts.titleKo ?? facts.name;
+  }
+  return facts.name;
 }
 
 /**
@@ -52,7 +58,11 @@ export function ratedAtOf(facts: SortableGame): number | null {
   return latestRatedAt(facts);
 }
 
-function primaryOf(facts: SortableGame, sortKey: SortKey): number | string | null {
+function primaryOf(
+  facts: SortableGame,
+  locale: Locale,
+  sortKey: SortKey,
+): number | string | null {
   switch (sortKey) {
     case 'playtime':
       return facts.confirmedMinutes;
@@ -67,7 +77,7 @@ function primaryOf(facts: SortableGame, sortKey: SortKey): number | string | nul
     case 'releaseDate':
       return facts.releaseDate;
     case 'name':
-      return displayNameOf(facts);
+      return displayNameOf(facts, locale);
   }
 }
 
@@ -95,8 +105,8 @@ export function compareGames(
 ): (a: SortableGame, b: SortableGame) => number {
   const collator = new Intl.Collator(locale);
   return (a, b) => {
-    const primaryA = primaryOf(a, spec.sortKey);
-    const primaryB = primaryOf(b, spec.sortKey);
+    const primaryA = primaryOf(a, locale, spec.sortKey);
+    const primaryB = primaryOf(b, locale, spec.sortKey);
     if (primaryA === null || primaryB === null) {
       if (primaryA === null && primaryB === null) {
         return compareExternalId(a.key.externalId, b.key.externalId);
@@ -114,8 +124,8 @@ export function compareGames(
       const diff = (primaryA as number) - (primaryB as number);
       if (diff !== 0) return spec.direction === 'asc' ? diff : -diff;
     }
-    const nameA = displayNameOf(a);
-    const nameB = displayNameOf(b);
+    const nameA = displayNameOf(a, locale);
+    const nameB = displayNameOf(b, locale);
     if (nameA === null || nameB === null) {
       if (nameA === null && nameB === null) {
         return compareExternalId(a.key.externalId, b.key.externalId);
