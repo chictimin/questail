@@ -5,6 +5,8 @@
  * M1 목표: SteamID → 보유 게임 목록 + 플레이타임을 표준 스키마로 변환.
  */
 
+import type { SyncErrorCode } from '../types.js';
+
 export interface SteamConfig {
   apiKey: string;
   steamId: string;
@@ -17,6 +19,7 @@ export interface SteamApiGame {
   playtime_windows_forever?: number;
   playtime_mac_forever?: number;
   playtime_linux_forever?: number;
+  playtime_2weeks?: number;
   rtime_last_played: number;
   has_community_visible_stats?: boolean;
   img_icon_url?: string;
@@ -169,7 +172,7 @@ export async function fetchOwnedGamesDetail(
 
 interface WishlistResponse {
   response?: {
-    items?: Array<{ appid?: number }>;
+    items?: Array<{ appid?: number; date_added?: number; priority?: number }>;
   };
 }
 
@@ -240,4 +243,187 @@ export async function resolveToSteamId(input: string, apiKey: string): Promise<s
   }
 
   throw new Error(`SteamID를 인식할 수 없습니다: ${input}`);
+}
+
+// ─── D-03 응답 판정·정규화 순수 함수 (동결본 C-3·수집 규칙, 문장 0) ───
+// 네트워크·DB·차분을 하지 않는다. 실패·보류는 코드+파라미터만 낸다.
+
+/** 이슈 파라미터. 값만 싣고 문장은 싣지 않는다 */
+export type IssueParams = Record<string, string | number>;
+
+/** 보유 응답 판정. prevCount = 직전 확정 열린 구간 수 */
+export type OwnedVerdict =
+  | { kind: 'ok' }
+  | { kind: 'failed'; code: SyncErrorCode; params: IssueParams }
+  | { kind: 'held'; code: 'HELD_ZERO' | 'HELD_TIME_ZERO'; params: IssueParams };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** game_count 키 존재·정수·건수 교차검사. 부재·비정수·불일치 = 수집 실패 */
+export function judgeOwnedResponse(payload: unknown, prevCount: number): OwnedVerdict {
+  const response = isRecord(payload) ? payload['response'] : undefined;
+  const count = isRecord(response) ? response['game_count'] : undefined;
+  if (!Number.isInteger(count)) {
+    return { kind: 'failed', code: 'PAYLOAD_CORRUPT', params: { prevCount } };
+  }
+  const total = count as number;
+  const games = isRecord(response) ? response['games'] : undefined;
+  if (total === 0 && prevCount > 0) {
+    return { kind: 'held', code: 'HELD_ZERO', params: { prevCount } };
+  }
+  if (Array.isArray(games) && games.length !== total) {
+    return { kind: 'failed', code: 'PAYLOAD_CORRUPT', params: { prevCount, count: total, gamesLength: games.length } };
+  }
+  if (!Array.isArray(games) && total > 0) {
+    return { kind: 'failed', code: 'PAYLOAD_CORRUPT', params: { prevCount, count: total } };
+  }
+  if (Array.isArray(games) && hasDuplicateAppids(games)) {
+    return { kind: 'failed', code: 'PAYLOAD_CORRUPT', params: { prevCount, count: total } };
+  }
+  return { kind: 'ok' };
+}
+
+/** 정수 appid 중복이 있으면 true. 근거 미정의 손상값을 조용히 버리지 않는다 */
+function hasDuplicateAppids(entries: unknown[]): boolean {
+  const seen = new Set<number>();
+  for (const entry of entries) {
+    if (!isRecord(entry) || !Number.isInteger(entry['appid'])) continue;
+    const appid = entry['appid'] as number;
+    if (seen.has(appid)) return true;
+    seen.add(appid);
+  }
+  return false;
+}
+
+/** 보유 게임 정규화. appid 정수 행만 살리고 시간 3종을 그대로 통과시킨다. 중복 appid는 첫 행만 둔다 */
+export interface NormalizedOwnedGame {
+  appid: number;
+  playtimeForever: number;
+  lastPlayed: number | null;
+  playtime2weeks: number | null;
+}
+
+export function normalizeOwnedGames(payload: unknown): NormalizedOwnedGame[] {
+  const response = isRecord(payload) ? payload['response'] : undefined;
+  const games = isRecord(response) && Array.isArray(response['games']) ? response['games'] : [];
+  const out: NormalizedOwnedGame[] = [];
+  const seen = new Set<number>();
+  for (const entry of games) {
+    if (!isRecord(entry) || !Number.isInteger(entry['appid'])) continue;
+    const appid = entry['appid'] as number;
+    if (seen.has(appid)) continue;
+    seen.add(appid);
+    const forever = entry['playtime_forever'];
+    out.push({
+      appid,
+      playtimeForever: typeof forever === 'number' ? forever : 0,
+      lastPlayed: typeof entry['rtime_last_played'] === 'number' ? entry['rtime_last_played'] : null,
+      playtime2weeks: typeof entry['playtime_2weeks'] === 'number' ? entry['playtime_2weeks'] : null,
+    });
+  }
+  return out;
+}
+
+/** 찜 항목 정규화. date_added·priority를 보존하고 값 없음은 null이다 */
+export interface NormalizedWishlistItem {
+  appid: number;
+  dateAdded: number | null;
+  priority: number | null;
+}
+
+export type WishlistVerdict =
+  | { kind: 'ok'; items: NormalizedWishlistItem[] }
+  | { kind: 'failed'; code: SyncErrorCode; params: IssueParams };
+
+/** items 키 존재·배열 검사. 부재·비배열 = 수집 실패. 빈 배열은 유효 0건 */
+export function judgeWishlistResponse(payload: unknown): WishlistVerdict {
+  const response = isRecord(payload) ? payload['response'] : undefined;
+  const items = isRecord(response) ? response['items'] : undefined;
+  if (!Array.isArray(items)) {
+    return { kind: 'failed', code: 'PAYLOAD_CORRUPT', params: {} };
+  }
+  if (hasDuplicateAppids(items)) {
+    return { kind: 'failed', code: 'PAYLOAD_CORRUPT', params: {} };
+  }
+  const out: NormalizedWishlistItem[] = [];
+  const seen = new Set<number>();
+  for (const entry of items) {
+    if (!isRecord(entry) || !Number.isInteger(entry['appid'])) continue;
+    const appid = entry['appid'] as number;
+    if (seen.has(appid)) continue;
+    seen.add(appid);
+    out.push({
+      appid,
+      dateAdded: typeof entry['date_added'] === 'number' ? entry['date_added'] : null,
+      priority: typeof entry['priority'] === 'number' ? entry['priority'] : null,
+    });
+  }
+  return { kind: 'ok', items: out };
+}
+
+/** 업적 정규화. apiname 보존·미달성 포함, 시각 없음은 null이다 */
+export interface NormalizedAchievement {
+  apiname: string;
+  achieved: boolean;
+  unlockedAt: number | null;
+}
+
+export function normalizePlayerAchievements(payload: unknown): NormalizedAchievement[] {
+  const stats = isRecord(payload) ? payload['playerstats'] : undefined;
+  const list = isRecord(stats) && Array.isArray(stats['achievements']) ? stats['achievements'] : [];
+  const out: NormalizedAchievement[] = [];
+  for (const entry of list) {
+    if (!isRecord(entry) || typeof entry['apiname'] !== 'string') continue;
+    out.push({
+      apiname: entry['apiname'],
+      achieved: entry['achieved'] === 1,
+      unlockedAt: typeof entry['unlocktime'] === 'number' && entry['unlocktime'] > 0 ? entry['unlocktime'] : null,
+    });
+  }
+  return out;
+}
+
+/** 업적 조회 결과 판정. 계정 단위 비공개와 게임 단위 없음을 분리한다 */
+export type AchievementVerdict =
+  | { kind: 'ok' }
+  | { kind: 'skipGame' }
+  | { kind: 'failSource'; code: SyncErrorCode; params: IssueParams };
+
+export function judgeAchievementsResponse(
+  status: number,
+  payload: unknown,
+  appid: number,
+): AchievementVerdict {
+  if (status === 403) {
+    return { kind: 'failSource', code: 'ACCESS_PRIVATE', params: { appid, status } };
+  }
+  if (status === 429) {
+    return { kind: 'failSource', code: 'RATE_LIMITED', params: { appid, status } };
+  }
+  if (status !== 200) {
+    return { kind: 'failSource', code: 'NETWORK', params: { appid, status } };
+  }
+  const stats = isRecord(payload) ? payload['playerstats'] : undefined;
+  const success = isRecord(stats) ? stats['success'] : undefined;
+  const list = isRecord(stats) ? stats['achievements'] : undefined;
+  if (success === false || list === undefined) {
+    return { kind: 'skipGame' };
+  }
+  return { kind: 'ok' };
+}
+
+/** 기존 SteamApiError를 코드+파라미터로 매핑한다. 원본 예외는 그대로 둔다.
+ * 경계: R1 모든 네트워크·손상 경로의 code+params 전용 출력. 문장 0. */
+export function steamErrorToIssue(error: unknown, endpoint: string): {
+  code: SyncErrorCode;
+  params: IssueParams;
+} {
+  const status =
+    typeof error === 'object' && error !== null && 'status' in error ? (error as { status: unknown }).status : undefined;
+  if (status === 401) return { code: 'AUTH_INVALID_KEY', params: { endpoint, status } };
+  if (status === 403) return { code: 'ACCESS_PRIVATE', params: { endpoint, status } };
+  if (status === 429) return { code: 'RATE_LIMITED', params: { endpoint, status } };
+  return { code: 'NETWORK', params: { endpoint } };
 }
