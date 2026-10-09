@@ -253,7 +253,7 @@ describe('data collect', () => {
   it('실행 기록을 시작·종료한다', () => {
     const db = freshDb();
     try {
-      const id = startRun(db, { source: 'owned', startedAt: 1700000000, observedDay: '2026-10-09' });
+      const id = startRun(db, { source: 'owned', startedAt: 1700000000, observedDay: '2026-10-09', generation: 1 });
       finishRun(db, id, {
         status: 'ok',
         finishedAt: 1700000001,

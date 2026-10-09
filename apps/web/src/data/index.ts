@@ -19,3 +19,17 @@ export { applyWishlistDiff } from './wishlist.js';
 export type { ApplyWishlistInput, ApplyWishlistResult } from './wishlist.js';
 export { finishRun, latestFinalizedRun, startRun } from './syncRuns.js';
 export type { CollectSource, FinishRunInput, StartRunInput } from './syncRuns.js';
+export {
+  ALL_SOURCES,
+  finishSyncRun,
+  getRunLocale,
+  getSyncStatus,
+  progressRun,
+  rateLimitIssue,
+  resetSyncLocksForTest,
+  resyncSource,
+  startSync,
+} from './sync.js';
+export type { FinishInput, Locale, ProgressPatch, StartResult, SyncIssue, SyncStatusEntry } from './sync.js';
+export { createSyncService } from './service.js';
+export type { SyncService, SyncServiceDeps } from './service.js';

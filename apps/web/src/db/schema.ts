@@ -159,8 +159,8 @@ export const syncRuns = sqliteTable(
   'sync_runs',
   {
     id: integer().primaryKey({ autoIncrement: true }),
-    source: text().notNull(),
     status: text().notNull(),
+    source: text().notNull(),
     startedAt: integer('started_at').notNull(),
     finishedAt: integer('finished_at'),
     itemCount: integer('item_count'),
@@ -168,9 +168,11 @@ export const syncRuns = sqliteTable(
     isFinalized: integer('is_finalized').notNull(),
     issueCode: text('issue_code'),
     issueParams: text('issue_params'),
+    generation: integer().notNull(),
+    failedItems: integer('failed_items'),
   },
   (t) => [
-    unique().on(t.source, t.startedAt),
+    unique().on(t.source, t.generation),
     check('sync_runs_source_values', sql`source IN ('owned', 'wishlist', 'meta', 'achievements', 'steamspy')`),
     check('sync_runs_status_values', sql`status IN ('idle', 'running', 'ok', 'failed', 'held')`),
   ],

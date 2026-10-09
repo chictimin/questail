@@ -377,6 +377,9 @@ export function deriveGameMeta(
 
 // ─── 공개 API (시그니처 고정 — fetchAppMeta(appId: string)) ──
 
+/** 캐시 디렉터리명. 데이터 디렉터리 아래에 둔다. 웹 run.ts가 조립해 주입한다. */
+export const META_CACHE_DIR_NAME = 'meta';
+
 /** 요청 간격 기본 2초 (D-07). 설정으로 바꾼다. */
 const DEFAULT_INTERVAL_MS = 2_000;
 

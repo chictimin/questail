@@ -10,6 +10,7 @@ export interface StartRunInput {
   source: CollectSource;
   startedAt: number;
   observedDay: string;
+  generation: number;
 }
 
 export interface FinishRunInput {
@@ -35,6 +36,8 @@ export function startRun(db: Database.Database, input: StartRunInput): number {
       isFinalized: 0,
       issueCode: null,
       issueParams: null,
+      generation: input.generation,
+      failedItems: null,
     })
     .returning({ id: syncRuns.id })
     .all();

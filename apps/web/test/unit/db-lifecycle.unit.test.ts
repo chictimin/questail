@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +30,7 @@ function migrationRecordCount(dir: string): number {
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'db');
 
 function tmpDir(): string {
-  return mkdtempSync(join(tmpdir(), 'questail-d02-'));
+  return mkdtempSync(join(tmpdir(), 'questail-d08-zolu-'));
 }
 
 function seedV1(dir: string): void {
@@ -224,6 +224,67 @@ describe('db lifecycle', () => {
         raw.close();
       }
       expect(migrationRecordCount(dir)).toBe(before);
+    } finally {
+      await handle.close();
+    }
+  });
+
+  it('0002는 기존 sync_runs 행을 보존한다', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'questail-d08-zolu-'));
+    const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const initial = readdirSync(join(webDir, 'drizzle')).find((name) =>
+      name.startsWith('0000_'),
+    ) as string;
+    const upgrade = readdirSync(join(webDir, 'drizzle')).find((name) =>
+      name.startsWith('0002_'),
+    ) as string;
+    const db = new Database(join(dir, 'questail.db'));
+    try {
+      db.exec(readFileSync(join(webDir, 'drizzle', initial), 'utf8'));
+      db.prepare(
+        "INSERT INTO sync_runs (source, status, started_at, observed_day, is_finalized) VALUES ('owned', 'ok', 1700000000, '2026-10-09', 1)",
+      ).run();
+      db.prepare(
+        "INSERT INTO sync_runs (source, status, started_at, observed_day, is_finalized) VALUES ('owned', 'ok', 1700000001, '2026-10-09', 1)",
+      ).run();
+      db.prepare(
+        "INSERT INTO sync_runs (source, status, started_at, observed_day, is_finalized) VALUES ('meta', 'ok', 1700000000, '2026-10-09', 1)",
+      ).run();
+    } finally {
+      db.close();
+    }
+    const folder = join(dir, 'upgrade');
+    mkdirSync(join(folder, 'meta'), { recursive: true });
+    copyFileSync(join(webDir, 'drizzle', upgrade), join(folder, upgrade));
+    writeFileSync(
+      join(folder, 'meta', '_journal.json'),
+      JSON.stringify({
+        version: '7',
+        dialect: 'sqlite',
+        entries: [{ idx: 0, version: '6', when: 1728000000003, tag: upgrade.replace(/\.sql$/, ''), breakpoints: true }],
+      }),
+    );
+    const handle = await migrateDatabase(dir, folder);
+    try {
+      const check = new Database(join(dir, 'questail.db'), { readonly: true });
+      try {
+        const rows = check
+          .prepare('SELECT id, source, started_at, generation FROM sync_runs ORDER BY id')
+          .all() as { id: number; source: string; started_at: number; generation: number }[];
+        expect(rows.map((row) => row.id)).toEqual([1, 2, 3]);
+        expect(rows.map((row) => row.started_at)).toEqual([1700000000, 1700000001, 1700000000]);
+        expect(rows.map((row) => row.generation)).toEqual([1, 2, 1]);
+        expect(() =>
+          check
+            .prepare(
+              "INSERT INTO sync_runs (source, status, started_at, observed_day, is_finalized, generation) VALUES ('owned', 'ok', 1, '2026-10-09', 1, 1)",
+            )
+            .run(),
+        ).toThrow();
+        expect(check.prepare('SELECT * FROM pragma_foreign_key_check').all()).toEqual([]);
+      } finally {
+        check.close();
+      }
     } finally {
       await handle.close();
     }
