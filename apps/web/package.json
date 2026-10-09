@@ -11,7 +11,8 @@
     "test": "vitest run && vite build && playwright test",
     "test:unit": "vitest run",
     "test:e2e": "vite build && playwright test",
-    "build:ui": "vite build"
+    "build:ui": "vite build",
+    "start": "node dist/src/server/run.js"
   },
   "dependencies": {
     "@hono/node-server": "2.1.4",
