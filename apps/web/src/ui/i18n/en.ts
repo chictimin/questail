@@ -21,6 +21,7 @@ export const en = {
     TAG_EMPTY: 'No tags',
     KEY_STORE_FAILED: 'Could not save the key — check data folder permissions and disk space, then retry.',
     GAME_NOT_FOUND: 'The game is gone, so the rating was not saved. Reload the list and try again.',
+    SYNC_IN_PROGRESS: 'A collection is already running. Try again when it finishes.',
     INVALID_HOST: 'The request came from an unexpected host. Please try again later.',
     INVALID_ORIGIN: 'The request came from an unexpected origin. Please try again later.',
     INVALID_BODY: 'The request was invalid. Check the entered values and try again.',

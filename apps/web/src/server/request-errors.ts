@@ -9,7 +9,8 @@ export type RequestErrorCode =
   | 'INTERNAL'
   | 'EXPORT_FAILED'
   | 'CONNECT_IN_PROGRESS'
-  | 'GAME_NOT_FOUND';
+  | 'GAME_NOT_FOUND'
+  | 'SYNC_IN_PROGRESS';
 
 export type RequestDeniedBody = {
   code: RequestErrorCode;

@@ -12,6 +12,8 @@ import { listLibrary } from '../data/library.js';
 import { setRating, type ScoreValue } from '../data/ratings.js';
 import { getAchievementSettings, getPrefs, setAchievementSettings, setPrefs } from '../data/viewState.js';
 import type { Locale } from '../ui/i18n/index.js';
+import { ALL_SOURCES, type CollectSource } from '../data/sync.js';
+import type { SyncService } from '../data/service.js';
 import { hostCheck } from './middleware/host.js';
 import type { RequestDeniedBody } from './request-errors.js';
 import {
@@ -35,6 +37,8 @@ export const EXPORT_PATH = '/api/export';
 export const LIBRARY_PATH = '/api/library';
 export const PREFS_PATH = '/api/prefs';
 export const ACHIEVEMENTS_PATH = '/api/settings/achievements';
+export const SYNC_PATH = '/api/sync';
+export const SYNC_STATUS_PATH = '/api/sync/status';
 
 /** 내보내기 의존 — boot가 마이그레이션 후 가진 핸들과 데이터 디렉터리에서 준다. */
 export type ExportDeps = {
@@ -66,7 +70,130 @@ const exportBodyGuard: BodyGuard<ExportRequest> = (unknownBody) => {
   return { ok: true, value: { locale } };
 };
 
-type RatingRequest = { score: ScoreValue | null };function isScoreValue(value: unknown): value is ScoreValue {
+type RatingRequest = { score: ScoreValue | null };
+type SyncStartRequest = { locale: Locale; sources?: CollectSource[] };
+type SyncRetryRequest = { locale: Locale; mode?: 'resume' | 'refresh' };
+
+function isCollectSource(value: unknown): value is CollectSource {
+  return (
+    typeof value === 'string' &&
+    (ALL_SOURCES as readonly string[]).includes(value)
+  );
+}
+
+const syncStartGuard: BodyGuard<SyncStartRequest> = (unknownBody) => {
+  if (typeof unknownBody !== 'object' || unknownBody === null) {
+    return { ok: false, params: { reason: 'sync' } };
+  }
+  const body = unknownBody as Record<string, unknown>;
+  if (body['locale'] !== 'ko' && body['locale'] !== 'en') {
+    return { ok: false, params: { reason: 'locale' } };
+  }
+  if (
+    body['sources'] !== undefined &&
+    (!Array.isArray(body['sources']) ||
+      body['sources'].length === 0 ||
+      !body['sources'].every(isCollectSource))
+  ) {
+    return { ok: false, params: { reason: 'sources' } };
+  }
+  return {
+    ok: true,
+    value: {
+      locale: body['locale'] as Locale,
+      ...(body['sources'] === undefined
+        ? {}
+        : { sources: body['sources'] as CollectSource[] }),
+    },
+  };
+};
+
+const syncRetryGuard: BodyGuard<SyncRetryRequest> = (unknownBody) => {
+  if (typeof unknownBody !== 'object' || unknownBody === null) {
+    return { ok: false, params: { reason: 'sync' } };
+  }
+  const body = unknownBody as Record<string, unknown>;
+  if (body['locale'] !== 'ko' && body['locale'] !== 'en') {
+    return { ok: false, params: { reason: 'locale' } };
+  }
+  if (
+    body['mode'] !== undefined &&
+    body['mode'] !== 'resume' &&
+    body['mode'] !== 'refresh'
+  ) {
+    return { ok: false, params: { reason: 'mode' } };
+  }
+  return {
+    ok: true,
+    value: {
+      locale: body['locale'] as Locale,
+      ...(body['mode'] === undefined
+        ? {}
+        : { mode: body['mode'] as 'resume' | 'refresh' }),
+    },
+  };
+};
+
+function syncResult(
+  c: Context,
+  result: number | { code: 'SYNC_IN_PROGRESS'; source: CollectSource },
+): Response {
+  if (typeof result === 'number') {
+    return c.json({ runId: result }, 202);
+  }
+  const body: RequestDeniedBody = {
+    code: 'SYNC_IN_PROGRESS',
+    params: { source: result.source },
+  };
+  return c.json(body, 409);
+}
+
+function registerSyncRoutes(app: Hono, syncService?: SyncService): void {
+  app.post(SYNC_PATH, async (c) => {
+    const parsed = await parseJsonBody(c, syncStartGuard);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (syncService === undefined) {
+      return internalError(c);
+    }
+    return syncResult(
+      c,
+      syncService.startSync({
+        ...(parsed.value.sources === undefined
+          ? {}
+          : { sources: parsed.value.sources }),
+        locale: parsed.value.locale,
+      }),
+    );
+  });
+  app.post(`${SYNC_PATH}/:source/retry`, async (c) => {
+    const source = c.req.param('source');
+    if (!isCollectSource(source)) {
+      return invalidBody(c, 'source');
+    }
+    const parsed = await parseJsonBody(c, syncRetryGuard);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (syncService === undefined) {
+      return internalError(c);
+    }
+    return syncResult(
+      c,
+      syncService.resyncSource(source, {
+        ...(parsed.value.mode === undefined ? {} : { mode: parsed.value.mode }),
+        locale: parsed.value.locale,
+      }),
+    );
+  });
+  app.get(SYNC_STATUS_PATH, (c) => {
+    if (syncService === undefined) {
+      return internalError(c);
+    }
+    return c.json(syncService.getSyncStatus());
+  });
+}function isScoreValue(value: unknown): value is ScoreValue {
   return (
     typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10
   );
@@ -188,9 +315,10 @@ export function createApp(
   exportDeps?: ExportDeps,
   connectDeps?: ConnectDeps,
   settingsDeps?: SettingsDeps,
+  syncService?: SyncService,
 ): Hono {
   const app = new Hono();
-  registerRoutes(app, exportDeps, connectDeps, settingsDeps);
+  registerRoutes(app, exportDeps, connectDeps, settingsDeps, syncService);
   return app;
 }
 
@@ -207,6 +335,7 @@ export function createServerApp(opts?: {
   exportDeps?: ExportDeps;
   connectDeps?: ConnectDeps;
   settingsDeps?: SettingsDeps;
+  syncService?: SyncService;
 }): Hono {
   const app = new Hono();
   app.use(hostCheck);
@@ -219,7 +348,7 @@ export function createServerApp(opts?: {
     const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
     return c.json(body, 500);
   });
-  registerRoutes(app, opts?.exportDeps, opts?.connectDeps, opts?.settingsDeps);
+  registerRoutes(app, opts?.exportDeps, opts?.connectDeps, opts?.settingsDeps, opts?.syncService);
   if (opts?.staticRoot !== undefined) {
     wireStatic(app, opts.staticRoot);
   }
@@ -231,10 +360,12 @@ function registerRoutes(
   exportDeps?: ExportDeps,
   connectDeps?: ConnectDeps,
   settingsDeps?: SettingsDeps,
+  syncService?: SyncService,
 ): void {
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
   registerConnectRoutes(app, connectDeps);
   registerSettingsInfoRoutes(app, settingsDeps);
+  registerSyncRoutes(app, syncService);
   app.get(LIBRARY_PATH, (c) => {
     if (exportDeps === undefined) {
       return internalError(c);

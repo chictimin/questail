@@ -3,8 +3,10 @@
  * 정적 UI는 dist-ui를 서빙한다. 빌드 산출 실행: node dist/src/server/run.js.
  */
 import { join } from 'node:path';
+import { META_CACHE_DIR_NAME } from '@questail/core';
 import { main } from './main.js';
 import { createServerApp } from './app.js';
+import { createJobExecutor, createSyncService } from '../data/index.js';
 import { EXPORT_DIR_NAME } from './export.js';
 import { productionDeps, resolveSteamApiBaseUrl } from './deps.js';
 import { connectKeyPath } from './routes/connect.js';
@@ -19,8 +21,25 @@ if (steamApiBaseUrl !== undefined) {
   console.error('[web] 테스트용 Steam API base 사용 중 (기본값 아님)');
 }
 
+/**
+ * U3b+W13: 표시 시간대 1회 결정 — syncDeps가 쓰고 W-cron-2 scheduler도 같은 값 참조.
+ * (scheduler 배선은 paru 몫, 여기서는 변수까지만)
+ */
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 await main({
   ...productionDeps(),
+  createSyncService: ({ db, dataDir }) =>
+    db === undefined
+      ? undefined
+      : createSyncService({
+          db,
+          keyPath: connectKeyPath(dataDir),
+          cacheDir: join(dataDir, META_CACHE_DIR_NAME),
+          baseUrl: steamApiBaseUrl,
+          timeZone,
+          executor: createJobExecutor,
+        }),
   createApp: (ctx) =>
     createServerApp({
       staticRoot: uiDistDir(),
@@ -37,5 +56,6 @@ await main({
               baseUrl: steamApiBaseUrl,
             },
       settingsDeps: { dataDir: ctx.dataDir, version: ctx.version },
+      syncService: ctx.syncService,
     }),
 });

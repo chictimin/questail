@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import type { Hono } from 'hono';
 import type { ServerType } from '@hono/node-server';
+import type { SyncService } from '../data/service.js';
 import { createServerApp } from './app.js';
 import { resolvePort, startServer, type StartedServer } from './serve.js';
 
@@ -74,6 +75,8 @@ export type AppContext = {
   dataDir: string;
   /** 사용자 표시용 앱 버전 — apps/web/package.json, boot 1회 읽기. */
   version: string;
+  /** U3b+W13: 라우트가 쓰는 동기 서비스. 없으면 sync 라우트 500. */
+  syncService?: SyncService;
 };
 
 /**
@@ -98,16 +101,32 @@ export type BootDeps = {
     dataDir: string,
     opts?: { backupBeforeApply?: () => Promise<void> },
   ) => Promise<BootDatabase>;
-  recoverInterruptedJobs: (signal: AbortSignal) => Promise<void>;
   isConnected: () => boolean | Promise<boolean>;
   runOverdueSnapshot: (signal: AbortSignal) => Promise<void>;
   registerCron: () => CronHandle;
   createApp?: (ctx: AppContext) => Hono;
+  /**
+   * U3b+W13: 동기 서비스 팩토리. migrate 뒤·listen 전에 1회 호출하고
+   * recover()를 await한 뒤 listen한다. 없으면 복구·정지 모두 생략.
+   */
+  createSyncService?: (ctx: {
+    db: Database.Database | undefined;
+    dataDir: string;
+  }) => SyncService | undefined;
   listen?: (app: Hono, port: number) => Promise<StartedServer>;
   env?: NodeJS.ProcessEnv;
   /** B 소유 — 리스너 close 유예(ms) 오버라이드, 테스트용. 미지정 시 SHUTDOWN_GRACE_MS. */
   shutdownGraceMs?: number;
 };
+
+/**
+ * 동기 서비스 생명주기 — recover(복구 enqueue까지)·stop(10초 상한, throw 0).
+ * SyncService 전체가 이 형태를 만족한다(구조적). boot 내부용이라 export 없음.
+ */
+interface SyncLifecycle {
+  recover: () => Promise<void>;
+  stop: () => Promise<void>;
+}
 
 export type BootedServer = {
   server: ServerType;
@@ -116,7 +135,8 @@ export type BootedServer = {
   background: Promise<void>;
   /**
    * ① HTTP 리스너 close(새 연결 거부) → ② abort → ③ background 정착 대기
-   * → ④ 확보된 cron 해제 → ⑤ DB close. 두 번 호출해도 각 단계 1회만.
+   * → ③.5 동기 서비스 stop(10초 상한, throw 0) → ④ 확보된 cron 해제 → ⑤ DB close.
+   * 두 번 호출해도 각 단계 1회만.
    */
   shutdown: () => Promise<void>;
 };
@@ -128,10 +148,15 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
     backupBeforeApply: () => deps.backupDatabase(dataDir),
   });
   const rawDb = (db as Partial<{ db: Database.Database }>).db;
+  const syncService = deps.createSyncService?.({ db: rawDb, dataDir });
+  if (syncService !== undefined) {
+    await syncService.recover();
+  }
   const app = (deps.createApp ?? (() => createServerApp()))({
     db: rawDb,
     dataDir,
     version: readWebVersion(),
+    syncService,
   });
   const { server, port } = await (deps.listen ?? startServer)(
     app,
@@ -143,7 +168,6 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
   const state: { cron?: CronHandle } = {};
 
   const background = (async (): Promise<void> => {
-    await deps.recoverInterruptedJobs(signal);
     if (signal.aborted) {
       return;
     }
@@ -208,6 +232,17 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
         () => undefined,
         () => undefined,
       );
+      // ③.5 동기 서비스 정지 — 리스너 close 뒤·DB close 전, 상한 10초, throw 0.
+      try {
+        await Promise.race([
+          syncService?.stop() ?? Promise.resolve(),
+          new Promise<void>((_, reject) => {
+            setTimeout(() => reject(new Error('sync stop timeout')), 10000);
+          }),
+        ]);
+      } catch {
+        // 정지 실패·초과해도 종료는 계속한다
+      }
       // ④ 확보된 cron 해제 → ⑤ DB close.
       state.cron?.unregister();
       state.cron = undefined;

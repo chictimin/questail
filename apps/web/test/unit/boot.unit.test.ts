@@ -13,6 +13,7 @@ import {
 } from '../../src/server/boot.js';
 import { HEALTH_PATH, createServerApp } from '../../src/server/app.js';
 import { startServer } from '../../src/server/serve.js';
+import type { SyncService } from '../../src/data/service.js';
 
 function stubDeps(calls: string[]): BootDeps {
   const db: BootDatabase = {
@@ -38,9 +39,14 @@ function stubDeps(calls: string[]): BootDeps {
       calls.push('migrate');
       return db;
     },
-    recoverInterruptedJobs: async () => {
-      calls.push('recover');
-    },
+    createSyncService: () => ({
+      recover: async () => {
+        calls.push('recover');
+      },
+      stop: async () => {
+        calls.push('syncStop');
+      },
+    }) as unknown as SyncService,
     isConnected: () => {
       calls.push('isConnected');
       return true;
@@ -71,15 +77,15 @@ function stubDeps(calls: string[]): BootDeps {
 }
 
 describe('boot 순서', () => {
-  it('backup → migrate → listen → recover → isConnected → snapshot → registerCron', async () => {
+  it('backup → migrate → recover → listen → isConnected → snapshot → registerCron', async () => {
     const calls: string[] = [];
     const booted = await boot(stubDeps(calls));
     await booted.background;
     expect(calls).toEqual([
       `backup:${join(tmpdir(), 'questail-nozi-boot')}`,
       'migrate',
-      'listen',
       'recover',
+      'listen',
       'isConnected',
       'snapshot',
       'registerCron',
@@ -148,41 +154,51 @@ describe('boot 백그라운드', () => {
   });
 
   it('background 도중 shutdown → 이후 단계 0 호출', async () => {
-
     const calls: string[] = [];
     const deps = stubDeps(calls);
-    let releaseRecover!: () => void;
-    deps.recoverInterruptedJobs = async () => {
-      calls.push('recover');
+    let releaseSnapshot!: () => void;
+    deps.runOverdueSnapshot = async () => {
+      calls.push('snapshot');
       await new Promise<void>((resolve) => {
-        releaseRecover = resolve;
+        releaseSnapshot = resolve;
       });
     };
     const booted = await boot(deps);
     const shutting = booted.shutdown();
-    releaseRecover();
+    releaseSnapshot();
     await shutting;
     await booted.background.then(
       () => undefined,
       () => undefined,
     );
-    expect(calls).toContain('recover');
-    expect(calls).not.toContain('isConnected');
-    expect(calls).not.toContain('snapshot');
+    expect(calls).toContain('snapshot');
     expect(calls).not.toContain('registerCron');
+  });
+
+  it('recover 거부 → listen 0회 + boot 거부', async () => {
+    const calls: string[] = [];
+    const deps = stubDeps(calls);
+    deps.createSyncService = () =>
+      ({
+        recover: async () => {
+          throw new Error('recover failed');
+        },
+        stop: async () => undefined,
+      }) as unknown as SyncService;
+    await expect(boot(deps)).rejects.toThrow('recover failed');
+    expect(calls).not.toContain('listen');
   });
 
   it('등록 도중 abort → 늦은 cron 즉시 해제 1회', async () => {
     const calls: string[] = [];
     const deps = stubDeps(calls);
-    let releaseRecover!: () => void;
-    deps.recoverInterruptedJobs = async () => {
-      calls.push('recover');
+    let releaseSnapshot!: () => void;
+    deps.runOverdueSnapshot = async () => {
+      calls.push('snapshot');
       await new Promise<void>((resolve) => {
-        releaseRecover = resolve;
+        releaseSnapshot = resolve;
       });
     };
-    const booted = await boot(deps);
     deps.registerCron = () => {
       calls.push('registerCron');
       void booted.shutdown();
@@ -192,7 +208,8 @@ describe('boot 백그라운드', () => {
         },
       };
     };
-    releaseRecover();
+    const booted = await boot(deps);
+    releaseSnapshot();
     await booted.background.then(
       () => undefined,
       () => undefined,
@@ -205,15 +222,16 @@ describe('boot 백그라운드', () => {
 });
 
 describe('boot 종료', () => {
-  it('shutdown → server-close → unregister → close 순서', async () => {
+  it('shutdown → server-close → syncStop → unregister → close 순서', async () => {
     const calls: string[] = [];
     const booted = await boot(stubDeps(calls));
     await booted.background;
     await booted.shutdown();
     expect(calls).toContain('server-close');
     expect(calls.indexOf('server-close')).toBeLessThan(
-      calls.indexOf('unregister'),
+      calls.indexOf('syncStop'),
     );
+    expect(calls.indexOf('syncStop')).toBeLessThan(calls.indexOf('unregister'));
     expect(calls.indexOf('unregister')).toBeLessThan(calls.indexOf('close'));
   });
 

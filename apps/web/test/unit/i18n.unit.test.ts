@@ -62,10 +62,11 @@ describe('i18n 키 정합', () => {
     // 요청 오류 코드가 늘면 아래 satisfies와 누락 검사가 typecheck를 깨뜨린다.
     // GAME_NOT_FOUND(W7 추가분)도 여기에 포함한다.
     const REQUEST_CODES = [
-      'CONNECT_IN_PROGRESS',
-      'EXPORT_FAILED',
-      'GAME_NOT_FOUND',
-      'INTERNAL',
+    'CONNECT_IN_PROGRESS',
+    'EXPORT_FAILED',
+    'GAME_NOT_FOUND',
+    'SYNC_IN_PROGRESS',
+    'INTERNAL',
       'INVALID_BODY',
       'INVALID_HOST',
       'INVALID_ORIGIN',
