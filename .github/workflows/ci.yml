@@ -1,0 +1,39 @@
+# R1 CI — typecheck·build·test만 돌린다.
+# eval은 R1 DoD 기준이 아니라서 제외한다(prework §4-3: M7까지 release:check 손대지 않음).
+# 설치 매트릭스(.github/workflows/install-matrix.yml)와 별도 파일·별도 trigger다.
+name: R1 CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # with.version 생략 — 루트 packageManager(pnpm@10.28.2)를 쓴다.
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Chromium for E2E
+        run: pnpm --filter @questail/web exec playwright install --with-deps chromium
+
+      - name: Test (unit + browser E2E)
+        run: pnpm test
