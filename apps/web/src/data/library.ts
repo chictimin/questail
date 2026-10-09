@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import {
   achievementStates,
@@ -72,22 +72,34 @@ export interface GameFacts {
   syncRunRefs: number[];
 }
 
-type Db = ReturnType<typeof drizzle>;
+function keyOf(platform: string, externalId: string): string {
+  return JSON.stringify([platform, externalId]);
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type KeyedTable = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  platform: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  externalId: any;
-};
+/** 집합 조회 1건을 게임 키별로 묶는다. 그룹 안 순서는 행 삽입 순(rowid)을 유지한다. */
+function groupByKey<T extends { platform: string; externalId: string }>(rows: T[]): Map<string, T[]> {
+  const out = new Map<string, T[]>();
+  for (const row of rows) {
+    const k = keyOf(row.platform, row.externalId);
+    const list = out.get(k);
+    if (list) list.push(row);
+    else out.set(k, [row]);
+  }
+  return out;
+}
 
-function rowsByKey<T>(db: Db, table: KeyedTable, key: GameKey): T[] {
-  return db
-    .select()
-    .from(table as never)
-    .where(and(eq(table.platform, key.platform), eq(table.externalId, key.externalId)))
-    .all() as T[];
+interface GameGroups {
+  genreRows: (typeof gameGenres.$inferSelect)[];
+  ownRows: (typeof ownershipSpans.$inferSelect)[];
+  wishRows: (typeof wishlistSpans.$inferSelect)[];
+  snapRows: (typeof playtimeSnapshots.$inferSelect)[];
+  tagRows: (typeof gameUserTags.$inferSelect)[];
+  tagSource: typeof tagSources.$inferSelect | undefined;
+  achRows: (typeof achievements.$inferSelect)[];
+  achState: typeof achievementStates.$inferSelect | undefined;
+  rating: typeof ratings.$inferSelect | undefined;
+  ratingEventRows: (typeof ratingEvents.$inferSelect)[];
+  isHidden: boolean;
 }
 
 function toOrigin(value: string): 'observed' | 'baseline' | 'imported' {
@@ -118,37 +130,24 @@ function gapDays(days: string[]): string[] {
   return out;
 }
 
-function buildFacts(db: Database.Database, game: typeof games.$inferSelect): GameFacts {
+function buildFacts(
+  game: typeof games.$inferSelect,
+  g: GameGroups,
+  achievementOff: boolean,
+): GameFacts {
   const key: GameKey = { platform: game.platform, externalId: game.externalId };
-  const orm = drizzle(db);
-  const byKey = <T>(table: KeyedTable): T[] => rowsByKey<T>(orm, table, key);
 
-  const genreRows = (byKey(gameGenres) as typeof gameGenres.$inferSelect[]).sort(
-    (a, b) => a.position - b.position,
-  );
-  const ownRows = byKey(ownershipSpans) as typeof ownershipSpans.$inferSelect[];
-  const wishRows = byKey(wishlistSpans) as typeof wishlistSpans.$inferSelect[];
-  const snapRows = (byKey(playtimeSnapshots) as typeof playtimeSnapshots.$inferSelect[]).sort(
-    (a, b) => a.observedAt - b.observedAt,
-  );
-  const tagRows = (byKey(gameUserTags) as typeof gameUserTags.$inferSelect[]).sort(
-    (a, b) => a.rank - b.rank,
-  );
-  const tagSource = (byKey(tagSources) as typeof tagSources.$inferSelect[])[0];
-  const achRows = byKey(achievements) as typeof achievements.$inferSelect[];
-  const achState = (byKey(achievementStates) as typeof achievementStates.$inferSelect[])[0];
-  const rating = (
-    byKey(ratings) as typeof ratings.$inferSelect[]
-  )[0];
-  const ratingEventRows = byKey(ratingEvents) as typeof ratingEvents.$inferSelect[];
-  const isHidden =
-    (byKey(hiddenGames) as typeof hiddenGames.$inferSelect[]).length > 0;
-  const achievementOff =
-    orm
-      .select({ value: preferences.value })
-      .from(preferences)
-      .where(eq(preferences.key, 'achievement_enabled'))
-      .get()?.value !== '1';
+  const genreRows = [...g.genreRows].sort((a, b) => a.position - b.position);
+  const ownRows = g.ownRows;
+  const wishRows = g.wishRows;
+  const snapRows = [...g.snapRows].sort((a, b) => a.observedAt - b.observedAt);
+  const tagRows = [...g.tagRows].sort((a, b) => a.rank - b.rank);
+  const tagSource = g.tagSource;
+  const achRows = g.achRows;
+  const achState = g.achState;
+  const rating = g.rating;
+  const ratingEventRows = g.ratingEventRows;
+  const isHidden = g.isHidden;
 
   const snapshots = snapRows.map((row, index) => {
     const prev = index === 0 ? null : snapRows[index - 1];
@@ -257,21 +256,62 @@ export function listLibrary(
 ): GameFacts[] {
   const orm = drizzle(db);
   const allGames = orm.select().from(games).all();
-  const out: GameFacts[] = [];
-  for (const game of allGames) {
-    const spans = orm
-      .select({ ended: ownershipSpans.ended })
-      .from(ownershipSpans)
-      .where(
-        and(
-          eq(ownershipSpans.platform, game.platform),
-          eq(ownershipSpans.externalId, game.externalId),
-        ),
-      )
-      .all();
-    if (spans.length === 0) continue;
-    if (!opts.includeEnded && !spans.some((row) => row.ended === 0)) continue;
-    out.push(buildFacts(db, game));
-  }
-  return out;
+  const spansByKey = groupByKey(orm.select().from(ownershipSpans).all());
+  const included = allGames.filter((game) => {
+    const spans = spansByKey.get(keyOf(game.platform, game.externalId)) ?? [];
+    if (spans.length === 0) return false;
+    if (!opts.includeEnded && !spans.some((row) => row.ended === 0)) return false;
+    return true;
+  });
+  const keep = new Set(included.map((game) => keyOf(game.platform, game.externalId)));
+  const scoped = <T extends { platform: string; externalId: string }>(rows: T[]): Map<string, T[]> => {
+    const out = new Map<string, T[]>();
+    for (const row of rows) {
+      const k = keyOf(row.platform, row.externalId);
+      if (!keep.has(k)) continue;
+      const list = out.get(k);
+      if (list) list.push(row);
+      else out.set(k, [row]);
+    }
+    return out;
+  };
+  const genresByKey = scoped(orm.select().from(gameGenres).all());
+  const wishByKey = scoped(orm.select().from(wishlistSpans).all());
+  const snapsByKey = scoped(orm.select().from(playtimeSnapshots).all());
+  const tagsByKey = scoped(orm.select().from(gameUserTags).all());
+  const tagSourcesByKey = scoped(orm.select().from(tagSources).all());
+  const achByKey = scoped(orm.select().from(achievements).all());
+  const achStatesByKey = scoped(orm.select().from(achievementStates).all());
+  const ratingsByKey = scoped(orm.select().from(ratings).all());
+  const ratingEventsByKey = scoped(orm.select().from(ratingEvents).all());
+  const hiddenByKey = scoped(orm.select().from(hiddenGames).all());
+  const achievementOff =
+    orm
+      .select({ value: preferences.value })
+      .from(preferences)
+      .where(eq(preferences.key, 'achievement_enabled'))
+      .get()?.value !== '1';
+  const empty: never[] = [];
+  return included.map((game) => {
+    const k = keyOf(game.platform, game.externalId);
+    const at = <T>(m: Map<string, T[]>): T[] => m.get(k) ?? (empty as T[]);
+    const first = <T>(m: Map<string, T[]>): T | undefined => m.get(k)?.[0];
+    return buildFacts(
+      game,
+      {
+        genreRows: at(genresByKey),
+        ownRows: spansByKey.get(k) ?? [],
+        wishRows: at(wishByKey),
+        snapRows: at(snapsByKey),
+        tagRows: at(tagsByKey),
+        tagSource: first(tagSourcesByKey),
+        achRows: at(achByKey),
+        achState: first(achStatesByKey),
+        rating: first(ratingsByKey),
+        ratingEventRows: at(ratingEventsByKey),
+        isHidden: (hiddenByKey.get(k)?.length ?? 0) > 0,
+      },
+      achievementOff,
+    );
+  });
 }
