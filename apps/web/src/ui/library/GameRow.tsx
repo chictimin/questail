@@ -14,6 +14,7 @@ import {
   starsOf,
 } from './format.js';
 import { displayNameOf, type SortableGame } from './sort.js';
+import { genreDisplayNames } from '../../shared/genres.js';
 import { Stars } from './Stars.js';
 import './row.css';
 
@@ -63,6 +64,7 @@ export function GameRow({
   const stars = starsOf(facts.latestScore);
   const year = formatYear(facts);
   const badges = rowBadges(facts);
+  const displayGenres = genreDisplayNames(facts.genres, locale);
   const noteId = `just-note-${facts.key.platform}-${facts.key.externalId}`;
 
   return (
@@ -86,8 +88,8 @@ export function GameRow({
           </h2>
           <div className="game-row-meta">
             {year === null ? null : <span>{year}</span>}
-            {facts.genres.length === 0 ? null : (
-              <span>{facts.genres.map((genre) => genre.nameEn).join(', ')}</span>
+            {displayGenres.length === 0 ? null : (
+              <span>{displayGenres.join(', ')}</span>
             )}
           </div>
         </div>

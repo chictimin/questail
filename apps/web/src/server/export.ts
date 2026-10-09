@@ -9,6 +9,7 @@ import { existsSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync
 import { basename, dirname, join, resolve } from 'node:path';
 import type { GameFacts } from '../data/library.js';
 import { latestRatedAt } from '../shared/ratedAt.js';
+import { genreExportNames } from '../shared/genres.js';
 import { t, type Locale } from '../ui/i18n/index.js';
 
 export interface ExportFile {
@@ -102,7 +103,7 @@ export function renderExportFile(
       ? isoDay(facts.releaseDate)
       : (facts.releaseDateText ?? null);
   const ratedAtEpoch = exportRatedAt(facts);
-  const genres = facts.genres.map((genre) => genre.nameEn);
+  const genres = genreExportNames(facts.genres);
   const tags = facts.tags.map((entry) => entry.tag);
   const displayName = locale === 'ko' ? (facts.titleKo ?? facts.name) : facts.name;
   const none = t(locale, 'export.none');
