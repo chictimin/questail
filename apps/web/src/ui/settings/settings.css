@@ -277,15 +277,10 @@ section[aria-labelledby='settings-data-heading'] .settings-body button {
   color: var(--text-secondary);
 }
 
-/* 정보 섹션 — 버전 mono + 고지 + 라이선스 표기. */
+/* 정보 섹션 — 버전 mono + 라이선스 표기. */
 section[aria-labelledby='settings-about-heading'] .settings-body code {
   font-family: var(--font-mono);
   font-size: var(--text-13);
-}
-
-section[aria-labelledby='settings-about-heading'] .settings-body > p {
-  font-size: var(--text-13);
-  line-height: 20px;
 }
 
 /* 거부 대화상자 — :has로 식별하는 화면 덮개 + 460 카드.

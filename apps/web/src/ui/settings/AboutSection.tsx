@@ -38,7 +38,6 @@ export function AboutSection(): React.JSX.Element {
         <span className="settings-label">{text('settings.versionLabel')}</span>
         <div className="settings-body">
           <code>{version ?? '—'}</code>
-          <p>{text('connect.valveNotice')}</p>
           <span>{text('settings.licenseLabel')}</span>
         </div>
       </div>
