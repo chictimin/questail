@@ -8,6 +8,7 @@ import {
   CaretDown,
   CaretUp,
   Check,
+  CheckCircle,
   CircleNotch,
   Eye,
   EyeSlash,
@@ -20,7 +21,7 @@ import {
   Warning,
   XCircle,
 } from '@phosphor-icons/react';
-import { useLocation, useSearch } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import { STEAM_LINKS } from '../connectLinks.js';
 import { parseSteamIdInput } from '../steamId.js';
@@ -362,31 +363,47 @@ export function ConnectPage({
             </div>
           )}
           {!showForm && connected !== null ? (
-            <div>
+            <div className="connect-layout">
               <section
                 ref={statusRef}
                 aria-live="polite"
                 tabIndex={-1}
                 className="qt-card connect-done"
               >
-                <p>{text('connect.success')}</p>
-                <p>{text('connect.connectedAs', { steamId: connected.steamId })}</p>
+                <h2 className="connect-done-title">
+                  <CheckCircle size={16} aria-hidden />
+                  {text('connect.success')}
+                </h2>
+                <p className="connect-done-body">
+                  {text('connect.connectedAs', { steamId: connected.steamId })}
+                </p>
                 {!connected.permissionEnforced && (
-                  <p>{text('connect.noPermissionNote')}</p>
+                  <p className="connect-done-body">
+                    {text('connect.noPermissionNote')}
+                  </p>
                 )}
-                <p>{text('connect.fixedIdNotice')}</p>
-                <button
-                  className="qt-btn qt-btn--secondary"
-                  onClick={() => {
-                    setEditing(true);
-                    setKeyError(null);
-                    setSteamIdError(null);
-                    setNoticeKey(null);
-                  }}
-                >
-                  {text('connect.reEnter')}
-                </button>
-                <p>{text('connect.goList')}</p>
+                <p className="connect-done-body">
+                  {text('connect.fixedIdNotice')}
+                </p>
+                <div className="connect-done-actions">
+                  <button
+                    className="qt-btn qt-btn--secondary"
+                    onClick={() => {
+                      setEditing(true);
+                      setKeyError(null);
+                      setSteamIdError(null);
+                      setNoticeKey(null);
+                    }}
+                  >
+                    {text('connect.reEnter')}
+                  </button>
+                  <Link
+                    href="/library"
+                    className="qt-btn qt-btn--primary connect-done-go"
+                  >
+                    {text('connect.goList')}
+                  </Link>
+                </div>
               </section>
               {guide}
             </div>

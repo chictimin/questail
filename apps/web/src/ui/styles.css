@@ -5,6 +5,11 @@
  */
 @import '../styles/tokens.css';
 
+/* 다크 단일 테마(README "테마: 다크 단일") — 네이티브 스크롤바·폼 컨트롤을 다크에 맞춘다. */
+:root {
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }

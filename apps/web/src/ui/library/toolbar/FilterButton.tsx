@@ -1,23 +1,44 @@
-/** U2a 필터 버튼 + 팝오버 — 빠진 게임 토글 + 단시간 가리기 토글 + 정렬 라디오 + 방향 전환. details/summary 네이티브. */
+/** U2a 필터 버튼 + 팝오버 — 빠진 게임 토글 + 단시간 가리기 토글 + 정렬 (sortKey, direction) 쌍 라디오 11항. details/summary 네이티브. */
 import { Check, SlidersHorizontal } from '@phosphor-icons/react';
 import { t, type Locale } from '../../i18n/index.js';
 import '../toolbar.css';
-import type { Direction, SortKey, SortSpec } from '../sort.js';
+import {
+  SORT_OPTIONS,
+  type Direction,
+  type SortKey,
+  type SortSpec,
+} from '../sort.js';
 
-const SORT_KEYS: SortKey[] = ['playtime', 'ratedAt'];
-
-const SORT_LABELS: Record<string, Parameters<typeof t>[1]> = {
-  'playtime:desc': 'library.sortPlaytimeDesc',
-  'playtime:asc': 'library.sortPlaytimeAsc',
-  'ratedAt:desc': 'library.sortRatedAtDesc',
-  'ratedAt:asc': 'library.sortRatedAtAsc',
-};
-
-const DIRECTIONS: Direction[] = ['desc', 'asc'];
-
-const DIRECTION_LABELS: Record<Direction, Parameters<typeof t>[1]> = {
-  desc: 'library.sortDesc',
-  asc: 'library.sortAsc',
+/** 쌍별 라벨 — sort.ts SORT_OPTIONS 11조합 전부에 기존 키만 쓴다(키 신설 0). */
+const SORT_LABELS: Record<
+  SortKey,
+  Partial<Record<Direction, Parameters<typeof t>[1]>>
+> = {
+  playtime: {
+    desc: 'library.sortPlaytimeDesc',
+    asc: 'library.sortPlaytimeAsc',
+  },
+  lastPlayed: {
+    desc: 'library.sortLastPlayedDesc',
+    asc: 'library.sortLastPlayedAsc',
+  },
+  rating: {
+    desc: 'library.sortRatingDesc',
+    asc: 'library.sortRatingAsc',
+  },
+  ratedAt: {
+    desc: 'library.sortRatedAtDesc',
+  },
+  addedAt: {
+    desc: 'library.sortAddedAtDesc',
+  },
+  releaseDate: {
+    desc: 'library.sortReleaseDateDesc',
+    asc: 'library.sortReleaseDateAsc',
+  },
+  name: {
+    asc: 'library.sortNameAsc',
+  },
 };
 
 export function FilterButton({
@@ -73,12 +94,15 @@ export function FilterButton({
         <div className="lib-popover-divider" aria-hidden />
         <span className="lib-popover-heading">{t(locale, 'library.sortTitle')}</span>
         <div className="lib-popover-sorts" role="radiogroup">
-          {SORT_KEYS.map((sortKey) => {
-            const value = `${sortKey}:${sortSpec.direction}`;
-            const checked = sortSpec.sortKey === sortKey;
+          {SORT_OPTIONS.map((option) => {
+            const checked =
+              sortSpec.sortKey === option.sortKey &&
+              sortSpec.direction === option.direction;
+            const labelKey = SORT_LABELS[option.sortKey][option.direction];
+            if (labelKey === undefined) return null;
             return (
               <label
-                key={sortKey}
+                key={`${option.sortKey}:${option.direction}`}
                 className={
                   checked ? 'lib-popover-sort lib-popover-sort--on' : 'lib-popover-sort'
                 }
@@ -88,37 +112,15 @@ export function FilterButton({
                   name="sort"
                   className="lib-radio"
                   checked={checked}
-                  onChange={() => onSort({ sortKey, direction: sortSpec.direction })}
+                  onChange={() =>
+                    onSort({
+                      sortKey: option.sortKey,
+                      direction: option.direction,
+                    })
+                  }
                 />
                 <span className="lib-popover-sort-label">
-                  {t(locale, SORT_LABELS[value] as Parameters<typeof t>[1])}
-                </span>
-                {checked ? <Check size={16} aria-hidden /> : null}
-              </label>
-            );
-          })}
-        </div>
-        <div className="lib-popover-divider" aria-hidden />
-        <span className="lib-popover-heading">{t(locale, 'library.sortDirection')}</span>
-        <div className="lib-popover-sorts" role="radiogroup">
-          {DIRECTIONS.map((direction) => {
-            const checked = sortSpec.direction === direction;
-            return (
-              <label
-                key={direction}
-                className={
-                  checked ? 'lib-popover-sort lib-popover-sort--on' : 'lib-popover-sort'
-                }
-              >
-                <input
-                  type="radio"
-                  name="sort-direction"
-                  className="lib-radio"
-                  checked={checked}
-                  onChange={() => onSort({ sortKey: sortSpec.sortKey, direction })}
-                />
-                <span className="lib-popover-sort-label">
-                  {t(locale, DIRECTION_LABELS[direction])}
+                  {t(locale, labelKey)}
                 </span>
                 {checked ? <Check size={16} aria-hidden /> : null}
               </label>
