@@ -424,6 +424,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           keyPath: ctx.keyPath,
           baseUrl: ctx.baseUrl,
           fetchFn: (url) => raceWithSignal(baseFetch(url), signal),
+          passStatus: [400],
         });
         let collected;
         try {
@@ -432,7 +433,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
             signal,
           );
           if (!result.ok) {
-            finishFailed(job, result.code, result.params);
+            finishFailed(job, result.code, { ...result.params, appid: Number(appid) });
             return;
           }
           const verdict = judgeAchievementsResponse(result.status, result.body, Number(appid));
@@ -444,7 +445,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         } catch (error) {
           if (signal.aborted) return; // stop — running 유지, recover가 잇는다
           if (error instanceof DOMException && error.name === 'AbortError') return;
-          finishFailed(job, 'PAYLOAD_CORRUPT', {});
+          finishFailed(job, 'PAYLOAD_CORRUPT', { appid: Number(appid) });
           return;
         }
         saveCollectedAchievements(

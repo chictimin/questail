@@ -391,6 +391,8 @@ export function createSteamRequest(opts: {
   fetchFn?: FetchLike;
   /** 테스트 주입용. 없으면 공식 기본. 형태 불일치는 요청마다 실패 반환한다. */
   baseUrl?: string;
+  /** 목록의 status는 실패로 바꾸지 않고 `{ok:true, status, body}`로 넘긴다(JSON 파싱 실패 시 body null). 401·403·429는 목록에 있어도 기존 실패 변환이 우선한다. 생략 시 기존 동작 불변. */
+  passStatus?: number[];
 }): {
   request: (buildPath: (key: string, base: string) => string) => Promise<KeyedRequestResult>;
   containsSecret: (text: string) => boolean;
@@ -428,6 +430,15 @@ export function createSteamRequest(opts: {
       }
       if (res.status === 429) {
         return fail('RATE_LIMITED', { status: 429 });
+      }
+      if (opts.passStatus?.includes(res.status)) {
+        let body: unknown = null;
+        try {
+          body = await res.json();
+        } catch {
+          body = null;
+        }
+        return { ok: true, status: res.status, body };
       }
       if (res.status < 200 || res.status >= 300) {
         return fail('NETWORK', { status: res.status });

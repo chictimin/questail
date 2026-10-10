@@ -419,6 +419,18 @@ export type AchievementVerdict =
   | { kind: 'skipGame' }
   | { kind: 'failSource'; code: SyncErrorCode; params: IssueParams };
 
+/** 게임 단위 "통계 없음" 본문 판정(R12-2). 앞뒤 공백 제거·연속 공백 1칸·소문자 정규화 후 정확히 일치해야 한다. */
+function isNoStatsBody(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return false;
+  const stats = (payload as Record<string, unknown>)['playerstats'];
+  if (typeof stats !== 'object' || stats === null || Array.isArray(stats)) return false;
+  const record = stats as Record<string, unknown>;
+  if (record['success'] !== false) return false;
+  if (typeof record['error'] !== 'string') return false;
+  const normalized = record['error'].trim().replace(/\s+/g, ' ').toLowerCase();
+  return normalized === 'requested app has no stats';
+}
+
 export function judgeAchievementsResponse(
   status: number,
   payload: unknown,
@@ -430,6 +442,12 @@ export function judgeAchievementsResponse(
   if (status === 429) {
     return { kind: 'failSource', code: 'RATE_LIMITED', params: { appid, status } };
   }
+  if (status === 400) {
+    if (isNoStatsBody(payload)) {
+      return { kind: 'skipGame' };
+    }
+    return { kind: 'failSource', code: 'NETWORK', params: { appid, status } };
+  }
   if (status !== 200) {
     return { kind: 'failSource', code: 'NETWORK', params: { appid, status } };
   }
@@ -437,6 +455,9 @@ export function judgeAchievementsResponse(
   const success = isRecord(stats) ? stats['success'] : undefined;
   const list = isRecord(stats) ? stats['achievements'] : undefined;
   if (success === false || list === undefined) {
+    return { kind: 'skipGame' };
+  }
+  if (Array.isArray(list) && list.length === 0) {
     return { kind: 'skipGame' };
   }
   return { kind: 'ok' };
