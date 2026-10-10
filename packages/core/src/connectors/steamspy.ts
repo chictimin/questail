@@ -50,10 +50,15 @@ export interface SteamSpyCacheEntry {
 /** 태그 수집 상태. failed는 기존 DB 태그 보존 신호다. */
 export type SteamSpyTagStatus = 'ready' | 'empty' | 'failed';
 
+/** failed 사유. 새로 쓰는 failed는 항상 failure를 갖는다. */
+export type SteamSpyFailure =
+  | { reason: 'network' | 'timeout' | 'corrupt' | 'invalid_appid' }
+  | { reason: 'http'; status: number };
+
 export type SteamSpyTagsResult =
   | { status: 'ready'; tags: SteamSpyUserTag[] }
   | { status: 'empty'; tags: [] }
-  | { status: 'failed'; tags: [] };
+  | { status: 'failed'; tags: []; failure: SteamSpyFailure };
 
 export type SteamSpyFetchFn = (
   url: string,
@@ -159,11 +164,18 @@ type ClassifiedTags =
   | { kind: 'empty' }
   | { kind: 'corrupt' };
 
-/** raw 분류. corrupt는 failed 신호, empty는 저장 대상 상태다. */
-function classifyUserTags(raw: unknown): ClassifiedTags {
-  if (typeof raw !== 'object' || raw === null) return { kind: 'corrupt' };
-  const tags = (raw as { tags?: unknown }).tags;
-  if (typeof tags !== 'object' || tags === null || Array.isArray(tags)) {
+/** raw 분류. corrupt는 failed 신호, empty는 저장 대상 상태다. 네트워크 응답·캐시 hit 공통. */
+function classifyUserTags(raw: unknown, appId: string): ClassifiedTags {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { kind: 'corrupt' };
+  const record = raw as Record<string, unknown>;
+  if (typeof record['appid'] !== 'number' || record['appid'] !== Number(appId)) {
+    return { kind: 'corrupt' };
+  }
+  const tags = record['tags'];
+  if (Array.isArray(tags)) {
+    return tags.length === 0 ? { kind: 'empty' } : { kind: 'corrupt' };
+  }
+  if (typeof tags !== 'object' || tags === null) {
     return { kind: 'corrupt' };
   }
   const derived = deriveSteamSpyUserTags(raw);
@@ -189,43 +201,47 @@ async function pace(limiter: SteamSpyLimiter, clock: SteamSpyClock): Promise<voi
 export async function fetchSteamSpyUserTags(
   opts: SteamSpyFetchOptions,
 ): Promise<SteamSpyTagsResult> {
-  const failed: SteamSpyTagsResult = { status: 'failed', tags: [] };
+  const fail = (failure: SteamSpyFailure): SteamSpyTagsResult => ({
+    status: 'failed',
+    tags: [],
+    failure,
+  });
   // 계약 미정의, 리드 지시 제안: 숫자 아닌 appId는 요청 없이 failed.
-  if (!/^\d+$/.test(opts.appId)) return failed;
+  if (!/^\d+$/.test(opts.appId)) return fail({ reason: 'invalid_appid' });
   const clock = opts.clock ?? defaultClock;
   const limiter = opts.limiter ?? defaultLimiter;
   const fetchFn = opts.fetchFn ?? fetch;
-  if (opts.signal?.aborted) return failed;
+  if (opts.signal?.aborted) return fail({ reason: 'network' });
   if (!opts.bypassCache) {
     const cached = await readCache(opts.cacheDir, opts.appId);
     if (cached !== undefined) {
-      const hit = classifyUserTags(cached);
+      const hit = classifyUserTags(cached, opts.appId);
       if (hit.kind === 'ready') return { status: 'ready', tags: hit.tags };
       if (hit.kind === 'empty') return { status: 'empty', tags: [] };
       // corrupt → miss로 보고 재요청한다
     }
   }
   await pace(limiter, clock);
-  if (opts.signal?.aborted) return failed;
-  const signal = opts.signal
-    ? AbortSignal.any([opts.signal, AbortSignal.timeout(FETCH_TIMEOUT_MS)])
-    : AbortSignal.timeout(FETCH_TIMEOUT_MS);
+  if (opts.signal?.aborted) return fail({ reason: 'network' });
+  const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+  const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
   let res: { status: number; json: () => Promise<unknown> };
   try {
     const root = (opts.baseUrl ?? STEAMSPY_API_BASE).replace(/\/+$/, '');
     res = await fetchFn(`${root}${STEAMSPY_PATH}?request=appdetails&appid=${opts.appId}`, { signal });
   } catch {
-    return failed;
+    if (timeout.aborted) return fail({ reason: 'timeout' });
+    return fail({ reason: 'network' });
   }
-  if (res.status !== 200) return failed; // 일시 오류는 캐시하지 않는다
+  if (res.status !== 200) return fail({ reason: 'http', status: res.status }); // 일시 오류는 캐시하지 않는다
   let raw: unknown;
   try {
     raw = await res.json();
   } catch {
-    return failed;
+    return fail({ reason: 'corrupt' });
   }
-  const classified = classifyUserTags(raw);
-  if (classified.kind === 'corrupt') return failed; // 손상 시 캐시 쓰기 금지
+  const classified = classifyUserTags(raw, opts.appId);
+  if (classified.kind === 'corrupt') return fail({ reason: 'corrupt' }); // 손상 시 캐시 쓰기 금지
   await writeCache(opts.cacheDir, opts.appId, raw);
   return classified.kind === 'ready'
     ? { status: 'ready', tags: classified.tags }

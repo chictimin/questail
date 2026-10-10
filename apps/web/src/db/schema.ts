@@ -318,6 +318,8 @@ export const tagSources = sqliteTable(
     syncRunId: integer('sync_run_id').references(() => syncRuns.id, {
       onDelete: 'restrict',
     }),
+    failReason: text('fail_reason'),
+    failStatus: integer('fail_status'),
   },
   (t) => [
     primaryKey({ columns: [t.platform, t.externalId] }),

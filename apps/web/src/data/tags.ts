@@ -4,7 +4,6 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { gameUserTags, tagSources } from '../db/schema.js';
 import type { GameKey } from './ratings.js';
-
 export interface SaveCollectedTagsOptions {
   /** 수집 시각, epoch 초. */
   observedAt: number;
@@ -16,6 +15,7 @@ export interface SaveCollectedTagsOptions {
  * ready면 게임 태그 통째 교체(rank 1~10) + ready,
  * empty면 태그행 삭제 + empty,
  * failed면 태그 보존 + failed(observed_at 갱신).
+ * failed면 fail_reason(필수)·fail_status(http일 때만) 기록, ready·empty면 둘 다 NULL. 과거 행은 건드리지 않는다.
  */
 export function saveCollectedTags(
   db: Database.Database,
@@ -23,6 +23,12 @@ export function saveCollectedTags(
   result: SteamSpyTagsResult,
   opts: SaveCollectedTagsOptions,
 ): { status: 'ready' | 'empty' | 'failed' } {
+  const failReason: string | null =
+    result.status === 'failed' ? result.failure.reason : null;
+  const failStatus: number | null =
+    result.status === 'failed' && result.failure.reason === 'http'
+      ? result.failure.status
+      : null;
   const apply = db.transaction((): 'ready' | 'empty' | 'failed' => {
     const orm = drizzle(db);
     const tagCond = and(
@@ -64,6 +70,8 @@ export function saveCollectedTags(
           tagStatus: result.status,
           observedAt: opts.observedAt,
           syncRunId: opts.syncRunId,
+          failReason,
+          failStatus,
         })
         .where(sourceCond)
         .run();
@@ -76,6 +84,8 @@ export function saveCollectedTags(
           tagStatus: result.status,
           observedAt: opts.observedAt,
           syncRunId: opts.syncRunId,
+          failReason,
+          failStatus,
         })
         .run();
     }

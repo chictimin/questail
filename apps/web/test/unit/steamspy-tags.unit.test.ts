@@ -17,10 +17,6 @@ function freshCacheDir(): string {
   return mkdtempSync(join(tmpdir(), 'questail-nozi-steamspy-'));
 }
 
-function tagsBody(tags: Record<string, number>): unknown {
-  return { tags };
-}
-
 function okFetch(body: unknown, seen?: { url: string; count: number }): SteamSpyFetchFn {
   return async (url: string) => {
     if (seen) {
@@ -58,7 +54,7 @@ describe('fetchSteamSpyUserTags', () => {
     const result = await fetchSteamSpyUserTags({
       appId: '10',
       cacheDir,
-      fetchFn: okFetch({ tags: {} }, seen),
+      fetchFn: okFetch({ appid: 10, tags: {} }, seen),
       limiter: createSteamSpyLimiter(),
     });
     expect(result).toEqual({ status: 'empty', tags: [] });
@@ -68,18 +64,17 @@ describe('fetchSteamSpyUserTags', () => {
 
   it('실패 상태는 failed이며 캐시에 쓰지 않는다', async () => {
     const cacheDir = freshCacheDir();
-    const cases: { appId: string; fetchFn: SteamSpyFetchFn }[] = [
-      { appId: '20', fetchFn: statusFetch(500) },
-      { appId: '21', fetchFn: statusFetch(429) },
-    ];
-    for (const { appId, fetchFn } of cases) {
+    for (const { appId, fetchFn, failure } of [
+      { appId: '20', fetchFn: statusFetch(500), failure: { reason: 'http', status: 500 } },
+      { appId: '21', fetchFn: statusFetch(429), failure: { reason: 'http', status: 429 } },
+    ] as const) {
       const result = await fetchSteamSpyUserTags({
         appId,
         cacheDir,
         fetchFn,
         limiter: createSteamSpyLimiter(),
       });
-      expect(result).toEqual({ status: 'failed', tags: [] });
+      expect(result).toEqual({ status: 'failed', tags: [], failure });
       expect(existsSync(join(cacheDir, `${appId}.json`))).toBe(false);
     }
     const down: SteamSpyFetchFn = async () => {
@@ -91,7 +86,7 @@ describe('fetchSteamSpyUserTags', () => {
       fetchFn: down,
       limiter: createSteamSpyLimiter(),
     });
-    expect(net).toEqual({ status: 'failed', tags: [] });
+    expect(net).toEqual({ status: 'failed', tags: [], failure: { reason: 'network' } });
   });
 
   it('깨진 본문·tags 부재는 failed이며 캐시에 쓰지 않는다', async () => {
@@ -104,7 +99,7 @@ describe('fetchSteamSpyUserTags', () => {
     });
     await expect(
       fetchSteamSpyUserTags({ appId: '30', cacheDir, fetchFn: broken, limiter: createSteamSpyLimiter() }),
-    ).resolves.toEqual({ status: 'failed', tags: [] });
+    ).resolves.toEqual({ status: 'failed', tags: [], failure: { reason: 'corrupt' } });
     await expect(
       fetchSteamSpyUserTags({
         appId: '31',
@@ -112,7 +107,7 @@ describe('fetchSteamSpyUserTags', () => {
         fetchFn: okFetch({ response: {} }),
         limiter: createSteamSpyLimiter(),
       }),
-    ).resolves.toEqual({ status: 'failed', tags: [] });
+    ).resolves.toEqual({ status: 'failed', tags: [], failure: { reason: 'corrupt' } });
     await expect(
       fetchSteamSpyUserTags({
         appId: '32',
@@ -120,7 +115,7 @@ describe('fetchSteamSpyUserTags', () => {
         fetchFn: okFetch({ response: { tags: 'x' } }),
         limiter: createSteamSpyLimiter(),
       }),
-    ).resolves.toEqual({ status: 'failed', tags: [] });
+    ).resolves.toEqual({ status: 'failed', tags: [], failure: { reason: 'corrupt' } });
     expect(existsSync(join(cacheDir, '30.json'))).toBe(false);
     expect(existsSync(join(cacheDir, '31.json'))).toBe(false);
     expect(existsSync(join(cacheDir, '32.json'))).toBe(false);
@@ -130,7 +125,7 @@ describe('fetchSteamSpyUserTags', () => {
     const cacheDir = freshCacheDir();
     writeFileSync(
       join(cacheDir, '40.json'),
-      JSON.stringify({ v: 1, appId: '40', fetchedAt: 1, raw: tagsBody({ Solo: 7 }) }),
+      JSON.stringify({ v: 1, appId: '40', fetchedAt: 1, raw: { appid: 40, tags: { Solo: 7 } } }),
       'utf8',
     );
     let calls = 0;
@@ -156,9 +151,10 @@ describe('fetchSteamSpyUserTags', () => {
       'utf8',
     );
     let calls = 0;
-    const counting: SteamSpyFetchFn = async () => {
+    const counting: SteamSpyFetchFn = async (url: string) => {
       calls += 1;
-      return { status: 200, json: async () => tagsBody({ Fresh: 3 }) };
+      const appid = new URL(url).searchParams.get('appid') ?? '?';
+      return { status: 200, json: async () => ({ appid: Number(appid), tags: { Fresh: 3 } }) };
     };
     const result = await fetchSteamSpyUserTags({
       appId: '45',
@@ -169,26 +165,26 @@ describe('fetchSteamSpyUserTags', () => {
     expect(result).toEqual({ status: 'ready', tags: [{ tag: 'Fresh', votes: 3 }] });
     expect(calls).toBe(1);
     const stored = JSON.parse(readFileSync(join(cacheDir, '45.json'), 'utf8')) as { raw: unknown };
-    expect(stored.raw).toEqual(tagsBody({ Fresh: 3 }));
+    expect(stored.raw).toEqual({ appid: 45, tags: { Fresh: 3 } });
   });
 
   it('bypass는 캐시를 읽지 않고 성공 시 새로 쓴다', async () => {
     const cacheDir = freshCacheDir();
     writeFileSync(
       join(cacheDir, '50.json'),
-      JSON.stringify({ v: 1, appId: '50', fetchedAt: 1, raw: tagsBody({ Old: 1 }) }),
+      JSON.stringify({ v: 1, appId: '50', fetchedAt: 1, raw: { appid: 50, tags: { Old: 1 } } }),
       'utf8',
     );
     const result = await fetchSteamSpyUserTags({
       appId: '50',
       cacheDir,
       bypassCache: true,
-      fetchFn: okFetch(tagsBody({ New: 9 })),
+      fetchFn: okFetch({ appid: 50, tags: { New: 9 } }),
       limiter: createSteamSpyLimiter(),
     });
     expect(result).toEqual({ status: 'ready', tags: [{ tag: 'New', votes: 9 }] });
     const stored = JSON.parse(readFileSync(join(cacheDir, '50.json'), 'utf8')) as { raw: unknown };
-    expect(stored.raw).toEqual(tagsBody({ New: 9 }));
+    expect(stored.raw).toEqual({ appid: 50, tags: { New: 9 } });
   });
 
   it('연속 호출 간격은 1000ms 이상이다(가짜 clock)', async () => {
@@ -201,9 +197,10 @@ describe('fetchSteamSpyUserTags', () => {
         t += ms;
       },
     };
-    const fetchFn: SteamSpyFetchFn = async () => {
+    const fetchFn: SteamSpyFetchFn = async (url: string) => {
       at.push(t);
-      return { status: 200, json: async () => tagsBody({ A: 1 }) };
+      const appid = new URL(url).searchParams.get('appid') ?? '?';
+      return { status: 200, json: async () => ({ appid: Number(appid), tags: { A: 1 } }) };
     };
     const limiter = createSteamSpyLimiter();
     await fetchSteamSpyUserTags({ appId: '60', cacheDir, fetchFn, clock, limiter });

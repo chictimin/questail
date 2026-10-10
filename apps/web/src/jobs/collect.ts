@@ -487,6 +487,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
     ctx.transitions.progressRun(job.runId, job.source, { done: 0, total: targets.length });
     const spyDir = join(dirname(ctx.cacheDir), STEAMSPY_CACHE_DIR_NAME);
     const baseFetch: FetchLike = ctx.fetchFn ?? ((url) => fetch(url));
+    let failedItems = 0;
     for (const appid of targets) {
       if (stopped) break;
       const { signal, release } = trackController();
@@ -500,6 +501,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           limiter: steamSpyTestHooks?.limiter ?? spyLimiter,
           baseUrl: ctx.steamSpyBaseUrl,
         });
+        if (collected.status === 'failed') failedItems += 1;
         saveCollectedTags(
           ctx.db,
           { platform: 'steam', externalId: appid },
@@ -508,6 +510,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         );
       } catch {
         if (signal.aborted && stopped) break;
+        failedItems += 1;
       } finally {
         release();
       }
@@ -531,6 +534,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       itemCount: targets.length,
       isFinalized: true,
       issue: null,
+      failedItems,
     });
   }
 

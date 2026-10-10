@@ -114,7 +114,7 @@ describe('saveCollectedTags', () => {
       db.prepare(
         "INSERT INTO tag_sources (platform, external_id, tag_status, observed_at, sync_run_id) VALUES ('steam', '990011', 'ready', 1, NULL)",
       ).run();
-      const out = saveCollectedTags(db, KEY, { status: 'failed', tags: [] }, { observedAt: NOW, syncRunId: 5 });
+      const out = saveCollectedTags(db, KEY, { status: 'failed', tags: [], failure: { reason: 'corrupt' } }, { observedAt: NOW, syncRunId: 5 });
       expect(out).toEqual({ status: 'failed' });
       expect(tagRows(db)).toEqual([{ tag: 'Keep', votes: 4, rank: 1 }]);
       expect(tagStatus(db)).toBe('failed');

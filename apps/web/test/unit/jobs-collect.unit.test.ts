@@ -417,7 +417,7 @@ describe('jobs collect', () => {
           owned: () => ownedPayload([{ appid: 10, total: 5 }]),
           steamspy: (appid: string) => {
             seen.push(appid);
-            return { tags: { Solo: 7 } };
+            return { appid: Number(appid), tags: { Solo: 7 } };
           },
         }),
       });
@@ -450,7 +450,7 @@ describe('jobs collect', () => {
       const service = serviceWith(db, dir, {
         fetchFn: routeFetch({
           owned: () => ownedPayload([{ appid: 11, total: 5 }]),
-          steamspy: () => ({ tags: {} }),
+          steamspy: () => ({ appid: 11, tags: {} }),
         }),
       });
       service.startSync({ sources: ['owned'], locale: 'ko' });
@@ -740,7 +740,7 @@ describe('jobs collect', () => {
         const service = serviceWith(db, dir, {
           fetchFn: routeFetch({
             owned: () => ownedPayload([{ appid: 50, total: 1 }, { appid: 51, total: 2 }, { appid: 52, total: 3 }]),
-            steamspy: (appid: string) => ({ tags: { [`T${appid}`]: 1 } }),
+            steamspy: (appid: string) => ({ appid: Number(appid), tags: { [`T${appid}`]: 1 } }),
           }),
         });
         service.startSync({ sources: ['owned'], locale: 'ko' });
