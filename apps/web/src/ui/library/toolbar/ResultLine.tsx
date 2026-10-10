@@ -22,11 +22,16 @@ export function ResultLine({
   const formatted = new Intl.NumberFormat(locale).format(count);
   return (
     <p className="result-line">
-      <span>
+      <span className="result-count">
         {formatted}
         {t(locale, 'library.count')}
       </span>
-      {label !== undefined && <span>{'·'}{t(locale, label)}</span>}
+      {label !== undefined && (
+        <span className="result-sort">
+          {'·'}
+          {t(locale, label)}
+        </span>
+      )}
     </p>
   );
 }

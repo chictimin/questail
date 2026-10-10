@@ -73,25 +73,27 @@ export function Achievements(): React.JSX.Element {
   return (
     <section aria-labelledby="achievements-heading">
       <h2 id="achievements-heading">{text('settings.achTitle')}</h2>
-      <p>{text('settings.achDesc')}</p>
       <div className="settings-row">
-        <span className="settings-label">{text('settings.achRow')}</span>
+        <div className="settings-label">
+          <span>{text('settings.achRow')}</span>
+          <span>{text('settings.achDesc')}</span>
+        </div>
         <div className="settings-body">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            disabled={pending}
-            onClick={() => void toggle()}
-            className="settings-switch"
-          >
-            <span className="settings-switch-knob" />
-          </button>{' '}
-          <Pill pill={enabled ? 'done' : 'off'} />
+          <span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={enabled}
+              aria-label={text('settings.achRow')}
+              disabled={pending}
+              onClick={() => void toggle()}
+            />{' '}
+            <Pill pill={enabled ? 'done' : 'off'} />
+          </span>
+          <p>{text('settings.achPublic')}</p>
+          <p>{text('settings.tbtiNote')}</p>
         </div>
       </div>
-      <p>{text('settings.achPublic')}</p>
-      <p>{text('settings.tbtiNote')}</p>
       {failed ? <p role="status">{text('settings.saveFailed')}</p> : null}
     </section>
   );

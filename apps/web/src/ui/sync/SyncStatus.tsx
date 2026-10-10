@@ -2,7 +2,7 @@
  * U3a 수집 상태 조립 — Alert + 소스 5행 + 검토 대기 + 언어 안내 + 시각 고지.
  * export만 하고 routes/sync.tsx에서는 조립하지 않는다(U3b 배선 때 연결).
  */
-import { Books, Heart, Info, Tag, Trophy } from '@phosphor-icons/react';
+import { Books, Clock, Heart, Info, Tag, Trophy } from '@phosphor-icons/react';
 import { useLocale } from '../i18n/context.js';
 import { KeyAlert, SourceRow } from './SourceRow.js';
 import type { RowBody, SyncPill } from './statusMap.js';
@@ -68,7 +68,10 @@ export function SyncStatus({
         ))}
         <ReviewQueue items={review} defaultOpen={reviewDefaultOpen} />
       </div>
-      <p className="sync-foot">{text('sync.stFoot')}</p>
+      <p className="sync-foot">
+        <Clock size={14} aria-hidden />
+        {text('sync.stFoot')}
+      </p>
     </div>
   );
 }

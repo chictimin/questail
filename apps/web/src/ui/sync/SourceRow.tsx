@@ -1,5 +1,5 @@
 /** U3a 수집 상태 소스 행 — 이름·시각 / 막대+수치 또는 원인 / pill+재수집 자리. */
-import { ArrowClockwise, Warning, XCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowRight, Warning, XCircle } from '@phosphor-icons/react';
 import { Link } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import { Pill } from './Pill.js';
@@ -36,7 +36,9 @@ export function SourceRow(props: SourceRowProps): React.JSX.Element {
         </span>
         <div>
           <div className="sync-row-name">{text(props.nameKey)}</div>
-          <div className="sync-row-time">{props.time ?? '—'}</div>
+          {props.time === null ? null : (
+            <div className="sync-row-time">{props.time}</div>
+          )}
         </div>
       </div>
       <div className="sync-row-body">
@@ -58,7 +60,10 @@ export function SourceRow(props: SourceRowProps): React.JSX.Element {
             <span className="sync-bar-num">{props.progress.label}</span>
           </div>
         ) : null}
-        {props.body.kind === 'cause' ? (
+        {props.body.kind === 'cause' && props.pill === 'done' ? (
+          <span>{text(props.body.key, props.body.params)}</span>
+        ) : null}
+        {props.body.kind === 'cause' && props.pill !== 'done' ? (
           <div
             className={`sync-cause${props.pill === 'fail' ? ' sync-cause--error' : ' sync-cause--warn'}`}
           >
@@ -106,6 +111,7 @@ export function KeyAlert(): React.JSX.Element {
       </div>
       <Link href="/settings" className="sync-notice-action">
         {text('sync.alertKeyAction')}
+        <ArrowRight size={14} aria-hidden />
       </Link>
     </div>
   );

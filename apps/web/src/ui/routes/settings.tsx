@@ -13,9 +13,9 @@ export function SettingsPage(): React.JSX.Element {
       <h1>{text('nav.settings')}</h1>
       <Connection />
       <Achievements />
+      <DataSection />
       <Language />
       <AboutSection />
-      <DataSection />
     </main>
   );
 }

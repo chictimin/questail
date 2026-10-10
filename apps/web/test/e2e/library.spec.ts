@@ -108,45 +108,45 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
 
   test('숨기기 → 탭 건수·행·토스트 갱신', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-100' });
     await row.getByRole('button', { name: '숨기기' }).click();
     await expect(page.getByRole('status')).toContainText('숨겼어요');
     await expect(
-      page.getByRole('button', { name: '숨긴 항목', exact: true }),
+      page.getByRole('tab', { name: '숨긴 항목', exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     await expect(page.getByText('game-100')).toHaveCount(0);
     await expect(page.getByText('game-200')).toBeVisible();
   });
 
   test('다시 보이기 → 탭 건수·행·토스트 갱신', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     const all = page.locator('article', { hasText: 'game-100' });
     await all.getByRole('button', { name: '숨기기' }).click();
-    await expect(page.getByRole('button', { name: '숨긴 항목', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '숨긴 항목', exact: true }).click();
+    await expect(page.getByRole('tab', { name: '숨긴 항목', exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: '숨긴 항목', exact: true }).click();
     const hidden = page.locator('article', { hasText: 'game-100' });
     await hidden.getByRole('button', { name: '다시 보이기' }).click();
     await expect(page.getByRole('status')).toContainText('다시 보이게 했어요');
     await expect(
-      page.getByRole('button', { name: '숨긴 항목', exact: true }),
+      page.getByRole('tab', { name: '숨긴 항목', exact: true }),
     ).toHaveCount(0);
-    await page.getByRole('button', { name: '전체', exact: true }).click();
+    await page.getByRole('tab', { name: '전체', exact: true }).click();
     await expect(page.getByText('game-100')).toBeVisible();
   });
 
   test('되돌리기 → 탭·행 복원 + DB hidden 해제', async ({ page, request }) => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-100' });
     await row.getByRole('button', { name: '숨기기' }).click();
-    await expect(page.getByRole('button', { name: '숨긴 항목', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '숨긴 항목', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '되돌리기' }).click();
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     await expect(
-      page.getByRole('button', { name: '숨긴 항목', exact: true }),
+      page.getByRole('tab', { name: '숨긴 항목', exact: true }),
     ).toHaveCount(0);
     await expect(page.getByText('game-100')).toBeVisible();
     const prefs = await request.get(
@@ -165,7 +165,7 @@ test.describe('숨기기·다시 보이기 상태 갱신', () => {
 
   test('미평가 탭 별점 → 행 내 잔류 안내 표시', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${seeded.port}/library`);
-    await page.getByRole('button', { name: '미평가만', exact: true }).click();
+    await page.getByRole('tab', { name: '미평가만', exact: true }).click();
     const row = page.locator('article', { hasText: 'game-100' });
     await row.getByRole('slider').focus();
     const [putResponse] = await Promise.all([
@@ -234,7 +234,7 @@ test.describe('가상 스크롤 렌더 상한', () => {
 
   test('300건 중 렌더 행 ≤ 화면 행 + 60', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${capped.port}/library`);
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     const rendered = await page.locator('main[data-route="library"] article').count();
     expect(rendered).toBeLessThan(300);
     // 720px / 행 72px = 화면 10행 + 60
@@ -243,7 +243,7 @@ test.describe('가상 스크롤 렌더 상한', () => {
 
   test('상한 후 행 숨기기 버튼 바로 보임', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${capped.port}/library`);
-    await expect(page.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '전체', exact: true })).toBeVisible();
     const row = page.locator('article', { hasText: 'game-1000' }).first();
     await expect(row.getByRole('button', { name: '숨기기' })).toBeVisible();
   });
@@ -305,7 +305,7 @@ test.describe('좁은 폭 행 높이 104', () => {
 
   test('좁은 폭 잔류 안내 미표시', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${narrow.port}/library`);
-    await page.getByRole('button', { name: '미평가만', exact: true }).click();
+    await page.getByRole('tab', { name: '미평가만', exact: true }).click();
     const row = page.locator('article', { hasText: 'game-100' });
     await row.getByRole('slider').focus();
     const [putResponse] = await Promise.all([

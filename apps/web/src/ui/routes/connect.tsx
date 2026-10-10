@@ -3,7 +3,21 @@
  * Alert 박스(폼 밖) vs 필드 오류(입력칸 아래) vs 사전 안내 분리. 문구는 ④까지 기존 키 유지.
  */
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, CircleNotch, Key, User } from '@phosphor-icons/react';
+import {
+  ArrowRight,
+  CaretDown,
+  CaretUp,
+  Check,
+  CircleNotch,
+  HandPalm,
+  HardDrives,
+  Key,
+  LockSimple,
+  Question,
+  User,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react';
 import { Link, useLocation } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import { STEAM_LINKS } from '../connectLinks.js';
@@ -68,6 +82,7 @@ export function ConnectPage({
   const [noticeKey, setNoticeKey] = useState<TextKey | null>(null);
   const keyRef = useRef<HTMLInputElement>(null);
   const steamIdRef = useRef<HTMLInputElement>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLElement>(null);
 
@@ -181,7 +196,7 @@ export function ConnectPage({
         setEditing(false);
         setKeyText('');
         setSucceeded(true);
-        statusRef.current?.focus();
+        submitRef.current?.focus();
         return;
       }
       setBusy(false);
@@ -208,70 +223,99 @@ export function ConnectPage({
     }
   };
 
-  const showForm = connected === null || editing;
+  const showForm = connected === null || editing || succeeded;
 
   const submitLabel = text(
     succeeded ? 'connect.success' : busy ? 'connect.verifying' : 'connect.submit',
   );
 
   const guide = (
-    <section>
+    <aside className="connect-guide">
       <h2>{text('connect.issueTitle')}</h2>
-      <section aria-labelledby="connect-needs-heading">
-        <h3 id="connect-needs-heading">{text('connect.needsTitle')}</h3>
-        <ul>
-          <li>{text('connect.needsGames')}</li>
-          <li>{text('connect.needsUnlimited')}</li>
-          <li>{text('connect.needsLocal')}</li>
-        </ul>
-      </section>
-      <section aria-labelledby="connect-warn-heading">
-        <h3 id="connect-warn-heading">{text('connect.warnTitle')}</h3>
-        <p>{text('connect.warnBody')}</p>
-      </section>
-      <ol>
+      <ol className="connect-steps">
         <li>
-          <a href={STEAM_LINKS.apiKey}>{text('connect.issueStep1')}</a>
+          <span>
+            <a href={STEAM_LINKS.apiKey}>{text('connect.issueStep1')}</a>
+          </span>
         </li>
         <li>
-          {text('connect.issueStep2a')}{' '}
-          <code>{text('connect.issueDomain')}</code>
-          {text('connect.issueStep2b')}
+          <span>
+            {text('connect.issueStep2a')}{' '}
+            <code>{text('connect.issueDomain')}</code>
+            {text('connect.issueStep2b')}
+          </span>
         </li>
         <li>
-          {text('connect.issueStep3')}{' '}
-          <a href={STEAM_LINKS.apiTerms}>{text('connect.termsLinkText')}</a>
+          <span>{text('connect.issueStep3')}</span>
         </li>
       </ol>
-      <details>
-        <summary>{text('connect.accIssue')}</summary>
-        <p>{text('connect.accNote')}</p>
-        <p>
-          {text('connect.issueLimited')}{' '}
-          <a href={STEAM_LINKS.limitedFaq}>{text('connect.faqLinkText')}</a>
+      <div className="connect-needs">
+        <p className="connect-needs-title">{text('connect.needsTitle')}</p>
+        <p className="connect-need">
+          <Check size={16} aria-hidden />
+          <span>{text('connect.needsGames')}</span>
         </p>
-      </details>
-      <p>{text('connect.valveNotice')}</p>
-      <p>{text('connect.revokeNotice')}</p>
-    </section>
+        <p className="connect-need">
+          <Check size={16} aria-hidden />
+          <span>{text('connect.needsUnlimited')}</span>
+        </p>
+        <p className="connect-need">
+          <HardDrives size={16} aria-hidden />
+          <span>{text('connect.needsLocal')}</span>
+        </p>
+      </div>
+      <div tabIndex={0} className="qt-notice--warn connect-warn">
+        <HandPalm size={18} aria-hidden />
+        <div>
+          <strong>{text('connect.warnTitle')}</strong> {text('connect.warnBody')}
+        </div>
+      </div>
+      <div className="connect-acc">
+        <details>
+          <summary className="qt-btn connect-acc-head">
+            <Question size={16} aria-hidden />
+            <span>{text('connect.accIssue')}</span>
+            <CaretDown size={16} aria-hidden className="connect-acc-down" />
+            <CaretUp size={16} aria-hidden className="connect-acc-up" />
+          </summary>
+          <div className="connect-acc-body">
+            <p>{text('connect.accNote')}</p>
+            <p>{text('connect.issueLimited')}</p>
+          </div>
+        </details>
+      </div>
+    </aside>
   );
 
   return (
     <main data-route="connect">
-      <h1>{text('nav.connect')}</h1>
-      <p>{text('connect.sub')}</p>
+      <div className="connect-head">
+        <h1>{text('nav.connect')}</h1>
+        <p>{text('connect.sub')}</p>
+      </div>
       {checking ? (
         <p aria-live="polite">{text('connect.checking')}</p>
       ) : (
-        <div>
+        <div className="connect-body">
           {noticeKey !== null && (
-            <div ref={noticeRef} role="alert" tabIndex={-1}>
-              <p>{text(noticeKey)}</p>
+            <div
+              ref={noticeRef}
+              role="alert"
+              tabIndex={-1}
+              className="qt-alert connect-alert"
+            >
+              <Warning size={18} aria-hidden />
+              <div className="connect-alert-text">{text(noticeKey)}</div>
             </div>
           )}
           {!showForm && connected !== null ? (
             <div>
-              <section ref={statusRef} aria-live="polite" tabIndex={-1}>
+              <section
+                ref={statusRef}
+                aria-live="polite"
+                tabIndex={-1}
+                className="qt-card connect-done"
+              >
                 <p>{text('connect.success')}</p>
                 <p>{text('connect.connectedAs', { steamId: connected.steamId })}</p>
                 {!connected.permissionEnforced && (
@@ -283,6 +327,7 @@ export function ConnectPage({
                   <Link href="/settings">{text('nav.settings')}</Link>
                 </p>
                 <button
+                  className="qt-btn qt-btn--secondary"
                   onClick={() => {
                     setEditing(true);
                     setKeyError(null);
@@ -298,101 +343,163 @@ export function ConnectPage({
             </div>
           ) : (
             <div className="connect-layout">
-              <div>
+              <div className="connect-formwrap">
                 <form
-                onSubmit={(event) => {
-                  void submit(event);
-                }}
-              >
-                <label>
-                  <Key size={16} aria-hidden />
-                  {text('connect.keyLabel')}
-                  <input
-                    ref={keyRef}
-                    type="password"
-                    value={keyText}
-                    placeholder={text('connect.keyPh')}
-                    disabled={busy}
-                    aria-invalid={keyError !== null}
-                    aria-describedby="connect-key-error"
-                    onChange={(event) => {
-                      setKeyText(event.currentTarget.value);
-                    }}
-                  />
-                </label>
-                {keyError === null && <p>{text('connect.keyHint')}</p>}
-                {keyError !== null && (
-                  <p id="connect-key-error">
-                    <strong>{text('connect.errPrefix')}</strong> {text(keyError)}
-                  </p>
-                )}
-                <label>
-                  <User size={16} aria-hidden />
-                  {text('connect.steamIdLabel')}
-                  <input
-                    ref={steamIdRef}
-                    value={steamId}
-                    placeholder={text('connect.idPh')}
-                    disabled={busy || connected !== null}
-                    aria-invalid={steamIdError !== null}
-                    aria-describedby="connect-steamid-error"
-                    onChange={(event) => {
-                      setSteamId(event.currentTarget.value);
-                    }}
-                  />
-                </label>
-                {steamIdError === null && <p>{text('connect.idHint')}</p>}
-                {steamIdError !== null && (
-                  <p id="connect-steamid-error">
-                    <strong>{text('connect.errPrefix')}</strong> {text(steamIdError)}
-                  </p>
-                )}
-                {showExamples && (
-                  <div>
-                    <p>{text('connect.exTitle')}</p>
-                    <ul>
-                      <li>
-                        <span>{text('connect.exUrl')}</span>{' '}
-                        <span>{text('connect.exUrlValue')}</span>
-                      </li>
-                      <li>
-                        <span>{text('connect.exCustom')}</span>{' '}
-                        <span>{text('connect.exCustomValue')}</span>
-                      </li>
-                      <li>
-                        <span>{text('connect.exNum')}</span>{' '}
-                        <span>{text('connect.exNumValue')}</span>
-                      </li>
-                    </ul>
-                  </div>
-                )}
-                <button
-                  disabled={busy}
+                  className="connect-form"
                   aria-busy={busy}
-                  className={
-                    succeeded
-                      ? 'connect-submit is-success'
-                      : busy
-                        ? 'connect-submit is-busy'
-                        : 'connect-submit'
-                  }
+                  onSubmit={(event) => {
+                    void submit(event);
+                  }}
                 >
-                  {succeeded ? (
-                    <Check size={16} aria-hidden />
-                  ) : busy ? (
-                    <CircleNotch size={16} aria-hidden />
-                  ) : (
-                    <ArrowRight size={16} aria-hidden />
-                  )}
-                  <span
-                    key={submitLabel}
-                    className={
-                      busy ? 'connect-submit-label is-shimmer' : 'connect-submit-label'
-                    }
+                  <div
+                    className={busy ? 'connect-field is-locked' : 'connect-field'}
                   >
-                    {submitLabel}
-                  </span>
-                </button>
+                    <label htmlFor="connect-key">
+                      {text('connect.keyLabel')}
+                      {busy && <LockSimple size={14} aria-hidden />}
+                    </label>
+                    <div className="qt-field">
+                      <Key size={16} aria-hidden />
+                      <input
+                        id="connect-key"
+                        ref={keyRef}
+                        type="password"
+                        className="qt-input"
+                        value={keyText}
+                        placeholder={text('connect.keyPh')}
+                        disabled={busy}
+                        aria-invalid={keyError !== null}
+                        aria-describedby={
+                          keyError !== null ? 'connect-key-error' : 'connect-key-hint'
+                        }
+                        onChange={(event) => {
+                          setKeyText(event.currentTarget.value);
+                        }}
+                      />
+                    </div>
+                    {keyError === null && (
+                      <p id="connect-key-hint" className="connect-hint">
+                        {text('connect.keyHint')}
+                      </p>
+                    )}
+                    {keyError !== null && (
+                      <p id="connect-key-error" role="alert" className="connect-error">
+                        <XCircle size={16} aria-hidden />
+                        <span>
+                          <strong>{text('connect.errPrefix')}</strong>{' '}
+                          {text(keyError)}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className={busy ? 'connect-field is-locked' : 'connect-field'}
+                  >
+                    <label htmlFor="connect-steamid">
+                      {text('connect.steamIdLabel')}
+                      {busy && <LockSimple size={14} aria-hidden />}
+                    </label>
+                    <div className="qt-field">
+                      <User size={16} aria-hidden />
+                      <input
+                        id="connect-steamid"
+                        ref={steamIdRef}
+                        className="qt-input"
+                        value={steamId}
+                        placeholder={text('connect.idPh')}
+                        disabled={busy || connected !== null}
+                        aria-invalid={steamIdError !== null}
+                        aria-describedby={
+                          steamIdError !== null
+                            ? 'connect-steamid-error'
+                            : 'connect-steamid-hint'
+                        }
+                        onChange={(event) => {
+                          setSteamId(event.currentTarget.value);
+                        }}
+                      />
+                    </div>
+                    {steamIdError === null && (
+                      <p id="connect-steamid-hint" className="connect-hint">
+                        {text('connect.idHint')}
+                      </p>
+                    )}
+                    {steamIdError !== null && (
+                      <p
+                        id="connect-steamid-error"
+                        role="alert"
+                        className="connect-error"
+                      >
+                        <XCircle size={16} aria-hidden />
+                        <span>
+                          <strong>{text('connect.errPrefix')}</strong>{' '}
+                          {text(steamIdError)}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  {showExamples && (
+                    <div className="connect-examples">
+                      <p className="connect-examples-title">
+                        {text('connect.exTitle')}
+                      </p>
+                      <ul>
+                        <li>
+                          <span>{text('connect.exUrl')}</span>
+                          <code>{text('connect.exUrlValue')}</code>
+                        </li>
+                        <li>
+                          <span>{text('connect.exCustom')}</span>
+                          <code>{text('connect.exCustomValue')}</code>
+                        </li>
+                        <li>
+                          <span>{text('connect.exNum')}</span>
+                          <code>{text('connect.exNumValue')}</code>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                  <div className="connect-actions">
+                    <button
+                      ref={submitRef}
+                      disabled={busy}
+                      aria-busy={busy}
+                      className={
+                        succeeded
+                          ? 'qt-btn qt-btn--primary connect-submit is-success'
+                          : busy
+                            ? 'qt-btn qt-btn--primary connect-submit is-busy'
+                            : 'qt-btn qt-btn--primary connect-submit'
+                      }
+                    >
+                      {succeeded ? (
+                        <Check size={16} aria-hidden />
+                      ) : busy ? (
+                        <CircleNotch size={16} aria-hidden className="qt-spin" />
+                      ) : (
+                        <ArrowRight size={16} aria-hidden />
+                      )}
+                      <span
+                        key={submitLabel}
+                        className={
+                          busy && !succeeded
+                            ? 'connect-submit-label is-shimmer'
+                            : 'connect-submit-label'
+                        }
+                      >
+                        {submitLabel}
+                      </span>
+                    </button>
+                    {succeeded && (
+                      <span className="connect-golist">{text('connect.goList')}</span>
+                    )}
+                    {succeeded && (
+                      <p className="connect-hint">
+                        {text('connect.localeNotice')}{' '}
+                        <Link href="/settings">{text('nav.settings')}</Link>
+                      </p>
+                    )}
+                  </div>
                 </form>
               </div>
               {guide}

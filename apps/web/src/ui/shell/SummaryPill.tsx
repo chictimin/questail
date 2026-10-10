@@ -71,7 +71,11 @@ export function SummaryPill({
   const numbers = `${params.done}/${params.total}`;
   if (narrow === true) {
     return (
-      <Link className="sync-summary" href="/sync" aria-label={text(label, params)}>
+      <Link
+        className="sync-summary sync-summary--narrow"
+        href="/sync"
+        aria-label={text(label, params)}
+      >
         <span aria-hidden>{numbers}</span>
       </Link>
     );
@@ -79,7 +83,12 @@ export function SummaryPill({
   return (
     <Link className="sync-summary" href="/sync">
       {model.kind === 'run' ? (
-        <CircleNotch size={14} color="var(--qt-purple)" aria-hidden />
+        <CircleNotch
+          size={14}
+          color="var(--qt-purple)"
+          className="qt-spin"
+          aria-hidden
+        />
       ) : (
         <CheckCircle size={14} color="var(--qt-mint)" aria-hidden />
       )}

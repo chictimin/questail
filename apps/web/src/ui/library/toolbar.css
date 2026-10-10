@@ -1,13 +1,293 @@
 /**
- * U2a 툴바 — 결과 줄 flex 간격(토큰) · 좁은 폭 필터 버튼 라벨 숨김(아이콘·뱃지 유지).
+ * U2a 툴바 — 탭 줄 · 필터 버튼 + 팝오버 · 결과 줄 · 별 필터 바.
+ * 결과 줄 flex 간격(토큰) · 좁은 폭 필터 버튼 라벨 숨김(아이콘·뱃지 유지).
  */
-main[data-route='library'] .result-line {
+
+/* 탭 줄 — 가로 스크롤, 스크롤바 숨김. */
+main[data-route='library'] .lib-tabs {
   display: flex;
-  gap: var(--space-8);
+  gap: var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
+  padding: 2px;
 }
 
-@media (max-width: 768px) {
+main[data-route='library'] .lib-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+main[data-route='library'] .lib-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 36px;
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: 0 10px 0 10px; /* 레퍼런스 실측. 10 corner 토큰 없음 */
+  background: transparent;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  font-size: var(--text-13);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+main[data-route='library'] .lib-tab--active {
+  background: var(--surface-selected);
+  color: var(--qt-white);
+  font-weight: 600;
+}
+
+/* 필터 버튼 — h36. 팝오버 기준점. */
+main[data-route='library'] .lib-filter {
+  position: static;
+  flex: none;
+}
+
+main[data-route='library'] .lib-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-width: 36px;
+  height: 36px;
+  padding: 0 var(--space-12);
+  border-radius: 0 10px 0 10px; /* 레퍼런스 실측. 10 corner 토큰 없음 */
+  background: var(--qt-white-5);
+  box-shadow: inset 0 0 0 1px var(--qt-white-10);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  white-space: nowrap;
+  cursor: pointer;
+  list-style: none;
+}
+
+main[data-route='library'] .lib-filter-btn::marker {
+  content: '';
+}
+
+main[data-route='library'] .lib-filter-btn::-webkit-details-marker {
+  display: none;
+}
+
+main[data-route='library'] .lib-filter[open] .lib-filter-btn {
+  background: var(--surface-selected);
+}
+
+main[data-route='library'] .lib-filter-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--qt-purple);
+  color: var(--qt-black);
+}
+
+/* 팝오버 — 280 · #2C2C2C(해당 토큰 없음, 위임 지정 hex) · radius 0 12. */
+main[data-route='library'] .lib-popover {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 280px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: var(--corner-12);
+  background: #2c2c2c;
+  box-shadow: inset 0 0 0 1px var(--qt-white-10);
+}
+
+main[data-route='library'] .lib-popover-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  height: 44px;
+  padding: 0 var(--space-10);
+  border-radius: var(--corner-8);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  cursor: pointer;
+}
+
+main[data-route='library'] .lib-popover-switch-label {
+  flex: 1;
+}
+
+/* 스위치 — .qt-toggle 상당. input 네이티브 제거. */
+main[data-route='library'] .lib-switch {
+  position: relative;
+  appearance: none;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--qt-white) 24%, transparent);
+  cursor: pointer;
+}
+
+main[data-route='library'] .lib-switch::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--qt-white);
+}
+
+main[data-route='library'] .lib-switch:checked {
+  background: var(--qt-purple);
+}
+
+main[data-route='library'] .lib-switch:checked::after {
+  left: 22px;
+  background: var(--qt-black);
+}
+
+main[data-route='library'] .lib-popover-divider {
+  height: 1px;
+  margin: var(--space-4) 0;
+  background: var(--qt-white-8);
+}
+
+main[data-route='library'] .lib-popover-heading {
+  padding: var(--space-8) var(--space-10) var(--space-4);
+  font-size: var(--text-12);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+main[data-route='library'] .lib-popover-sorts {
+  display: flex;
+  flex-direction: column;
+}
+
+main[data-route='library'] .lib-popover-sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  height: 40px;
+  padding: 0 var(--space-10);
+  border-radius: var(--corner-8);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  cursor: pointer;
+}
+
+main[data-route='library'] .lib-popover-sort--on {
+  background: var(--qt-white-8);
+}
+
+main[data-route='library'] .lib-popover-sort-label {
+  flex: 1;
+}
+
+main[data-route='library'] .lib-popover-sort--on svg {
+  color: var(--qt-purple);
+}
+
+/* 네이티브 라디오 숨김 — 선택 표시는 Check 아이콘. */
+main[data-route='library'] .lib-radio {
+  appearance: none;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* 결과 줄 — 12/16. 개수 흰색 600 + · 정렬명. */
+main[data-route='library'] .result-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0 var(--space-12);
+  font-size: var(--text-12);
+  line-height: 16px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+main[data-route='library'] .result-count {
+  color: var(--qt-white);
+  font-weight: 600;
+}
+
+/* 별 필터 바 — 별점별 탭에서만. 별 24 / 좁은 폭 26. */
+main[data-route='library'] .star-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 6px 6px 6px var(--space-12);
+  border-radius: var(--corner-12);
+  background: var(--qt-white-5);
+}
+
+main[data-route='library'] .star-filter-label {
+  font-size: var(--text-13);
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  white-space: nowrap;
+}
+
+main[data-route='library'] .star-filter .star-unit {
+  font-size: 24px;
+}
+
+main[data-route='library'] .star-filter .stars-num {
+  min-width: 32px;
+  font-size: var(--text-14);
+}
+
+main[data-route='library'] .star-filter-spacer {
+  flex: 1;
+}
+
+main[data-route='library'] .star-filter-clear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: var(--corner-8);
+  background: transparent;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  font-size: var(--text-13);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+main[data-route='library'] .star-filter-clear:hover {
+  background: var(--qt-white-8);
+}
+
+@media (max-width: 639.98px) {
   main[data-route='library'] .filter-text {
     display: none;
+  }
+
+  main[data-route='library'] .lib-filter-btn {
+    padding: 0 var(--space-8);
+  }
+
+  main[data-route='library'] .star-filter-clear {
+    padding: 0 var(--space-8);
+  }
+
+  main[data-route='library'] .star-filter .star-unit {
+    font-size: 26px;
   }
 }

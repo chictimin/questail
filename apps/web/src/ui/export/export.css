@@ -1,7 +1,28 @@
 /**
  * U6 ⑤ 내보내기 — 2열 카드(좁은 폭 1열). 색은 tokens/ 재사용, 새 색 0.
+ * W3: 페이지 제목 구조 · 진행 막대(부정형, 수치 없음 — API 단발 POST) 추가.
  * 진행 막대·N/M 없음(PM) — busy 버튼 shimmer 텍스트만.
  */
+main[data-route='export'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+main[data-route='export'] > h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: var(--weight-semibold);
+}
+
+main[data-route='export'] > h1 + p {
+  margin: calc(-1 * var(--space-20)) 0 0;
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
 .export-cols {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
@@ -9,7 +30,7 @@
   align-items: start;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639.98px) {
   .export-cols {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -159,6 +180,38 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-12);
+}
+
+/* 진행 막대 — 부정형 shimmer(API가 단발 POST라 N/M 없음). 후크 클래스 없음. */
+.export-card > div:has(> [role='progressbar']) {
+  display: flex;
+  align-items: center;
+}
+
+.export-card [role='progressbar'] {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--qt-white-10);
+  overflow: hidden;
+}
+
+.export-card [role='progressbar'] > div {
+  width: 40%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--qt-purple);
+  animation: export-slide 1200ms var(--ease-out-soft) infinite alternate;
+}
+
+@keyframes export-slide {
+  from {
+    margin-left: 0;
+  }
+
+  to {
+    margin-left: 60%;
+  }
 }
 
 .export-go {

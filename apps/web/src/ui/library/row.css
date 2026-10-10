@@ -1,9 +1,10 @@
 /**
- * U2b-F1 행 — ② 원본 고정 높이(넓은 폭 72 · 768px 이하 104).
+ * U2b-F1 행 — ② 원본 고정 높이(넓은 폭 72 · 640px 미만 104).
  * 고정 높이 + ellipsis라 별점·뱃지 증감이 높이를 바꾸지 않는다(RATE3-F2 슬롯 불필요).
  * 넘침 가드 overflow:hidden — W7-F4 겹침 재발 방지.
  */
 main[data-route='library'] .game-row {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -22,10 +23,25 @@ main[data-route='library'] .game-cover {
   flex: none;
   width: 96px;
   height: 45px;
+  object-fit: cover;
+  border-radius: var(--radius-6);
+  background: var(--surface-inset);
 }
 
-main[data-route='library'] .game-cover[data-placeholder] {
-  background: var(--surface-sunken);
+main[data-route='library'] .game-cover--empty {
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--qt-white-5) 0 6px,
+    color-mix(in srgb, var(--qt-white) 2.5%, transparent) 6px 12px
+  );
+  color: var(--qt-white-40);
+}
+
+main[data-route='library'] .game-row[data-missing] .game-cover {
+  opacity: 0.4;
+  filter: grayscale(1);
 }
 
 main[data-route='library'] .game-row-main {
@@ -46,6 +62,10 @@ main[data-route='library'] .game-row-title {
   text-overflow: ellipsis;
 }
 
+main[data-route='library'] .game-row[data-missing] .game-row-title {
+  color: var(--text-secondary);
+}
+
 main[data-route='library'] .game-row-meta {
   font-size: 12px;
   line-height: 16px;
@@ -53,6 +73,11 @@ main[data-route='library'] .game-row-meta {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 연도·장르 구분자 — 레퍼런스 실측 ' · '(12px white 56%, 앞뒤 공백 한 칸). 색은 메타 상속. */
+main[data-route='library'] .game-row-meta span + span::before {
+  content: ' · ';
 }
 
 main[data-route='library'] .game-row-sub {
@@ -91,36 +116,50 @@ main[data-route='library'] .game-row-rate {
   min-width: 0;
 }
 
-main[data-route='library'] .game-row-num {
-  min-width: 28px;
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+/* 상태 뱃지 — 별점 옆 24 원형 아이콘만. */
+main[data-route='library'] .game-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+main[data-route='library'] .game-badge--missing {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--warn);
+}
+
+main[data-route='library'] .game-badge--filling {
+  background: color-mix(in srgb, var(--qt-purple) 12%, transparent);
+  color: var(--qt-purple);
+}
+
+main[data-route='library'] .game-badge--just {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
 }
 
 main[data-route='library'] .game-row-actions {
   flex: none;
   display: flex;
   gap: 2px;
+  margin-left: auto; /* 좁은 폭 2줄에서 오른쪽 정렬(넓은 폭은 무변화) */
 }
 
+/* 행 액션 — .qt-btn.qt-icon-btn(36×36)과 함께 쓴다. 네이티브 잔류 제거. */
 main[data-route='library'] .row-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
 }
 
-@keyframes qtSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-main[data-route='library'] .badge-spin {
-  animation: qtSpin 900ms linear infinite;
+main[data-route='library'] .row-action:hover {
+  background: var(--qt-white-8);
+  color: var(--qt-white);
 }
 
 main[data-route='library'] .game-just-note {
@@ -133,7 +172,7 @@ main[data-route='library'] .game-just-note {
   white-space: nowrap;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 639.98px) {
   main[data-route='library'] .game-just-note {
     display: none;
   }

@@ -3,7 +3,7 @@
  * 백업 상한 없음(전건 렌더). 폴더 복사는 U6 export 선례(Range 폴백).
  */
 import { useEffect, useRef, useState } from 'react';
-import { Archive } from '@phosphor-icons/react';
+import { Archive, Copy } from '@phosphor-icons/react';
 import { useLocale } from '../i18n/context.js';
 import { formatDateTime } from '../../shared/datetime.js';
 import './settings.css';
@@ -94,15 +94,20 @@ export function DataSection(): React.JSX.Element {
       <div className="settings-row">
         <span className="settings-label">{text('settings.folderLabel')}</span>
         <div className="settings-body">
-          <code ref={dirRef}>{dataDir ?? '—'}</code>
-          <button
-            type="button"
-            onClick={() => {
-              void copy();
-            }}
-          >
-            {text('export.copyDir')}
-          </button>
+          <div>
+            <code ref={dirRef}>
+              {dataDir ?? '—'}
+            </code>
+            <button
+              type="button"
+              onClick={() => {
+                void copy();
+              }}
+            >
+              <Copy size={15} aria-hidden />
+              {text('export.copyDir')}
+            </button>
+          </div>
           {copied && <p aria-live="polite">{text('export.copied')}</p>}
           {copyFailed && <p aria-live="polite">{text('export.copyFallback')}</p>}
           <p>

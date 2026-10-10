@@ -36,11 +36,11 @@ export function AboutSection(): React.JSX.Element {
       <h2 id="settings-about-heading">{text('settings.aboutTitle')}</h2>
       <div className="settings-row">
         <span className="settings-label">{text('settings.versionLabel')}</span>
-        <span className="settings-body">{version ?? '—'}</span>
-      </div>
-      <div className="settings-row">
-        <span className="settings-label">{text('settings.licenseLabel')}</span>
-        <span className="settings-body">{text('settings.licenseValue')}</span>
+        <div className="settings-body">
+          <code>{version ?? '—'}</code>
+          <p>{text('connect.valveNotice')}</p>
+          <span>{text('settings.licenseLabel')}</span>
+        </div>
       </div>
     </section>
   );

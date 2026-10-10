@@ -5,6 +5,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
+import { CircleDashed, EyeSlash, Star, StarHalf, WarningCircle } from '@phosphor-icons/react';
 import type { GameFacts } from '../../data/library.js';
 import type { Prefs } from '../../data/viewState.js';
 import { detectLocale, t } from '../i18n/index.js';
@@ -14,6 +15,7 @@ import { GameRow, type RowGame } from '../library/GameRow.js';
 import '../library/library.css';
 import { LibraryToolbar } from '../library/LibraryToolbar.js';
 import { sortGames, type Direction, type SortKey, type SortSpec } from '../library/sort.js';
+import logoUrl from '../../assets/logo-mark.png';
 
 /** 가상 행 높이 고정값 — 시각 확정 전 자리값(행 높이 고정 원칙만 따른다). 디자인 확정 시 교체. */
 const ROW_HEIGHT = 72;
@@ -171,10 +173,10 @@ export function LibraryPage(): React.JSX.Element {
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => listRef.current,
-    // 좁은 폭(768px 이하) 행 104 — 첫 스크롤 점프 방지. 측정 후엔 실측값 사용.
+    // 좁은 폭(640px 미만) 행 104 — 첫 스크롤 점프 방지. 측정 후엔 실측값 사용.
     estimateSize: () =>
       typeof window !== 'undefined' &&
-      window.matchMedia('(max-width: 768px)').matches
+      window.matchMedia('(max-width: 639.98px)').matches
         ? 104
         : ROW_HEIGHT,
     overscan: 10,
@@ -311,27 +313,43 @@ export function LibraryPage(): React.JSX.Element {
 
   return (
     <main data-route="library">
-      <h1>
-        {text('library.title')} {totalCount}
-        {text('library.count')}
-      </h1>
+      <div className="lib-head">
+        <h1 className="lib-title">{text('library.title')}</h1>
+        <span className="lib-total">
+          {totalCount}
+          {text('library.count')}
+        </span>
+      </div>
       {status === 'loading' ? (
-        <div aria-busy={true}>
+        <div aria-busy={true} className="lib-skel">
           {Array.from({ length: SKELETON_ROWS }, (_, index) => (
-            <div key={index} />
+            <div key={index} className="lib-skel-row">
+              <div className="lib-skel-cover" aria-hidden />
+              <div className="lib-skel-lines" aria-hidden>
+                <div className="lib-skel-line" />
+                <div className="lib-skel-sub" />
+              </div>
+              <div className="lib-skel-star" aria-hidden />
+            </div>
           ))}
         </div>
       ) : null}
       {status === 'failed' ? (
-        <div role="alert">
-          <p>{text('library.loadFailed')}</p>
-          <button type="button" onClick={() => setReloadTick((tick) => tick + 1)}>
+        <div role="alert" className="lib-fail">
+          <WarningCircle size={18} aria-hidden />
+          <p className="lib-fail-text">{text('library.loadFailed')}</p>
+          <button
+            type="button"
+            className="lib-fail-btn"
+            onClick={() => setReloadTick((tick) => tick + 1)}
+          >
             {text('library.reload')}
           </button>
         </div>
       ) : null}
       {status === 'ready' ? (
         <>
+          {games.length === 0 ? null : (
           <LibraryToolbar
             locale={locale}
             filterKey={filterKey}
@@ -345,19 +363,34 @@ export function LibraryPage(): React.JSX.Element {
             onSort={(spec) => changeSort(spec).catch(() => undefined)}
             onToggleEnded={() => setShowEnded((prev) => !prev)}
           />
+          )}
           {visible.length === 0 ? (
-            <section>
-              <h2>
+            <section className="lib-empty">
+              {filterKey === 'all' ? (
+                <img className="lib-empty-logo" src={logoUrl} alt="" />
+              ) : filterKey === 'unrated' ? (
+                <CircleDashed size={28} aria-hidden className="lib-empty-icon" />
+              ) : filterKey === 'hidden' ? (
+                <EyeSlash size={28} aria-hidden className="lib-empty-icon" />
+              ) : score !== null ? (
+                <StarHalf size={28} aria-hidden className="lib-empty-icon" />
+              ) : (
+                <Star size={28} aria-hidden className="lib-empty-icon" />
+              )}
+              <h2 className="lib-empty-title">
                 {score !== null && filterKey === 'byRating'
                   ? t(locale, 'library.emptyScoreTitle', { v: String(score / 2) })
                   : text(empty.title)}
               </h2>
-              <p>{text(empty.desc)}</p>
+              <p className="lib-empty-desc">{text(empty.desc)}</p>
               {filterKey === 'all' ? (
-                <Link href="/sync">{text('library.emptyAllAction')}</Link>
+                <Link href="/sync" className="lib-empty-action">
+                  {text('library.emptyAllAction')}
+                </Link>
               ) : null}
             </section>
           ) : null}
+          {visible.length === 0 ? null : (
           <div
             ref={listRef}
             className="library-list"
@@ -371,6 +404,7 @@ export function LibraryPage(): React.JSX.Element {
             }}
           >
             <ul
+              className="lib-virtual"
               style={{
                 height: `${virtualizer.getTotalSize()}px`,
                 position: 'relative',
@@ -408,20 +442,28 @@ export function LibraryPage(): React.JSX.Element {
                 );
               })}
             </ul>
-            <p>
+            <p className="lib-more">
               {t(locale, 'library.progress', {
                 shown: String(shownCount),
                 total: String(visible.length),
               })}
             </p>
           </div>
+          )}
         </>
       ) : null}
       {toast === null ? null : (
-        <div role="status">
-          <span>{toast.message}</span>
+        <div role="status" className="lib-toast">
+          {toast.onAction === undefined ? null : (
+            <EyeSlash size={16} aria-hidden />
+          )}
+          <span className="lib-toast-text">{toast.message}</span>
           {toast.onAction === undefined || toast.actionLabel === undefined ? null : (
-            <button type="button" onClick={toast.onAction}>
+            <button
+              type="button"
+              className="lib-toast-btn"
+              onClick={toast.onAction}
+            >
               {toast.actionLabel}
             </button>
           )}

@@ -3,6 +3,7 @@
  * 재수집 resume + 표시값. 수집 실행 자체는 D-06 executor 몫.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { ArrowClockwise } from '@phosphor-icons/react';
 import type { SyncErrorCode } from '@questail/core';
 import type { SyncStatusEntry } from '../../data/sync.js';
 import { useLocale } from '../i18n/context.js';
@@ -131,13 +132,22 @@ export function SyncPage(): React.JSX.Element {
 
   return (
     <main data-route="sync">
-      <h1>{text('nav.sync')}</h1>
-      {finishedAt === null ? null : (
-        <p>{text('sync.sub', { t: formatDateTime(finishedAt, locale) })}</p>
-      )}
-      <button type="button" disabled={running} onClick={() => void collectAll()}>
-        {text('sync.collectAll')}
-      </button>
+      <div>
+        <div>
+          <h1>{text('nav.sync')}</h1>
+          {finishedAt === null ? null : (
+            <p>{text('sync.sub', { t: formatDateTime(finishedAt, locale) })}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          disabled={running}
+          onClick={() => void collectAll()}
+        >
+          <ArrowClockwise size={16} aria-hidden />
+          {text('sync.collectAll')}
+        </button>
+      </div>
       {notice === null ? null : <p role="status">{notice}</p>}
       {loadFailed ? (
         <div role="alert">

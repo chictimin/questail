@@ -1,4 +1,8 @@
-/* W14 최소 리셋 — word-break keep-all 1줄 포함. 디자인 토큰 0. */
+/**
+ * W0 공용 export 지점 — 다른 화면 담당이 쓰는 프리미티브.
+ * 색·간격·radius·모션은 토큰 변수로만 쓴다(고정 px는 레퍼런스 실측, 행별 주석).
+ * 토큰 파일 자체는 수정하지 않는다(fonts-system.css 800 추가 제외).
+ */
 @import '../styles/tokens.css';
 
 * {
@@ -11,4 +15,322 @@ html {
 
 body {
   margin: 0;
+}
+
+/* 페이지 컨테이너 — 레퍼런스 main 실측: 상단 28 · 하단 40, 좌우 32(≥640) / 16(<640).
+   본문 좌우선이 헤더 좌우선과 일치한다(헤더 패딩도 32/16).
+   좁은 폭 연동 상태는 모바일 헤더가 고정 오버레이(121px)라 상단에 그만큼 더 둔다. */
+main[data-route] {
+  padding: var(--space-28) var(--space-32) var(--space-40);
+}
+
+@media (max-width: 639.98px) {
+  .qt-shell--guest main[data-route] {
+    padding: var(--space-28) var(--space-16) var(--space-40);
+  }
+
+  /* 실측: 심볼 줄 76 + 메뉴 36 + 하단 여백 8 + 구분선 1 + 본문 상단 28 = 149. */
+  .qt-shell--app main[data-route] {
+    padding: 149px var(--space-16) var(--space-40);
+  }
+}
+
+/* 포커스 링 — README 「접근성」: 2px 배경색 간격 + 2px #C6C7F8. 토큰 --focus-ring. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 파스텔 면(검은 글씨) 위 포커스 링 — 토큰 --focus-ring-on-pastel. */
+.qt-btn--primary:focus-visible,
+.qt-alert:focus-visible {
+  box-shadow: var(--focus-ring-on-pastel);
+}
+
+/* 입력칸 — 레퍼런스 ① 폼 실측: h44, #262626, radius 0 12px, inset 링.
+   값 텍스트는 mono 13, placeholder는 white 50%. */
+.qt-input {
+  height: var(--control-lg);
+  padding: 0 14px; /* 레퍼런스 실측. 14 토큰 없음 */
+  border: none;
+  border-radius: var(--corner-12);
+  background: var(--surface-inset);
+  box-shadow: inset 0 0 0 1px var(--qt-white-10);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+}
+
+.qt-input::placeholder {
+  color: var(--text-placeholder);
+  font-family: var(--font-sans);
+}
+
+.qt-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--qt-purple);
+}
+
+.qt-input[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 2px var(--qt-red);
+}
+
+/* 입력칸 아이콘 래퍼 — 레퍼런스 실측: gap 10, 좌우 패딩 14, 왼쪽 16px 아이콘.
+   링·배경은 래퍼가 지고 입력칸은 투명으로 깔린다. */
+.qt-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  height: var(--control-lg);
+  padding: 0 14px;
+  border-radius: var(--corner-12);
+  background: var(--surface-inset);
+  box-shadow: inset 0 0 0 1px var(--qt-white-10);
+}
+
+.qt-field:focus-within {
+  box-shadow: inset 0 0 0 2px var(--qt-purple);
+}
+
+.qt-field:has(.qt-input[aria-invalid='true']) {
+  box-shadow: inset 0 0 0 2px var(--qt-red);
+}
+
+.qt-field > svg,
+.qt-field > i {
+  flex: none;
+  font-size: 16px;
+}
+
+.qt-field .qt-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.qt-field .qt-input:focus {
+  box-shadow: none;
+}
+
+/* 버튼 — .qt-btn은 리셋 전용. */
+.qt-btn {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* 주 버튼 — 레퍼런스 ① 실측: h44, #C6C7F8 + 검은 글씨, radius 0 12px, 14px 600. */
+.qt-btn--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  height: var(--control-lg);
+  padding: 0 var(--space-20);
+  border-radius: var(--corner-12);
+  background: var(--surface-accent);
+  color: var(--text-on-pastel);
+  font-size: var(--text-14);
+  font-weight: 600;
+}
+
+/* 주 버튼 진행·성공 변형 — 위임 추가(10-10). 기본색 #C6C7F8은 기본 상태 한정.
+   진행 #A3A4CF(해당 토큰 없음, 위임 지정 hex), 성공 #A1E3CB = --qt-mint. */
+.qt-btn--primary.is-busy {
+  background: #a3a4cf;
+}
+
+.qt-btn--primary.is-success {
+  background: var(--qt-mint);
+}
+
+/* 보조 버튼 — 레퍼런스 ④ "키 교체" 실측: h40, white 10% 면, 흰 글씨, 13px 600. */
+.qt-btn--secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  height: var(--control-md);
+  padding: 0 var(--space-20);
+  border-radius: var(--corner-12);
+  background: var(--surface-selected);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  font-weight: 600;
+}
+
+/* 아이콘 버튼 — 레퍼런스 ② 행 액션 실측: 36×36. */
+.qt-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--corner-8);
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+}
+
+/* 경고 박스 — 레퍼런스 ① alert 실측: #FFC98A 면 + 검은 글씨, 호버 없음, 13/20. */
+.qt-alert {
+  display: flex;
+  gap: var(--space-10);
+  align-items: flex-start;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--corner-12);
+  background: var(--qt-orange);
+  color: var(--text-on-pastel);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+/* 안내 박스 — 공통 규칙: 해당 색 8% 면 + 색 글씨, 13/20. */
+.qt-notice--info,
+.qt-notice--warn,
+.qt-notice--error {
+  display: flex;
+  gap: var(--space-10);
+  align-items: flex-start;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--corner-12);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+.qt-notice--info {
+  background: color-mix(in srgb, var(--info) 8%, transparent);
+  color: var(--info);
+}
+
+.qt-notice--warn {
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--warn);
+}
+
+.qt-notice--error {
+  background: color-mix(in srgb, var(--error) 8%, transparent);
+  color: var(--error);
+}
+
+/* 알림 아이콘은 첫 줄 텍스트에 맞춤 — 공통 규칙. */
+.qt-alert > svg,
+.qt-alert > i,
+.qt-notice--info > svg,
+.qt-notice--info > i,
+.qt-notice--warn > svg,
+.qt-notice--warn > i,
+.qt-notice--error > svg,
+.qt-notice--error > i {
+  align-self: flex-start;
+  line-height: 20px;
+  flex: none;
+}
+
+/* 알림 박스 액션 버튼은 줄바꿈되면 오른쪽 정렬 — 공통 규칙. */
+.qt-alert > button,
+.qt-notice--info > button,
+.qt-notice--warn > button,
+.qt-notice--error > button {
+  margin-left: auto;
+}
+
+/* 상태 pill — 레퍼런스 ③ 실측: h24 전후, 완전 원형 radius, 12px 600. */
+.qt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 var(--space-10);
+  border-radius: var(--radius-full);
+  background: var(--qt-white-8);
+  color: color-mix(in srgb, var(--qt-white) 80%, transparent);
+  font-size: var(--text-12);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 토글 스위치 — 레퍼런스 실측: 44×26, role=switch·aria-checked 기준.
+   켜짐: #C6C7F8 트랙 + 검은 노브(왼쪽 22), 꺼짐: white 24% 트랙 + 흰 노브(왼쪽 4). */
+.qt-toggle {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--qt-white) 24%, transparent);
+}
+
+.qt-toggle::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--qt-white);
+}
+
+.qt-toggle[aria-checked='true'] {
+  background: var(--qt-purple);
+}
+
+.qt-toggle[aria-checked='true']::after {
+  left: 22px;
+  background: var(--qt-black);
+}
+
+/* 스핀 — qtSpin 900ms linear infinite. */
+.qt-spin {
+  display: inline-block;
+  animation: qtSpin 900ms linear infinite;
+}
+
+/* 진행 중 텍스트 shimmer — tokens/motion.css 사용법 주석대로. */
+.is-shimmer {
+  background-image:
+    linear-gradient(90deg, transparent 35%, rgba(255, 255, 255, var(--qtA)) 50%, transparent 65%),
+    linear-gradient(currentColor, currentColor);
+  background-size: 300% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  background-clip: text;
+  color: transparent;
+  animation: qtShimmer var(--dur-shimmer) linear infinite;
+}
+
+/* 카드 — white 5% 면, radius 0 24px, 테두리·그림자 없음. */
+.qt-card {
+  border: none;
+  border-radius: var(--corner-24);
+  background: var(--surface-card);
+  box-shadow: none;
+}
+
+/* 스크롤바 숨김 유틸 — 공통 규칙. */
+.qt-noscrollbar {
+  scrollbar-width: none;
+}
+
+.qt-noscrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* prefers-reduced-motion — 스핀·shimmer·스왑·헤더 전환을 즉시 전환. */
+@media (prefers-reduced-motion: reduce) {
+  .qt-spin,
+  .is-shimmer {
+    animation: none;
+  }
+
+  .site-header,
+  .mobile-header,
+  .mobile-header-top,
+  .qt-btn--primary {
+    transition: none;
+  }
 }

@@ -1,6 +1,7 @@
 /**
  * W5-UI 앱 셸 — 미연동이면 /connect로 리다이렉트 + 로고 헤더, 연동 후 nav 헤더.
- * 상태 확인 실패 시 fail-open(리다이렉트 안 함). 68px 레일·수집 요약은 범위 밖.
+ * 상태 확인 실패 시 fail-open(리다이렉트 안 함). 68px 레일은 범위 밖.
+ * 수집 요약 pill은 연동 후 헤더 우측에 렌더한다(SummaryPill).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
@@ -85,7 +86,11 @@ export function App(): React.JSX.Element {
       <LogoHeader />
     );
   return (
-    <div>
+    <div
+      className={
+        connected === true ? 'qt-shell qt-shell--app' : 'qt-shell qt-shell--guest'
+      }
+    >
       {header}
       <Switch>
         <Route path="/connect">

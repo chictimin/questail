@@ -1,89 +1,387 @@
 /**
- * U5-[2] 설정 — 행(라벨 220px | 내용, 좁은 폭 1열) + 토글 44×26 + 언어 세그먼트 + 거부 대화상자.
- * 색은 tokens/ 재사용, 새 색 0.
+ * U5-[2] 설정 — 섹션 카드 + 행(라벨 220px | 내용, 좁은 폭 1열) + 토글·세그먼트·대화상자.
+ * 색은 tokens/ 재사용, 새 색 0. 수치 = 레퍼런스 ④ 인라인 값.
+ * W3: tsx에 신규 하드코딩 리터럴 없음(i18n oracle) — 구조는 요소 셀렉터로 식별.
+ * 토글은 .qt-toggle 상당을 button[role='switch']로 그린다(문자열 추가 없이).
  */
+main[data-route='settings'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+main[data-route='settings'] > h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: var(--weight-semibold);
+}
+
+main[data-route='settings'] > section {
+  padding: var(--space-4) var(--space-24) var(--space-8);
+  border-radius: var(--corner-24);
+  background: var(--surface-card);
+}
+
+main[data-route='settings'] > section > h2 {
+  margin: 0;
+  padding: var(--space-16) 0 var(--space-12);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: var(--weight-semibold);
+}
+
 .settings-row {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-10) var(--space-24);
+  gap: var(--space-8) var(--space-24);
   align-items: start;
-  padding: var(--space-12) 0;
+  padding: var(--space-16) 0;
+  border-top: 1px solid var(--qt-white-8);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 639.98px) {
   .settings-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 .settings-label {
-  font-size: var(--text-14);
+  font-size: var(--text-13);
   font-weight: var(--weight-semibold);
+}
+
+div.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+div.settings-label > span:last-child {
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
 }
 
 .settings-body {
   min-width: 0;
+  max-width: 520px;
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
   font-size: var(--text-14);
 }
 
+.settings-body > p {
+  margin: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+/* 연결 섹션 — SteamID 줄: mono 코드 + 잠금 pill(h22). */
+section[aria-labelledby='settings-conn-heading'] .settings-body > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+section[aria-labelledby='settings-conn-heading'] .settings-body > span > code {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+}
+
+section[aria-labelledby='settings-conn-heading'] .settings-body > span > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 22px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-full);
+  background: var(--qt-white-8);
+  font-size: 11px;
+  color: color-mix(in srgb, var(--qt-white) 80%, transparent);
+}
+
+/* 문단 속 텍스트 버튼 — 레퍼런스 "다른 계정으로 바꾸기" 링크 자리. */
+section[aria-labelledby='settings-conn-heading'] .settings-body > p button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--qt-purple);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* 키 줄 — "저장됨" 텍스트 + mint check + 교체 버튼 한 줄. */
+section[aria-labelledby='settings-conn-heading'] .settings-body > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-10);
+}
+
 .settings-saved {
   display: inline-flex;
   align-items: center;
   gap: var(--space-6);
+  font-size: var(--text-13);
+  color: color-mix(in srgb, var(--qt-white) 80%, transparent);
+}
+
+.settings-saved > svg {
   color: var(--qt-mint);
+  flex: none;
+}
+
+/* 키 교체 링크 — 레퍼런스 secondary 버튼(h32 · white 10%) 자리. */
+section[aria-labelledby='settings-conn-heading'] .settings-body > div > a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 32px;
+  padding: 0 var(--space-12);
+  border-radius: var(--corner-8);
+  background: var(--qt-white-10);
+  color: var(--qt-white);
+  font-size: var(--text-13);
   font-weight: var(--weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.settings-dialog {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--corner-12);
-  background: var(--surface-card);
-  padding: var(--space-16);
+/* 업적 줄 — 토글 + pill 한 줄. */
+section[aria-labelledby='achievements-heading'] .settings-body > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
 }
 
-.settings-switch {
+/* 토글 44×26 — 켜짐 보라 트랙 + 검은 노브(왼쪽 22), 꺼짐 흰 노브(왼쪽 4). */
+section[aria-labelledby='achievements-heading'] button[role='switch'] {
+  position: relative;
+  display: block;
   width: 44px;
   height: 26px;
+  padding: 0;
   border: none;
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--qt-white) 24%, transparent);
   cursor: pointer;
-  padding: 0;
-  position: relative;
 }
 
-.settings-switch[aria-checked='true'] {
-  background: var(--qt-purple);
-}
-
-.settings-switch-knob {
+section[aria-labelledby='achievements-heading'] button[role='switch']::after {
+  content: '';
   position: absolute;
   top: 4px;
   left: 4px;
   width: 18px;
   height: 18px;
-  border-radius: var(--radius-full);
+  border-radius: 50%;
   background: var(--qt-white);
-  transition: left var(--dur-fast) var(--ease-out-soft);
 }
 
-.settings-switch[aria-checked='true'] .settings-switch-knob {
+section[aria-labelledby='achievements-heading'] button[role='switch'][aria-checked='true'] {
+  background: var(--qt-purple);
+}
+
+section[aria-labelledby='achievements-heading']
+  button[role='switch'][aria-checked='true']::after {
   left: 22px;
   background: var(--qt-black);
 }
 
+/* 업적 안내 2건 — 해당 색 8% 면 + 색 글씨(공통 규칙 info 톤). */
+section[aria-labelledby='achievements-heading'] .settings-body > p {
+  padding: var(--space-12) 14px;
+  border-radius: var(--corner-12);
+  background: color-mix(in srgb, var(--info) 8%, transparent);
+  color: var(--info);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+section[aria-labelledby='achievements-heading'] > p {
+  margin: 0;
+  font-size: var(--text-12);
+  color: var(--text-secondary);
+}
+
+/* 데이터 폴더 복사줄 — h40 코드 + h40 복사 버튼(내보내기와 같은 패턴). */
+section[aria-labelledby='settings-data-heading'] .settings-body > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+section[aria-labelledby='settings-data-heading'] .settings-body code {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: var(--control-md);
+  padding: 0 var(--space-12);
+  border-radius: var(--corner-12);
+  background: var(--surface-inset);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+section[aria-labelledby='settings-data-heading'] .settings-body button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--control-md);
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: var(--corner-12);
+  background: var(--qt-white-10);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+/* U5-[3] 백업 항목 32px 고정(디자인 수치). */
+.settings-backup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  height: 32px;
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-backup-item > svg {
+  color: var(--text-secondary);
+  flex: none;
+}
+
+/* U5-[3] 백업 날짜 mono(디자인). */
+.settings-backup-date {
+  font-family: var(--font-mono);
+}
+
+.settings-backup-item > span:last-child {
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+/* 정보 섹션 — 버전 mono + 고지 + 라이선스 표기. */
+section[aria-labelledby='settings-about-heading'] .settings-body code {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+}
+
+section[aria-labelledby='settings-about-heading'] .settings-body > p {
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+/* 거부 대화상자 — :has로 식별하는 화면 덮개 + 460 카드. */
+section[aria-labelledby='settings-conn-heading'] > div:has(> [role='alertdialog']) {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+  background: rgba(10, 10, 10, 0.72);
+}
+
+.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  max-width: 460px;
+  padding: var(--space-24);
+  border-radius: var(--corner-24);
+  background: var(--surface-inset);
+  box-shadow: inset 0 0 0 1px var(--qt-white-10);
+}
+
+.settings-dialog > div:first-child {
+  display: flex;
+  gap: var(--space-12);
+  align-items: flex-start;
+}
+
+.settings-dialog > div:first-child > span {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--corner-8);
+  background: var(--qt-red);
+  color: var(--text-on-pastel);
+}
+
+.settings-dialog h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: var(--weight-semibold);
+}
+
+.settings-dialog > div:first-child p {
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  text-wrap: pretty;
+}
+
+.settings-dialog > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.settings-dialog > div:last-child > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  height: var(--control-md);
+  padding: 0 var(--space-20);
+  border: none;
+  border-radius: var(--corner-12);
+  background: var(--surface-accent);
+  color: var(--text-on-pastel);
+  font-size: var(--text-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 언어 세그먼트 — 레퍼런스 ④ 실측: 패딩 4 · gap 4 · white 5% 용기. */
 .settings-lang-seg {
   display: inline-flex;
+  align-self: flex-start;
+  justify-self: start;
+  padding: var(--space-4);
   gap: var(--space-4);
+  border-radius: var(--corner-12);
+  background: var(--surface-card);
 }
 
 .settings-lang-on,
 .settings-lang-off {
   height: 32px;
-  padding: 0 var(--space-12);
+  padding: 0 14px;
   border: none;
   border-radius: var(--corner-8);
   font-size: var(--text-13);
@@ -99,17 +397,4 @@
 .settings-lang-off {
   background: transparent;
   color: color-mix(in srgb, var(--qt-white) 80%, transparent);
-}
-
-/* U5-[3] 백업 항목 32px 고정(디자인 수치). */
-.settings-backup-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-10);
-  height: 32px;
-}
-
-/* U5-[3] 백업 날짜 mono(디자인). */
-.settings-backup-date {
-  font-family: var(--font-mono);
 }

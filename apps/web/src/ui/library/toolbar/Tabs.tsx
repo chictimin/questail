@@ -21,12 +21,16 @@ export function ToolbarTabs({
   onFilter: (key: FilterKey) => void;
 }): React.JSX.Element {
   return (
-    <div role="group">
+    <div role="tablist" className="lib-tabs">
       {TABS.filter((tab) => counts[tab.key] > 0).map((tab) => (
         <button
           key={tab.key}
           type="button"
-          aria-pressed={filterKey === tab.key}
+          role="tab"
+          aria-selected={filterKey === tab.key}
+          className={
+            filterKey === tab.key ? 'lib-tab lib-tab--active' : 'lib-tab'
+          }
           onClick={() => onFilter(tab.key)}
         >
           {t(locale, tab.label)}

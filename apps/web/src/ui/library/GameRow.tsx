@@ -3,7 +3,7 @@
  * 별점 PUT·숨김은 부모 콜백으로 올린다. 행 메뉴 없이 아이콘 버튼 2개 직접 노출(U2b).
  */
 import type { GameFacts } from '../../data/library.js';
-import { Check, CircleNotch, EyeSlash, LinkBreak, SteamLogo } from '@phosphor-icons/react';
+import { Check, CircleNotch, Eye, EyeSlash, Image, LinkBreak, SteamLogo } from '@phosphor-icons/react';
 import { t, type Locale } from '../i18n/index.js';
 import { useLocale } from '../i18n/context.js';
 import { filterKeyOf } from './filter.js';
@@ -11,7 +11,6 @@ import {
   formatPlaytime,
   formatRelative,
   formatYear,
-  starsOf,
 } from './format.js';
 import { displayNameOf } from '../../shared/displayName.js';
 import { type SortableGame } from './sort.js';
@@ -62,11 +61,11 @@ export function GameRow({
   onToggleHide,
 }: GameRowProps): React.JSX.Element {
   const { locale, text } = useLocale();
-  const stars = starsOf(facts.latestScore);
   const year = formatYear(facts);
   const badges = rowBadges(facts);
   const displayGenres = genreDisplayNames(facts.genres, locale);
   const noteId = `just-note-${facts.key.platform}-${facts.key.externalId}`;
+  const hideLabel = text(facts.hidden ? 'library.unhide' : 'library.hide');
 
   return (
     <article
@@ -74,9 +73,16 @@ export function GameRow({
       aria-describedby={justNote ? noteId : undefined}
       className="game-row"
       data-just-rated={justRated || undefined}
+      data-missing={badges.missing || undefined}
     >
         {facts.coverUrl === null ? (
-          <span className="game-cover" data-placeholder aria-hidden />
+          <span
+            className="game-cover game-cover--empty"
+            role="img"
+            aria-label={text('library.badgeFilling')}
+          >
+            <Image size={16} aria-hidden />
+          </span>
         ) : (
           <img className="game-cover" src={facts.coverUrl} alt="" />
         )}
@@ -109,50 +115,62 @@ export function GameRow({
             value={facts.latestScore}
             disabled={pending}
             locale={locale}
+            showValue
             onCommit={(next) =>
               onRate(next === null ? null : Math.round(next * 2))
             }
           />
-          {stars === null ? null : <span className="game-row-num">{stars}</span>}
-        </div>
-        <div>
           {badges.missing && (
-            <LinkBreak
-              size={24}
-              color="var(--qt-orange)"
+            <span
+              className="game-badge game-badge--missing"
+              role="img"
               aria-label={text('library.badgeMissing')}
-            />
+              title={text('library.badgeMissing')}
+            >
+              <LinkBreak size={14} aria-hidden />
+            </span>
           )}
-          {badges.filling && (
-            <CircleNotch
-              size={24}
-              color="var(--qt-purple)"
-              className="badge-spin"
+          {badges.filling && !badges.missing && (
+            <span
+              className="game-badge game-badge--filling"
+              role="img"
               aria-label={text('library.badgeFilling')}
-            />
+              title={text('library.badgeFilling')}
+            >
+              <CircleNotch size={14} aria-hidden className="qt-spin" />
+            </span>
           )}
           {justRated && (
-            <Check
-              size={24}
-              color="var(--qt-mint)"
+            <span
+              className="game-badge game-badge--just"
+              role="img"
               aria-label={text('library.badgeJustRated')}
-            />
+              title={text('library.badgeJustRated')}
+            >
+              <Check size={14} aria-hidden />
+            </span>
           )}
         </div>
         <div className="game-row-actions">
           <button
             type="button"
-            className="row-action"
-            aria-label={text(facts.hidden ? 'library.unhide' : 'library.hide')}
+            className="qt-btn qt-icon-btn row-action"
+            aria-label={hideLabel}
+            title={hideLabel}
             onClick={onToggleHide}
           >
-            <EyeSlash size={18} aria-hidden />
+            {facts.hidden ? (
+              <Eye size={18} aria-hidden />
+            ) : (
+              <EyeSlash size={18} aria-hidden />
+            )}
           </button>
           {facts.key.platform === 'steam' ? (
             <a
-              className="row-action"
+              className="qt-icon-btn row-action"
               href={`${STEAM_STORE_URL}/${encodeURIComponent(facts.key.externalId)}`}
               aria-label={text('library.ariaStore')}
+              title={text('library.ariaStore')}
             >
               <SteamLogo size={18} aria-hidden />
             </a>

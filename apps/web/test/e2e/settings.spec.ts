@@ -101,7 +101,7 @@ test.describe('설정 빈 상태', () => {
   test('정보 섹션 → 버전 + MIT', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${started.port}/settings`);
     await expect(page.getByText('0.1.0-test')).toBeVisible();
-    await expect(page.getByText('MIT', { exact: true })).toBeVisible();
+    await expect(page.getByText('MIT 라이선스')).toBeVisible();
   });
 });
 

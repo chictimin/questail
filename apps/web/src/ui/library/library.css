@@ -1,15 +1,395 @@
 /**
- * W7-F4 별점 리스트 스크롤 컨테이너 — 기능상 필요한 높이 상한만.
- * 시각 디자인 홀딩이라 색·간격·서체는 만지지 않는다.
- * ui/styles.css(lido 연동 UI 묶음과 충돌 가능)는 건드리지 않고 이 파일에 둔다.
+ * W2 라이브러리 화면 — ② 레퍼런스 대조.
+ * 마크업·className·CSS만. 가상 스크롤·정렬·필터·API 로직은 손대지 않는다.
+ * 색·간격·radius는 토큰 변수(없는 값은 레퍼런스 실측 literal + 주석).
  */
-.library-list {
-  --library-list-max-height: 100vh;
-  overflow-y: auto;
-  max-height: var(--library-list-max-height);
+
+/* 화면 래퍼 — 토스트 기준점. */
+main[data-route='library'] {
+  position: relative;
 }
 
-/* U2c: 미리보기 중(호버·←→ 미리보기) 별 색. 확정 색 그대로. 기존 토큰만. */
-div[role='slider'][data-preview] {
-  color: var(--qt-purple);
+/* 제목 줄 — h1 24/32 600 + 개수 14 secondary tabular. */
+main[data-route='library'] .lib-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-10);
+  margin-bottom: var(--space-12);
+}
+
+main[data-route='library'] .lib-title {
+  margin: 0;
+  font-size: var(--text-24);
+  line-height: 32px;
+  font-weight: 600;
+}
+
+main[data-route='library'] .lib-total {
+  font-size: var(--text-14);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 툴바 묶음 — 탭 줄 + 결과 줄 + 별 필터, gap 12. */
+main[data-route='library'] .lib-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+main[data-route='library'] .lib-toolbar-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* 별 위젯 공통 — 행·별 필터 바에서 함께 쓴다.
+   크기만 다르고(행 20 · 필터 24 · 좁은 폭 26) 구조는 같다. */
+main[data-route='library'] .stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 4px 6px;
+  border-radius: var(--corner-8);
+  outline: none;
+  color: var(--rating);
+}
+
+main[data-route='library'] .stars-row {
+  display: flex;
+  gap: 2px;
+}
+
+main[data-route='library'] .star-unit {
+  position: relative;
+  display: block;
+  width: 1em;
+  height: 1em;
+  font-size: 20px; /* 행 넓은 폭 실측 */
+  line-height: 1;
+}
+
+main[data-route='library'] .star-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  line-height: 1;
+  color: var(--rating-empty);
+}
+
+main[data-route='library'] .star-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+  color: var(--rating);
+}
+
+/* 미리보기 중 별 색 — 확정 색 그대로. 기존 토큰만. */
+main[data-route='library'] div[role='slider'][data-preview] {
+  color: var(--rating-preview);
+}
+
+main[data-route='library'] div[role='slider'][data-preview] .star-fill {
+  color: var(--rating-preview);
+}
+
+main[data-route='library'] .star-hit {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+main[data-route='library'] .star-hit--left {
+  left: 0;
+}
+
+main[data-route='library'] .star-hit--right {
+  right: 0;
+}
+
+main[data-route='library'] .star-hit:disabled {
+  cursor: default;
+}
+
+main[data-route='library'] .stars-num {
+  min-width: 28px;
+  font-size: var(--text-13);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+main[data-route='library'] .stars[data-rated] .stars-num {
+  color: var(--text-primary);
+}
+
+main[data-route='library'] .stars[data-preview] .stars-num {
+  color: var(--rating-preview);
+}
+
+/* 리스트 스크롤 컨테이너 — ⑨ 내부 스크롤. 툴바는 밖에 두어 고정 유지.
+   상한은 추정치(헤더 64 + 패딩 68 + 제목 32 + 툴바 + 결과 줄 + 푸터) — QA 대조용. */
+main[data-route='library'] .library-list {
+  overflow-y: auto;
+  min-height: 280px;
+  max-height: calc(100dvh - 360px);
+  border-top: 1px solid var(--qt-white-8);
+}
+
+main[data-route='library'] .lib-virtual {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+main[data-route='library'] .lib-more {
+  margin: 0;
+  padding: var(--space-12);
+  font-size: var(--text-12);
+  color: color-mix(in srgb, var(--qt-white) 40%, transparent);
+  text-align: center;
+}
+
+/* 스켈레톤 — 8행 고정 높이. */
+main[data-route='library'] .lib-skel {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--qt-white-8);
+}
+
+main[data-route='library'] .lib-skel-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+  height: 72px;
+  padding: 0 var(--space-12);
+  border-bottom: 1px solid color-mix(in srgb, var(--qt-white) 6%, transparent);
+}
+
+main[data-route='library'] .lib-skel-cover {
+  flex: none;
+  width: 96px;
+  height: 45px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-8);
+}
+
+main[data-route='library'] .lib-skel-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+main[data-route='library'] .lib-skel-line {
+  width: 62%;
+  height: 12px;
+  border-radius: 0 4px 0 4px; /* 레퍼런스 실측. 4 corner 토큰 없음 */
+  background: var(--qt-white-8);
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n + 2) .lib-skel-line {
+  width: 48%;
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n + 3) .lib-skel-line {
+  width: 70%;
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n + 4) .lib-skel-line {
+  width: 55%;
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n + 5) .lib-skel-line {
+  width: 40%;
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n + 6) .lib-skel-line {
+  width: 66%;
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n + 7) .lib-skel-line {
+  width: 52%;
+}
+
+main[data-route='library'] .lib-skel-row:nth-child(8n) .lib-skel-line {
+  width: 45%;
+}
+
+main[data-route='library'] .lib-skel-sub {
+  width: 40%;
+  height: 10px;
+  border-radius: 0 4px 0 4px; /* 레퍼런스 실측. 4 corner 토큰 없음 */
+  background: var(--qt-white-5);
+}
+
+main[data-route='library'] .lib-skel-star {
+  flex: none;
+  width: 160px;
+  height: 16px;
+  border-radius: 0 4px 0 4px; /* 레퍼런스 실측. 4 corner 토큰 없음 */
+  background: var(--qt-white-8);
+}
+
+/* 빈 상태 — 중앙, 로고 72 또는 아이콘 28. */
+main[data-route='library'] .lib-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 56px var(--space-16);
+  border-top: 1px solid var(--qt-white-8);
+  text-align: center;
+}
+
+main[data-route='library'] .lib-empty-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+main[data-route='library'] .lib-empty-icon {
+  color: var(--text-secondary);
+}
+
+main[data-route='library'] .lib-empty-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+main[data-route='library'] .lib-empty-desc {
+  margin: 0;
+  max-width: 420px;
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+main[data-route='library'] .lib-empty-action {
+  margin-top: var(--space-12);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--control-md);
+  padding: 0 var(--space-16);
+  border-radius: var(--corner-12);
+  background: var(--surface-selected);
+  color: var(--qt-white);
+  font-size: var(--text-14);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* 불러오기 실패 — error 단색 + 검은 글씨(공용 .qt-notice--error는 틴트라 별도). */
+main[data-route='library'] .lib-fail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-10) var(--space-12);
+  align-items: center;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--corner-12);
+  background: var(--error);
+  color: var(--text-on-pastel);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+main[data-route='library'] .lib-fail-text {
+  margin: 0;
+  flex: 1 1 240px;
+  min-width: 0;
+  text-wrap: pretty;
+}
+
+main[data-route='library'] .lib-fail-btn {
+  margin-left: auto;
+  height: var(--control-sm);
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: var(--corner-8);
+  background: var(--qt-black);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 숨김 토스트 — 하단 중앙 고정형. */
+main[data-route='library'] .lib-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-10) var(--space-10) var(--space-10) var(--space-16);
+  border-radius: var(--corner-12);
+  background: var(--surface-quiet);
+  color: var(--text-on-pastel);
+  font-size: var(--text-13);
+  white-space: nowrap;
+}
+
+main[data-route='library'] .lib-toast-text {
+  flex: none;
+}
+
+main[data-route='library'] .lib-toast-btn {
+  height: var(--control-sm);
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: var(--corner-8);
+  background: var(--qt-black);
+  color: var(--qt-white);
+  font-size: var(--text-13);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 639.98px) {
+  main[data-route='library'] .library-list {
+    min-height: 240px;
+    max-height: calc(100dvh - 460px); /* 추정치 — 고정 모바일 헤더 오버레이 포함 */
+  }
+
+  main[data-route='library'] .star-unit {
+    font-size: 26px; /* 좁은 폭 실측 */
+  }
+
+  main[data-route='library'] .stars {
+    padding: 2px 4px;
+  }
+
+  main[data-route='library'] .lib-skel-row {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: var(--space-4);
+    height: 104px;
+  }
+
+  main[data-route='library'] .lib-skel-cover {
+    width: 72px;
+    height: 34px;
+  }
+
+  main[data-route='library'] .lib-skel-star {
+    width: 100%;
+  }
 }

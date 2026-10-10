@@ -1,5 +1,5 @@
 /** U2a 필터 버튼 + 팝오버 — 빠진 게임 토글 + 정렬 라디오 2종. details/summary 네이티브. */
-import { SlidersHorizontal } from '@phosphor-icons/react';
+import { Check, SlidersHorizontal } from '@phosphor-icons/react';
 import { t, type Locale } from '../../i18n/index.js';
 import '../toolbar.css';
 import type { SortSpec } from '../sort.js';
@@ -31,39 +31,54 @@ export function FilterButton({
   onSort: (spec: SortSpec) => void;
 }): React.JSX.Element {
   return (
-    <details>
-      <summary aria-label={t(locale, 'library.filterButton')}>
+    <details className="lib-filter">
+      <summary className="lib-filter-btn" aria-label={t(locale, 'library.filterButton')}>
         <SlidersHorizontal size={16} aria-hidden />
         <span className="filter-text">{t(locale, 'library.filterButton')}</span>
-        {badgeCount !== null && <span>{badgeCount}</span>}
+        {badgeCount !== null && <span className="lib-filter-badge">{badgeCount}</span>}
       </summary>
-      <div>
-        <p>{t(locale, 'library.sortTitle')}</p>
-        {SORT_CHOICES.map((choice) => {
-          const value = `${choice.sortKey}:${choice.direction}`;
-          const checked =
-            sortSpec.sortKey === choice.sortKey &&
-            sortSpec.direction === choice.direction;
-          return (
-            <label key={value}>
-              <input
-                type="radio"
-                name="sort"
-                checked={checked}
-                onChange={() => onSort(choice)}
-              />
-              {t(locale, SORT_LABELS[value] as Parameters<typeof t>[1])}
-            </label>
-          );
-        })}
-        <label>
-          {t(locale, 'library.showEnded')}
+      <div className="lib-popover" role="dialog" aria-label={t(locale, 'library.filterButton')}>
+        <label className="lib-popover-switch">
+          <span className="lib-popover-switch-label">{t(locale, 'library.showEnded')}</span>
           <input
             type="checkbox"
+            className="lib-switch"
+            role="switch"
+            aria-checked={showEnded}
             checked={showEnded}
             onChange={() => onToggleEnded()}
           />
         </label>
+        <div className="lib-popover-divider" aria-hidden />
+        <span className="lib-popover-heading">{t(locale, 'library.sortTitle')}</span>
+        <div className="lib-popover-sorts" role="radiogroup">
+          {SORT_CHOICES.map((choice) => {
+            const value = `${choice.sortKey}:${choice.direction}`;
+            const checked =
+              sortSpec.sortKey === choice.sortKey &&
+              sortSpec.direction === choice.direction;
+            return (
+              <label
+                key={value}
+                className={
+                  checked ? 'lib-popover-sort lib-popover-sort--on' : 'lib-popover-sort'
+                }
+              >
+                <input
+                  type="radio"
+                  name="sort"
+                  className="lib-radio"
+                  checked={checked}
+                  onChange={() => onSort(choice)}
+                />
+                <span className="lib-popover-sort-label">
+                  {t(locale, SORT_LABELS[value] as Parameters<typeof t>[1])}
+                </span>
+                {checked ? <Check size={16} aria-hidden /> : null}
+              </label>
+            );
+          })}
+        </div>
       </div>
     </details>
   );

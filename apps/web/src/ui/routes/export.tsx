@@ -20,6 +20,8 @@ type ExportResult = { written?: unknown; dir?: unknown; code?: unknown };
 export function ExportPage(): React.JSX.Element {
   const { locale, text } = useLocale();
   type TextKey = Parameters<typeof text>[0];
+  const formatted = (n: number): string =>
+    new Intl.NumberFormat(locale).format(n);
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ written: number; dir: string } | null>(null);
@@ -143,8 +145,10 @@ export function ExportPage(): React.JSX.Element {
           )}
           {count !== null && (
             <div className="export-bignum-row">
-              <span className="export-bignum">{count}</span>
-              <span className="export-eq">{text('export.eq', { n: count })}</span>
+              <span className="export-bignum">{formatted(count)}</span>
+              <span className="export-eq">
+                {text('export.eq', { n: formatted(count) })}
+              </span>
             </div>
           )}
           {errorKey !== null && (
@@ -190,6 +194,13 @@ export function ExportPage(): React.JSX.Element {
           )}
           {copied && <p aria-live="polite">{text('export.copied')}</p>}
           {copyFailed && <p aria-live="polite">{text('export.copyFallback')}</p>}
+          {busy ? (
+            <div>
+              <div role="progressbar" aria-label={text('export.go')}>
+                <div />
+              </div>
+            </div>
+          ) : null}
           <div className="export-actions">
             {done === null && (
               <form

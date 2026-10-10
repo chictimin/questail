@@ -37,21 +37,23 @@ export function LibraryToolbar({
   onToggleEnded,
 }: LibraryToolbarProps): React.JSX.Element {
   return (
-    <div>
-      <ToolbarTabs
-        locale={locale}
-        filterKey={filterKey}
-        counts={counts}
-        onFilter={onFilter}
-      />
-      <FilterButton
-        locale={locale}
-        badgeCount={showEnded ? 1 : null}
-        showEnded={showEnded}
-        sortSpec={sortSpec}
-        onToggleEnded={onToggleEnded}
-        onSort={onSort}
-      />
+    <div className="lib-toolbar">
+      <div className="lib-toolbar-row">
+        <ToolbarTabs
+          locale={locale}
+          filterKey={filterKey}
+          counts={counts}
+          onFilter={onFilter}
+        />
+        <FilterButton
+          locale={locale}
+          badgeCount={showEnded ? 1 : null}
+          showEnded={showEnded}
+          sortSpec={sortSpec}
+          onToggleEnded={onToggleEnded}
+          onSort={onSort}
+        />
+      </div>
       <ResultLine locale={locale} count={resultCount} sortSpec={sortSpec} />
       {filterKey === 'byRating' ? (
         <StarFilter locale={locale} score={score} onScore={onScore} />

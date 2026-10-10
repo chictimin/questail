@@ -1,13 +1,79 @@
 /**
  * U3a 수집 상태 — 행·pill·접힘·알림 모양. 색은 tokens/ 재사용, 새 색 0.
  * 반투명 틴트는 color-mix(토큰 기준) — 리터럴 rgba를 두지 않는다.
+ * W3: 페이지 헤더(제목·시각·주 버튼) 추가. 분기점 W0 통일(639.98px).
  */
+/* 페이지 본문 리듬 — 레퍼런스 main 실측: 세로 flex · gap 24. */
+main[data-route='sync'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+/* 페이지 헤더 — tsx에 후크 클래스 없음(i18n oracle). h1 포함 div로 식별. */
+main[data-route='sync'] > div:has(h1) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-12) var(--space-16);
+}
+
+main[data-route='sync'] > div:has(h1) > div {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+main[data-route='sync'] > div:has(h1) h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: var(--weight-semibold);
+}
+
+main[data-route='sync'] > div:has(h1) p {
+  margin: 0;
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+}
+
+/* 헤더 주 버튼 — 레퍼런스 ③ 실측 h40 · 좌우 16 · #C6C7F8 + 검은 글씨. */
+main[data-route='sync'] > div:has(h1) > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  height: var(--control-md);
+  padding: 0 var(--space-16);
+  border: none;
+  border-radius: var(--corner-12);
+  background: var(--surface-accent);
+  color: var(--text-on-pastel);
+  font-size: var(--text-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+main[data-route='sync'] > div:has(h1) > button:disabled {
+  opacity: 0.56;
+  cursor: default;
+}
 .sync-rows {
   display: flex;
   flex-direction: column;
   border-radius: var(--corner-24);
   background: var(--surface-card);
   padding: var(--space-4) var(--space-20);
+}
+
+/* 알림·카드·푸터 사이 — 본문 안 묶음 간격. .sync-rows를 품은 div로 식별. */
+main[data-route='sync'] > div:has(> .sync-rows) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
 }
 
 .sync-row {
@@ -19,9 +85,14 @@
   border-bottom: 1px solid color-mix(in srgb, var(--qt-white) 6%, transparent);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639.98px) {
   .sync-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 좁은 폭 1열 — 액션은 오른쪽 정렬(공통 규칙). */
+  .sync-tail {
+    justify-content: flex-end;
   }
 }
 
@@ -61,6 +132,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+}
+
+/* 완료 본문(건수 문장) — pill 옆 중립 텍스트. 아이콘·경고색 없음. */
+.sync-row-body > span {
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  text-wrap: pretty;
 }
 
 .sync-bar {
@@ -327,6 +406,13 @@
 
 .sync-foot {
   margin: 0;
+  display: flex;
+  gap: var(--space-6);
   font-size: var(--text-12);
+  line-height: 18px;
   color: var(--text-secondary);
+}
+
+.sync-foot > svg {
+  flex: none;
 }

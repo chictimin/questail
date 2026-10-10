@@ -1,36 +1,205 @@
 /**
- * W5-UI 연동 2열 — 토큰 변수만 사용(인라인 style 없음). 좁은 폭 1열.
- * 후크는 data-route + 클래스 1개. 수치는 토큰, 분기점만 고정.
+ * W1 ① 첫 실행 · 연동 — 토큰 변수만 사용. 수치는 레퍼런스 정본 인라인 값.
+ * 공용 프리미티브(.qt-*)는 ui/styles.css에서 가져오고, 이 파일은 화면 배치만 둔다.
+ * 분기점: (max-width: 639.98px) / (min-width: 640px) 통일.
  */
-main[data-route='connect'] .connect-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+main[data-route='connect'] {
+  display: flex;
+  flex-direction: column;
   gap: var(--grid-gap);
 }
 
-main[data-route='connect'] .connect-layout > div {
+main[data-route='connect'] .connect-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 640px;
+}
+
+main[data-route='connect'] .connect-head h1 {
+  margin: 0;
+  font: var(--type-title);
+}
+
+main[data-route='connect'] .connect-head p {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+main[data-route='connect'] .connect-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+
+/* alert — 제목 아래·폼 밖. .qt-alert(파스텔 면+검은 글씨)에 아이콘 크기만 보탠다. */
+main[data-route='connect'] .connect-alert > svg {
+  flex: none;
+  font-size: 18px;
+  line-height: 20px;
+}
+
+main[data-route='connect'] .connect-alert-text {
+  flex: 1;
+  min-width: 0;
+  text-wrap: pretty;
+}
+
+/* 2열 그리드 — 넓은 폭 minmax(0,1.15fr) minmax(0,1fr), 좁은 폭 1열(안내가 아래). */
+main[data-route='connect'] .connect-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--grid-gap);
+  align-items: start;
+}
+
+@media (max-width: 639.98px) {
+  main[data-route='connect'] .connect-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 폼 카드 — white 5% 면, radius 0 24px, padding 24, 내부 gap 20. */
+main[data-route='connect'] .connect-formwrap {
   background: var(--surface-card);
   border-radius: var(--corner-24);
   padding: var(--space-24);
 }
 
-main[data-route='connect'] .connect-layout > section {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--corner-24);
-  padding: var(--space-24);
+main[data-route='connect'] .connect-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
 }
 
-@media (max-width: 768px) {
-  main[data-route='connect'] .connect-layout {
-    grid-template-columns: 1fr;
-  }
+/* 필드 — 라벨 위·입력칸(qt-field)·아래 힌트/오류. 검증 중 잠금은 opacity .56. */
+main[data-route='connect'] .connect-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
 }
 
-/* R1: 제출 버튼 모션 — 라벨 교체(qtSwap) · 확인 중 shimmer · 성공색 전환.
-   토큰 변수만 사용. reduced-motion은 토큰 전역 규칙이 끈다. */
-main[data-route='connect'] .connect-submit {
-  display: inline-flex;
+main[data-route='connect'] .connect-field.is-locked {
+  opacity: 0.56;
+}
+
+main[data-route='connect'] .connect-field > label {
+  display: flex;
   align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-13);
+  line-height: 18px;
+  font-weight: 600;
+}
+
+main[data-route='connect'] .connect-field > label > svg {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+main[data-route='connect'] .connect-field .qt-field > svg {
+  color: var(--text-secondary);
+}
+
+main[data-route='connect'] .connect-hint {
+  margin: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+main[data-route='connect'] .connect-error {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  margin: 0;
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--error);
+}
+
+main[data-route='connect'] .connect-error > svg {
+  flex: none;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+main[data-route='connect'] .connect-error strong {
+  font-weight: 700;
+  margin-right: var(--space-4);
+}
+
+main[data-route='connect'] .connect-error span {
+  text-wrap: pretty;
+}
+
+/* 프로필 못 찾음 예시 박스 — white 5% 면. */
+main[data-route='connect'] .connect-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-12) 14px; /* 좌우 14 실측. 14 토큰 없음 */
+  border-radius: var(--corner-12);
+  background: var(--surface-card);
+}
+
+main[data-route='connect'] .connect-examples-title {
+  margin: 0;
+  font-size: var(--text-12);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+main[data-route='connect'] .connect-examples ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+main[data-route='connect'] .connect-examples li {
+  display: flex;
+  gap: var(--space-10);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+main[data-route='connect'] .connect-examples li > span {
+  width: 84px;
+  flex: none;
+  font-size: var(--text-12);
+  color: var(--text-secondary);
+}
+
+main[data-route='connect'] .connect-examples code {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--qt-white);
+  word-break: break-all;
+}
+
+/* 주 버튼 줄 — 넓은 폭 내용 폭, 좁은 폭 100%. 성공 문구는 옆에 12px 보조. */
+main[data-route='connect'] .connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+main[data-route='connect'] .connect-submit {
+  flex: 0 0 auto;
+  transition: background-color 400ms var(--ease-out-soft);
+}
+
+@media (max-width: 639.98px) {
+  main[data-route='connect'] .connect-submit {
+    flex: 1 1 100%;
+  }
 }
 
 main[data-route='connect'] .connect-submit-label {
@@ -38,20 +207,216 @@ main[data-route='connect'] .connect-submit-label {
   animation: qtSwap var(--dur-swap) var(--ease-out-soft) both;
 }
 
+/* .is-shimmer(원시)는 animation을 덮어 qtSwap만 남기고 글자가 투명해진다.
+   명시 결합으로 스왑+쉬머를 함께 재생한다. */
 main[data-route='connect'] .connect-submit-label.is-shimmer {
-  background-image:
-    linear-gradient(90deg, transparent 35%, rgba(255,255,255,var(--qtA)) 50%, transparent 65%),
-    linear-gradient(currentColor, currentColor);
-  background-size: 300% 100%, 100% 100%;
-  background-repeat: no-repeat;
-  background-clip: text;
-  color: transparent;
   animation:
     qtSwap var(--dur-swap) var(--ease-out-soft) both,
     qtShimmer var(--dur-shimmer) linear infinite;
 }
 
-main[data-route='connect'] .connect-submit.is-success {
-  color: var(--success);
-  transition: color 400ms;
+main[data-route='connect'] .connect-golist {
+  font-size: var(--text-12);
+  color: var(--text-secondary);
+}
+
+/* 키 발급 안내 패널 — 배경 없이 inset 테두리만. */
+main[data-route='connect'] .connect-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 18px; /* 실측. 18 토큰 없음 */
+  padding: var(--space-24);
+  border-radius: var(--corner-24);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--qt-white-8);
+}
+
+main[data-route='connect'] .connect-guide h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+main[data-route='connect'] .connect-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: connect-step;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+main[data-route='connect'] .connect-steps li {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+  counter-increment: connect-step;
+}
+
+main[data-route='connect'] .connect-steps li::before {
+  content: counter(connect-step);
+  flex: none;
+  min-width: 18px;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  line-height: 24px;
+  font-weight: 800;
+  text-shadow: 2px 2px 0 #4f5196; /* 레퍼런스 정본 단일 그림자 */
+}
+
+main[data-route='connect'] .connect-steps span {
+  text-wrap: pretty;
+}
+
+main[data-route='connect'] .connect-steps code {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  padding: 1px var(--space-6);
+  border-radius: 0 4px 0 4px;
+  background: var(--surface-inset);
+}
+
+/* 필요한 것 — 위 구분선, check mint ×2 + hard-drives ×1. */
+main[data-route='connect'] .connect-needs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--qt-white-8);
+}
+
+main[data-route='connect'] .connect-needs-title {
+  margin: 0;
+  font-size: var(--text-13);
+  font-weight: 600;
+}
+
+main[data-route='connect'] .connect-need {
+  display: flex;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+}
+
+main[data-route='connect'] .connect-need > svg {
+  flex: none;
+  font-size: 16px;
+  line-height: 20px;
+  color: var(--qt-mint);
+}
+
+main[data-route='connect'] .connect-need:last-child > svg {
+  color: var(--text-secondary);
+}
+
+/* 잠깐만요 — .qt-notice--warn(8% 면+색 글씨)에 호버·포커스 .13만 보탠다. */
+main[data-route='connect'] .connect-warn {
+  border-radius: var(--corner-12);
+  transition:
+    background-color 240ms var(--ease-out-soft),
+    color 240ms var(--ease-out-soft);
+}
+
+main[data-route='connect'] .connect-warn:hover,
+main[data-route='connect'] .connect-warn:focus-visible {
+  background: rgba(255, 201, 138, 0.13);
+}
+
+main[data-route='connect'] .connect-warn > svg {
+  font-size: 18px;
+}
+
+main[data-route='connect'] .connect-warn strong {
+  font-weight: 700;
+  margin-right: var(--space-6);
+}
+
+/* 접힘 항목 — 아래 구분선, h44 헤드(question+caret), 본문 13/20. */
+main[data-route='connect'] .connect-acc {
+  border-top: 1px solid var(--qt-white-8);
+  padding-top: var(--space-4);
+}
+
+main[data-route='connect'] .connect-acc details {
+  margin: 0;
+}
+
+main[data-route='connect'] .connect-acc-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  height: var(--control-lg);
+  font-size: var(--text-14);
+  font-weight: 600;
+  text-align: left;
+}
+
+main[data-route='connect'] .connect-acc-head::marker,
+main[data-route='connect'] .connect-acc-head::-webkit-details-marker {
+  content: '';
+  display: none;
+}
+
+main[data-route='connect'] .connect-acc-head > svg:first-child {
+  color: var(--text-secondary);
+}
+
+main[data-route='connect'] .connect-acc-head > span {
+  flex: 1;
+}
+
+main[data-route='connect'] .connect-acc-up {
+  display: none;
+}
+
+main[data-route='connect'] .connect-acc details[open] .connect-acc-down {
+  display: none;
+}
+
+main[data-route='connect'] .connect-acc details[open] .connect-acc-up {
+  display: block;
+}
+
+main[data-route='connect'] .connect-acc-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: 0 0 var(--space-4) var(--space-24);
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: color-mix(in srgb, var(--qt-white) 72%, transparent);
+  text-wrap: pretty;
+}
+
+main[data-route='connect'] .connect-acc-body p {
+  margin: 0;
+}
+
+/* 연동 완료 후 화면 — 레퍼런스 없음. 같은 카드·버튼 프리미티브로만 정리. */
+main[data-route='connect'] .connect-done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-24);
+}
+
+main[data-route='connect'] .connect-done p {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main[data-route='connect'] .connect-submit,
+  main[data-route='connect'] .connect-warn {
+    transition: none;
+  }
+
+  main[data-route='connect'] .connect-submit-label {
+    animation: none;
+  }
 }

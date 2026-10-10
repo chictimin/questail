@@ -1,4 +1,4 @@
-/** W5-UI 공통 셸 — 로고 전용 헤더(미연동·확인 중). */
+/** W0 공통 셸 — 로고 전용 헤더(미연동). 메뉴·요약 없음. */
 import { Link, useLocation } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import logoUrl from '../../assets/logo-mark.png';
@@ -10,18 +10,26 @@ import './shell.css';
 export function LogoHeader(): React.JSX.Element {
   const { text } = useLocale();
   return (
-    <header>
-      <img src={logoUrl} alt={text('shell.logoAlt')} />
+    <header className="site-header site-header--guest">
+      <Wordmark />
+      <span className="site-header-spacer" aria-hidden="true" />
+      <img
+        className="shell-symbol"
+        src={logoUrl}
+        alt={text('shell.logoAlt')}
+        width={40}
+        height={40}
+      />
     </header>
   );
 }
 
-/** U4 연동 후 헤더 — 워드마크 + 메뉴 4(아이콘+활성) + 심볼. 요약 pill은 자리만(미렌더). */
+/** W0 연동 후 헤더 — 워드마크 + 메뉴 4 + spacer + 수집 요약 + 심볼. */
 export function Header(): React.JSX.Element {
   const { text } = useLocale();
   const [path] = useLocation();
   return (
-    <header className="site-header">
+    <header className="site-header site-header--app">
       <Wordmark />
       <nav className="site-menu">
         {SHELL_MENU.map(({ href, label, Icon }) => (
@@ -35,6 +43,7 @@ export function Header(): React.JSX.Element {
           </Link>
         ))}
       </nav>
+      <span className="site-header-spacer" aria-hidden="true" />
       <SummaryPill />
       <img
         className="shell-symbol"

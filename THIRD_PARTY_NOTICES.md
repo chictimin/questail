@@ -124,10 +124,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 - License: SIL Open Font License, Version 1.1 (see `assets/fonts/OFL-Azeret.txt`
   or https://openfontlicense.org)
 
-## JetBrains Mono (wordmark, woff2 subset, weight 500)
+## JetBrains Mono (wordmark, woff2 subset, weights 500·800)
 
 - Source: https://github.com/JetBrains/JetBrainsMono (via @fontsource/jetbrains-mono@5.3.0)
-- Files: `jetbrains-mono-latin-500-normal.woff2` (subset of the Original Version)
+- Files: `jetbrains-mono-latin-500-normal.woff2` · `jetbrains-mono-latin-800-normal.woff2` (subsets of the Original Version)
 - Copyright: Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
 - License: SIL Open Font License, Version 1.1 (see `assets/fonts/OFL-JetBrainsMono.txt`
   or https://openfontlicense.org)
