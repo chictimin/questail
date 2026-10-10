@@ -35,11 +35,12 @@ type ConnectFailBody = {
   params: Record<string, string | number>;
 };
 
-type ConnectRequest = { keyText: string; steamId: string; vanity?: string };
+type ConnectRequest = { keyText: string; steamId: string; vanity?: string; achievementsEnabled?: boolean };
 
 /**
  * 타입 검사만 한다. 형태 검사는 saveConnection이 맡긴다(결정 3). 키 원문은 params에 싣지 않는다.
  * vanity는 선택 — 있으면 비어 있지 않은 문자열만, 빈 값은 INVALID_BODY.
+ * achievementsEnabled는 선택 — 있으면 boolean만, 아니면 INVALID_BODY(Steam 요청 0).
  */
 const connectBodyGuard: BodyGuard<ConnectRequest> = (unknownBody) => {
   if (typeof unknownBody !== 'object' || unknownBody === null) {
@@ -54,16 +55,23 @@ const connectBodyGuard: BodyGuard<ConnectRequest> = (unknownBody) => {
   ) {
     return { ok: false, params: { reason: 'body' } };
   }
+  if (record.achievementsEnabled !== undefined && typeof record.achievementsEnabled !== 'boolean') {
+    return { ok: false, params: { reason: 'body' } };
+  }
+  const optional =
+    record.achievementsEnabled === undefined
+      ? {}
+      : { achievementsEnabled: record.achievementsEnabled };
   if (record.vanity !== undefined) {
     if (typeof record.vanity !== 'string' || record.vanity === '') {
       return { ok: false, params: { reason: 'body' } };
     }
     return {
       ok: true,
-      value: { keyText: record.keyText, steamId: record.steamId, vanity: record.vanity },
+      value: { keyText: record.keyText, steamId: record.steamId, vanity: record.vanity, ...optional },
     };
   }
-  return { ok: true, value: { keyText: record.keyText, steamId: record.steamId } };
+  return { ok: true, value: { keyText: record.keyText, steamId: record.steamId, ...optional } };
 };
 
 /** 승인 매핑(#67025): 401 미사용(입력값 문제라 400). 그 외는 아래. */
@@ -133,6 +141,7 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps): void {
         keyPath: deps.keyPath,
         keyText: parsed.value.keyText,
         steamId,
+        achievementsEnabled: parsed.value.achievementsEnabled,
         fetchFn: deps.fetchFn,
         baseUrl: deps.baseUrl,
       });

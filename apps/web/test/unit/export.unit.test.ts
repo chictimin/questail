@@ -57,6 +57,7 @@ function makeFacts(overrides?: Partial<GameFacts>): GameFacts {
     tagStatus: 'ready',
     achievements: [],
     achievementState: 'not_collected',
+    achievementSummary: null,
     latestScore: 8,
     ratingEvents: [{ id: 1, before: null, after: 8, at: 1700200000 }],
     syncRunRefs: [],

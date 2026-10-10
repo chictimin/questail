@@ -33,6 +33,7 @@ function makeGame(overrides?: Partial<RowGame>): RowGame {
     tagStatus: 'not_collected',
     achievements: [],
     achievementState: 'not_collected',
+    achievementSummary: null,
     latestScore: null,
     ratingEvents: [],
     syncRunRefs: [],

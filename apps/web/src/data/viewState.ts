@@ -8,6 +8,7 @@ export interface Prefs {
   locale: 'ko' | 'en';
   hidden: { platform: string; externalId: string }[];
   sortPerFilter: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
+  hideShortPlaytime: boolean;
 }
 
 /** 로케일 기본값 제안. 브라우저 판정은 호출 측(B)이 fallback으로 넘긴다. */
@@ -61,6 +62,7 @@ export function getPrefs(db: Database.Database, fallback: LocaleFallback): Prefs
     locale: locale === 'en' ? 'en' : locale === 'ko' ? 'ko' : fallback,
     hidden,
     sortPerFilter,
+    hideShortPlaytime: readPref(db, 'hide_short_playtime') === '1',
   };
 }
 
@@ -74,10 +76,14 @@ export function setPrefs(
     locale: 'ko' | 'en';
     hidden: { platform: string; externalId: string }[];
     sortPerFilter: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
+    hideShortPlaytime: boolean;
   }>,
 ): void {
   if (patch.locale !== undefined) {
     writePref(db, 'locale', patch.locale);
+  }
+  if (patch.hideShortPlaytime !== undefined) {
+    writePref(db, 'hide_short_playtime', patch.hideShortPlaytime ? '1' : '0');
   }
   if (patch.hidden !== undefined) {
     const orm = drizzle(db);

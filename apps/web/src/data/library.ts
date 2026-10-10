@@ -95,6 +95,15 @@ function buildFacts(
   const achRows = g.achRows;
   const achState = g.achState;
   const rating = g.rating;
+  const achievementState: GameFacts['achievementState'] = achievementOff
+    ? 'disabled'
+    : toAchievementState(achState?.state);
+  const achievementTotal = achRows.length;
+  const achievementAchieved = achRows.filter((row) => row.achieved === 1).length;
+  const achievementSummary: GameFacts['achievementSummary'] =
+    achievementState !== 'ready' || achievementTotal === 0
+      ? null
+      : { achieved: achievementAchieved, total: achievementTotal };
   const ratingEventRows = g.ratingEventRows;
   const isHidden = g.isHidden;
 
@@ -183,7 +192,8 @@ function buildFacts(
       achieved: row.achieved === 1,
       unlockedAt: row.unlockedAt,
     })),
-    achievementState: achievementOff ? 'disabled' : toAchievementState(achState?.state),
+    achievementState,
+    achievementSummary,
     latestScore: rating ? rating.score : null,
     ratingEvents: ratingEventRows.map((row) => ({
       id: row.id,

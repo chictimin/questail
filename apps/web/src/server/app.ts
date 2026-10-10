@@ -214,6 +214,7 @@ type PrefsPatch = {
   locale?: Locale;
   hidden?: { platform: string; externalId: string }[];
   sortPerFilter?: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
+  hideShortPlaytime?: boolean;
 };
 
 function isGameKey(value: unknown): value is { platform: string; externalId: string } {
@@ -256,6 +257,9 @@ const prefsBodyGuard: BodyGuard<PrefsPatch> = (unknownBody) => {
   ) {
     return { ok: false, params: { reason: 'sortPerFilter' } };
   }
+  if (body['hideShortPlaytime'] !== undefined && typeof body['hideShortPlaytime'] !== 'boolean') {
+    return { ok: false, params: { reason: 'hideShortPlaytime' } };
+  }
   return {
     ok: true,
     value: {
@@ -268,6 +272,9 @@ const prefsBodyGuard: BodyGuard<PrefsPatch> = (unknownBody) => {
       ...(body['sortPerFilter'] === undefined
         ? {}
         : { sortPerFilter: body['sortPerFilter'] as PrefsPatch['sortPerFilter'] }),
+      ...(body['hideShortPlaytime'] === undefined
+        ? {}
+        : { hideShortPlaytime: body['hideShortPlaytime'] as boolean }),
     },
   };
 };

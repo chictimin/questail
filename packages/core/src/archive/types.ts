@@ -55,6 +55,7 @@ export interface GameFacts {
   tagStatus: 'ready' | 'empty' | 'failed' | 'not_collected';
   achievements: { apiname: string; achieved: boolean; unlockedAt: number | null }[];
   achievementState: 'disabled' | 'failed' | 'not_collected' | 'empty' | 'ready';
+  achievementSummary: { achieved: number; total: number } | null;
   latestScore: number | null;
   ratingEvents: { id: number; before: number | null; after: number | null; at: number }[];
   syncRunRefs: number[];

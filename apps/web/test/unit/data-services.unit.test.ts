@@ -103,6 +103,7 @@ describe('data services', () => {
         locale: 'en',
         hidden: [{ platform: 'steam', externalId: '1' }],
         sortPerFilter: [],
+        hideShortPlaytime: false,
       });
       setPrefs(db, {
         sortPerFilter: [{ filterKey: 'all', sortKey: 'name', direction: 'asc' }],

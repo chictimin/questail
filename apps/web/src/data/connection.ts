@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import type { SyncErrorCode } from '@questail/core';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { account } from '../db/schema.js';
+import { account, preferences } from '../db/schema.js';
 
 /** 키 파일명. A가 export하고 B가 같은 상수를 import한다 (P-3). */
 export const KEY_FILE_NAME = 'steam.key';
@@ -63,12 +63,74 @@ function readKeyFile(keyPath: string): string | null {
 
 /** 저장된 SteamID. 없으면 null이다. */
 function storedSteamId(db: Database.Database): string | null {
+  const row = readAccountRow(db);
+  return row ? row.steamId : null;
+}
+
+type AccountSnapshot = { steamId: string | null; createdAt: number };
+
+function readAccountRow(db: Database.Database): AccountSnapshot | null {
   const row = drizzle(db)
-    .select({ steamId: account.steamId })
+    .select({ steamId: account.steamId, createdAt: account.createdAt })
     .from(account)
     .where(eq(account.id, 1))
     .get();
-  return row ? row.steamId : null;
+  return row ?? null;
+}
+
+type OptionSnapshot = { value: string; updatedAt: number };
+
+function readOptionRow(db: Database.Database): OptionSnapshot | null {
+  const row = drizzle(db)
+    .select({ value: preferences.value, updatedAt: preferences.updatedAt })
+    .from(preferences)
+    .where(eq(preferences.key, 'achievement_enabled'))
+    .get();
+  return row ?? null;
+}
+
+function writeOption(db: Database.Database, enabled: boolean): void {
+  const orm = drizzle(db);
+  const now = Math.floor(Date.now() / 1000);
+  const value = enabled ? '1' : '0';
+  const existing = orm
+    .select({ key: preferences.key })
+    .from(preferences)
+    .where(eq(preferences.key, 'achievement_enabled'))
+    .get();
+  if (existing) {
+    orm
+      .update(preferences)
+      .set({ value, updatedAt: now })
+      .where(eq(preferences.key, 'achievement_enabled'))
+      .run();
+  } else {
+    orm.insert(preferences).values({ key: 'achievement_enabled', value, updatedAt: now }).run();
+  }
+}
+
+function restoreOption(db: Database.Database, snapshot: OptionSnapshot): void {
+  drizzle(db)
+    .update(preferences)
+    .set({ value: snapshot.value, updatedAt: snapshot.updatedAt })
+    .where(eq(preferences.key, 'achievement_enabled'))
+    .run();
+}
+
+function deleteOption(db: Database.Database): void {
+  drizzle(db).delete(preferences).where(eq(preferences.key, 'achievement_enabled')).run();
+}
+
+function restoreAccount(db: Database.Database, snapshot: AccountSnapshot): void {
+  drizzle(db)
+    .update(account)
+    .set({ steamId: snapshot.steamId, createdAt: snapshot.createdAt })
+    .where(eq(account.id, 1))
+    .run();
+}
+
+function deleteAccount(db: Database.Database): void {
+  drizzle(db).delete(account).where(eq(account.id, 1)).run();
 }
 
 function writeAccount(db: Database.Database, steamId: string): void {
@@ -92,6 +154,13 @@ function writeAccount(db: Database.Database, steamId: string): void {
  * 검증·저장·사용은 trim한 값 하나로 통일한다(정규화 저장).
  * 연동 시점에 Steam 1회 검증(P-5)하고 성공해야 저장한다.
  * 검증 fetch는 호출 측 주입(DI)이며 생략 시 전역 fetch다(제품 경로, 정의만).
+ * 순서(R12-3): ① 검증 성공(이전 계정·옵션 값 읽기) → ② 새 키를 임시 파일(키 경로 옆, 600)에 쓰기
+ * → ③ 한 DB 트랜잭션(계정 행 + 값 있으면 achievement_enabled 행, true·false 모두 저장)
+ * → ④ 커밋 후 임시 파일을 키 경로로 rename → ok.
+ * 실패 응답이면 키 파일·계정 행·옵션 모두 요청 전 그대로다:
+ * ② 실패 → 임시 삭제·KEY_STORE_FAILED, ③ 실패 → 롤백 + 임시 삭제·KEY_STORE_FAILED reason=io,
+ * ④ rename 실패 → 보상 트랜잭션(첫 연동이면 계정 행 삭제, 옵션은 이전 값 복원 또는 이전에 없었으면 삭제)
+ * + 임시 삭제·KEY_STORE_FAILED reason=io. 필드 없으면 옵션 불변.
  * 실패는 code+params만 낸다(원문·키 미반향).
  */
 export function saveConnection(input: {
@@ -99,10 +168,13 @@ export function saveConnection(input: {
   keyPath: string;
   keyText: string;
   steamId: string;
+  achievementsEnabled?: boolean;
   fetchFn?: VerifyFetchFn;
   signal?: AbortSignal;
   /** 테스트 주입용. 없으면 공식 기본. 형태 불일치는 저장 없이 반환한다(제안). */
   baseUrl?: string;
+  /** 테스트 주입용 rename. 없으면 node:fs renameSync. rename 실패 경로에만 쓴다. */
+  renameTmp?: (tmpPath: string, keyPath: string) => void;
 }): Promise<SaveResult> {
   return (async (): Promise<SaveResult> => {
     const key = input.keyText.trim();
@@ -126,30 +198,74 @@ export function saveConnection(input: {
       signal: input.signal,
     });
     if (!verified.ok) return verified;
+    const prevAccount = readAccountRow(input.db);
+    let prevOption: OptionSnapshot | null = null;
+    if (input.achievementsEnabled !== undefined) {
+      try {
+        prevOption = readOptionRow(input.db);
+      } catch {
+        return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+      }
+    }
+    const tmpPath = `${input.keyPath}.${process.pid}.tmp`;
+    const removeTmp = (): void => {
+      try {
+        rmSync(tmpPath, { force: true });
+      } catch {
+        /* 정리 실패는 무시한다 */
+      }
+    };
     try {
       mkdirSync(dirname(input.keyPath), { recursive: true });
-      const tmpPath = `${input.keyPath}.${process.pid}.tmp`;
-      try {
-        writeFileSync(tmpPath, key, { mode: 0o600 });
-        if (!isWindows()) {
-          chmodSync(tmpPath, 0o600);
-        }
-        renameSync(tmpPath, input.keyPath);
-      } catch (error) {
-        try {
-          rmSync(tmpPath, { force: true });
-        } catch {
-          /* 정리 실패는 무시한다 */
-        }
-        throw error;
-      }
-      if (!isWindows() && !hasSecureMode(input.keyPath)) {
-        return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'permission' } };
+      writeFileSync(tmpPath, key, { mode: 0o600 });
+      if (!isWindows()) {
+        chmodSync(tmpPath, 0o600);
       }
     } catch {
+      removeTmp();
       return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
     }
-    writeAccount(input.db, input.steamId);
+    if (!isWindows() && !hasSecureMode(tmpPath)) {
+      removeTmp();
+      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'permission' } };
+    }
+    try {
+      const storeAll = input.db.transaction(() => {
+        writeAccount(input.db, input.steamId);
+        if (input.achievementsEnabled !== undefined) {
+          writeOption(input.db, input.achievementsEnabled);
+        }
+      });
+      storeAll();
+    } catch {
+      removeTmp();
+      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+    }
+    try {
+      (input.renameTmp ?? renameSync)(tmpPath, input.keyPath);
+    } catch {
+      try {
+        const compensate = input.db.transaction(() => {
+          if (prevAccount === null) {
+            deleteAccount(input.db);
+          } else {
+            restoreAccount(input.db, prevAccount);
+          }
+          if (input.achievementsEnabled !== undefined) {
+            if (prevOption === null) {
+              deleteOption(input.db);
+            } else {
+              restoreOption(input.db, prevOption);
+            }
+          }
+        });
+        compensate();
+      } catch {
+        /* 보상 실패도 같은 코드로 답한다. 계정·옵션·키 상태는 미보장 */
+      }
+      removeTmp();
+      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+    }
     return { ok: true };
   })();
 }

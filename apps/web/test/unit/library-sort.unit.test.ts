@@ -32,6 +32,7 @@ function makeGame(overrides?: Partial<SortableGame>): SortableGame {
     tagStatus: 'not_collected',
     achievements: [],
     achievementState: 'not_collected',
+    achievementSummary: null,
     latestScore: null,
     ratingEvents: [],
     syncRunRefs: [],
