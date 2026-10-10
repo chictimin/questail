@@ -44,7 +44,8 @@ pnpm install && pnpm start
 
 - 기본 위치는 `data/<steamid64>/`이다. 저장소 루트 `data/` 아래에 Steam 연동에 성공할 때 계정 폴더가 만들어지며, 연동 전에는 계정 폴더가 없다.
 - 환경변수 `QUESTAIL_DATA_DIR`에 경로를 지정하고 앱을 다시 켜면 그 경로를 그대로 쓴다. 이 경우 계정 하위 폴더를 만들지 않는다.
-- 이전 버전의 단일 폴더 `data/questail.db`는 그대로 쓰인다. 단 계정 폴더와 함께 있거나, 연동된 Steam ID가 없어도 게임 기록이 있으면 앱이 기동하지 않는다. 이때는 "레거시 data/questail.db와 계정 폴더가 함께 있다 — 한쪽을 옮기거나 QUESTAIL_DATA_DIR로 지정" 안내가 나오며, 한쪽을 옮기거나 `QUESTAIL_DATA_DIR`로 쓸 폴더를 지정한다.
+- 이전 버전의 단일 폴더 `data/questail.db`는 그대로 쓰인다. 단 두 경우에는 앱이 기동하지 않는다. 계정 폴더와 함께 있으면 "레거시 data/questail.db와 계정 폴더가 함께 있다 — 한쪽을 옮기거나 QUESTAIL_DATA_DIR로 지정" 안내가 나오며, 한쪽을 옮기거나 `QUESTAIL_DATA_DIR`로 쓸 폴더를 지정한다. 연동된 Steam ID가 없어도 게임 기록이 있으면 "레거시 data/questail.db에 연동되지 않은 게임 기록이 있어 기동하지 않는다 — QUESTAIL_DATA_DIR로 그 폴더를 지정하거나 수동으로 옮겨라" 안내가 나온다.
+- 레거시 `data/questail.db`를 열 수 없을 때도 앱이 기동하지 않는다. "레거시 data/questail.db를 읽지 못해 기동하지 못함 — 파일을 확인하거나 옮겨라" 안내가 나온다.
 - 레거시 `data/`를 쓰는 경우 백업과 `steam.key`는 `data/` 바로 아래에 있다.
 - 같은 데이터 폴더는 한 프로세스만 쓴다. 데이터 폴더는 로컬 디스크에 둔다. 네트워크·동기화 폴더(예: iCloud·Dropbox·NAS)에서는 잠금이 보장되지 않는다.
 - 경고: 저장소 폴더를 삭제하거나 `git clean -fdx`를 실행하면 `data/`도 함께 삭제된다.
