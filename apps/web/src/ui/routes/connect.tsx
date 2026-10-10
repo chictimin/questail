@@ -82,8 +82,10 @@ export function ConnectPage({
   const [showKey, setShowKey] = useState(false);
   const [keyText, setKeyText] = useState('');
   const [steamId, setSteamId] = useState('');
-  // 업적 함께 수집 — 기본값 false(서버 achievement_enabled 행 없음 = OFF, 계약 C-1).
-  const [achEnabled, setAchEnabled] = useState(false);
+  // 업적 함께 수집 — null = 미확인(연결된 계정의 GET 실패·비정상 본문),
+  // true/false = 확인됨. 첫 연동(미연동 → 연동, 아래 GET 호출 없음)은 기본 false다
+  // (서버 achievement_enabled 행 없음 = OFF, 계약 C-1).
+  const [achEnabled, setAchEnabled] = useState<boolean | null>(false);
   const [busy, setBusy] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [keyError, setKeyError] = useState<TextKey | null>(null);
@@ -128,21 +130,29 @@ export function ConnectPage({
           });
           setSteamId(body.steamId);
           // 재입력(?edit=1)·키 교체 진입 시 현재 설정값을 초기값으로.
+          // GET 실패·비정상 본문이면 미확인(null) — 스위치 비활성 + 안내,
+          // POST body에서 필드 생략(서버는 미전송 시 기존 값 유지, 계약 745행 #5).
           try {
             const settingsResponse = await fetch('/api/settings/achievements');
-            if (settingsResponse.ok) {
+            if (!settingsResponse.ok) {
+              if (!cancelled) {
+                setAchEnabled(null);
+              }
+            } else {
               const settingsBody = (await settingsResponse.json()) as {
                 enabled?: unknown;
               };
               const enabled = settingsBody.enabled;
-              if (enabled === true || enabled === false) {
-                if (!cancelled) {
-                  setAchEnabled(enabled);
-                }
+              if (!cancelled) {
+                setAchEnabled(
+                  enabled === true || enabled === false ? enabled : null,
+                );
               }
             }
           } catch {
-            // 조회 실패면 기본값(false) 유지.
+            if (!cancelled) {
+              setAchEnabled(null);
+            }
           }
         } else {
           setConnected(null);
@@ -211,17 +221,29 @@ export function ConnectPage({
     setSteamIdError(null);
     setShowExamples(false);
     setNoticeKey(null);
+    // 미확인(null)이면 필드 생략 — 서버가 기존 값을 유지한다(계약 745행 #5).
+    // 첫 연동(GET 호출 없음)은 achEnabled가 false 확정이라 명시 전송한다.
+    const achievementsToSend =
+      achEnabled === null ? undefined : achEnabled;
     try {
       const response = await fetch('/api/connect', {
         method: 'POST',
         body: JSON.stringify(
           vanityToSend === undefined
-            ? { keyText, steamId: idToSend, achievementsEnabled: achEnabled }
+            ? {
+                keyText,
+                steamId: idToSend,
+                ...(achievementsToSend === undefined
+                  ? {}
+                  : { achievementsEnabled: achievementsToSend }),
+              }
             : {
                 keyText,
                 steamId: idToSend,
                 vanity: vanityToSend,
-                achievementsEnabled: achEnabled,
+                ...(achievementsToSend === undefined
+                  ? {}
+                  : { achievementsEnabled: achievementsToSend }),
               },
         ),
       });
@@ -547,16 +569,24 @@ export function ConnectPage({
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={achEnabled}
+                        aria-checked={achEnabled === true}
                         aria-label={text('settings.achRow')}
-                        disabled={busy}
+                        aria-disabled={achEnabled === null ? true : undefined}
+                        disabled={busy || achEnabled === null}
                         className="qt-toggle"
                         onClick={() => {
-                          setAchEnabled((prev) => !prev);
+                          setAchEnabled((prev) =>
+                            prev === null ? prev : !prev,
+                          );
                         }}
                       />
                       <span>{text('settings.achRow')}</span>
                     </div>
+                    {achEnabled === null && (
+                      <p className="connect-hint">
+                        {text('connect.achUnknown')}
+                      </p>
+                    )}
                     <p className="connect-hint">{text('settings.tbtiNote')}</p>
                     <p className="connect-hint">
                       {text('settings.achPublic')}{' '}

@@ -89,6 +89,7 @@ ownership_status: "owned"
     reEnter: 'Replace key',
     fixedIdNotice: 'Each data folder records one account only.',
     localeNotice: 'Game info is fetched in the display language. Check the language first.',
+    achUnknown: 'Could not load the achievement setting. Your existing setting stays as it is.',
     issueTitle: 'How to get a key',
     issueStep1: 'Open Steam’s key registration page.',
     issueStep2a: 'Enter',

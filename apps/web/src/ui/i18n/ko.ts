@@ -89,6 +89,7 @@ ownership_status: "owned"
     reEnter: '키 교체',
     fixedIdNotice: '한 데이터 폴더는 한 계정만 기록해요.',
     localeNotice: '표시 언어 기준으로 게임 정보를 가져와요. 먼저 언어를 확인해 주세요.',
+    achUnknown: '지금은 업적 설정을 불러오지 못했어요. 기존 설정을 그대로 둬요.',
     issueTitle: '키 발급 안내',
     issueStep1: 'Steam 키 발급 페이지를 열어요.',
     issueStep2a: '도메인 이름 칸에',

@@ -1,6 +1,9 @@
 /**
  * U3b [2] sync 화면 매핑 — 순수 함수. DTO → 행 모델·상단 시각·검토 목록.
+ * 우선순위: running(진행 표시) > 소스 failed/issue(원인 문장, 429 대기 시간 포함)
+ * > 부분 실패(failedItems, state ok일 때만) > ok.
  * f(부분 실패): pill hold + causeInfoPart(info 외·{n})·causeTagsPart(태그·{n}) + 재수집 (U3b 결정, 보고 명시).
+ * 소스가 원인 문장을 내면 부분 실패 수는 표시하지 않는다(중복 정보 금지 — "미표시").
  * 업적 OFF는 호출 측에서 덮어쓴다(행 모델 아님).
  */
 import type { SyncErrorCode } from '@questail/core';
@@ -47,17 +50,27 @@ export function rowViewFor(
     };
   }
   if (entry.failedItems !== undefined && entry.failedItems > 0) {
-    return {
-      source,
-      time: entry.lastFinishedAt,
-      pill: 'hold',
-      body: {
-        kind: 'cause',
-        key: entry.source === 'steamspy' ? 'sync.causeTagsPart' : 'sync.causeInfoPart',
-        params: { n: entry.failedItems },
-      },
-      retry: true,
-    };
+    // 부분 실패는 state ok(소스 원인 없음)일 때만. 소스 failed/issue·running은
+    // 아래 매핑(원인 문장·진행 표시)이 우선하고 부분 실패 수는 표시하지 않는다.
+    if (entry.state === 'ok') {
+      const code = (entry.issue?.code ?? null) as SyncErrorCode | null;
+      if (code === null) {
+        return {
+          source,
+          time: entry.lastFinishedAt,
+          pill: 'hold',
+          body: {
+            kind: 'cause',
+            key:
+              entry.source === 'steamspy'
+                ? 'sync.causeTagsPart'
+                : 'sync.causeInfoPart',
+            params: { n: entry.failedItems },
+          },
+          retry: true,
+        };
+      }
+    }
   }
   // issue.code는 계약상 SyncErrorCode다(parseIssue). string이라 캐스트한다.
   const code = (entry.issue?.code ?? null) as SyncErrorCode | null;
