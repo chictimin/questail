@@ -18,6 +18,8 @@ const KEY_TMP_PATTERN = /^steam\.key\.(\d+)\.tmp$/;
 
 export const LEGACY_AND_ACCOUNT_MESSAGE =
   '[web] 레거시 data/questail.db와 계정 폴더가 함께 있다 — 한쪽을 옮기거나 QUESTAIL_DATA_DIR로 지정';
+export const LEGACY_UNCONNECTED_GAMES_MESSAGE =
+  '[web] 레거시 data/questail.db에 연동되지 않은 게임 기록이 있어 기동하지 않는다 — QUESTAIL_DATA_DIR로 그 폴더를 지정하거나 수동으로 옮겨라';
 export const MULTIPLE_ACCOUNTS_MESSAGE =
   '[web] 계정 폴더가 2개 이상이다 — QUESTAIL_DATA_DIR로 지정';
 export const LEGACY_UNREADABLE_MESSAGE =
@@ -35,6 +37,8 @@ export type ResolveDeps = {
   /** 미지정 시 기본 루트 R(<저장소>/data). */
   defaultRoot: () => string;
   selfPid?: number;
+  /** ③ 계정 폴더 DB의 steam_id 읽기(readonly). 미지정 시 readAccountSteamId. 테스트 순서 관측용. */
+  readSteamId?: (dbPath: string) => string | null;
 };
 
 function isFile(path: string): boolean {
@@ -169,7 +173,7 @@ export async function resolveDataLocation(
       }
       legacyConnected = true;
     } else if (counts.games >= 1) {
-      throw new Error(LEGACY_AND_ACCOUNT_MESSAGE);
+      throw new Error(LEGACY_UNCONNECTED_GAMES_MESSAGE);
     } else {
       // 빈 레거시 — 없는 것으로 보고 진행. 경고는 1줄, 경로 원문 외 정보 없음.
       createLogger().warn(`[web] 빈 레거시 DB 무시: ${legacyPath}`);
@@ -185,16 +189,18 @@ export async function resolveDataLocation(
   if (folders.length === 1) {
     const name = folders[0] as string;
     const dir = join(root, name);
+    // T 잠금을 readonly 검사보다 먼저 잡는다 — 다른 프로세스가 쥔 폴더의 DB를 열지 않는다.
+    // ③ 불일치로 실패해도 잠금은 프로세스 종료로 해제된다.
+    await finalizeLock(dir, deps, selfPid);
     let steamId: string | null;
     try {
-      steamId = readAccountSteamId(join(dir, DB_FILE_NAME));
+      steamId = (deps.readSteamId ?? readAccountSteamId)(join(dir, DB_FILE_NAME));
     } catch {
       throw new Error(ACCOUNT_FOLDER_MISMATCH_MESSAGE);
     }
     if (steamId !== name) {
       throw new Error(ACCOUNT_FOLDER_MISMATCH_MESSAGE);
     }
-    await finalizeLock(dir, deps, selfPid);
     return { mode: 'account', dir, root };
   }
   return { mode: 'unattached', root };

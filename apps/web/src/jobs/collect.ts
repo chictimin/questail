@@ -205,7 +205,8 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         itemCount: agg.total,
         isFinalized: true,
         issue: { code, params },
-        failedItems: agg.failed,
+        // achievements는 failedItems 미제공 → NULL(647·732·741행). meta·steamspy만 기록.
+        ...(job.source === 'achievements' ? {} : { failedItems: agg.failed }),
       });
       return;
     }
@@ -519,7 +520,6 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       itemCount: achAgg.total,
       isFinalized: true,
       issue: null,
-      failedItems: achAgg.failed,
     });
   }
 

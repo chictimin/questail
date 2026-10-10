@@ -26,6 +26,7 @@ import type { BootDatabase, CronHandle } from './boot.js';
 import {
   ACCOUNT_DIR_PATTERN,
   cleanKeyTmp,
+  listAccountFolders,
   readAccountSteamId,
 } from './dataLocation.js';
 import { createDataLayer, deriveDataPaths, type DataHolder } from './dataHolder.js';
@@ -328,6 +329,24 @@ export function createAttachController(deps: AttachDeps): AttachController {
     // 0 — 비형식 ID는 Steam 요청 전에 거부한다(방어용, 호출 측 라우트도 같은 검사를 먼저 한다).
     if (!ACCOUNT_DIR_PATTERN.test(input.steamId)) {
       return { ok: false, code: 'AUTH_ID_MISMATCH', params: { reason: 'not_found' } };
+    }
+    // 0.5 — 고정 ID: R 아래 완성 계정 폴더(이름·questail.db·내부 steam_id==이름)가 이미 있으면
+    // 그 이름만 허용한다(Steam 요청·쓰기 전). 저장 완료·부착 실패로 남은 T_A가 있는데 다른 ID가
+    // T_B를 만들면 다음 기동이 ②-d로 막힌다. 이름과 내부 ID가 다른 폴더는 2의 dir_conflict가 다룬다.
+    let completed: string[] = [];
+    try {
+      completed = listAccountFolders(deps.root).filter((name) => {
+        try {
+          return readAccountSteamId(join(deps.root, name, DB_FILE_NAME)) === name;
+        } catch {
+          return false;
+        }
+      });
+    } catch {
+      completed = [];
+    }
+    if (completed.length > 0 && !completed.includes(input.steamId)) {
+      return { ok: false, code: 'AUTH_ID_MISMATCH', params: { reason: 'fixed_id' } };
     }
     // 1 — 검증(쓰기 0). 고정 ID 충돌은 폴더 판정이 대신한다(기존 폴더는 steam_id 일치만 통과).
     const verified = await verifyConnection({

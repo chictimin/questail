@@ -247,14 +247,19 @@ function isGameKey(value: unknown): value is { platform: string; externalId: str
   );
 }
 
+/** C-1 view_sort_state 어휘: filter 4종·sort 7종·direction 2종(14조합). */
+const FILTER_KEYS = ['all', 'unrated', 'byRating', 'hidden'];
+const SORT_KEYS = ['playtime', 'lastPlayed', 'rating', 'ratedAt', 'addedAt', 'releaseDate', 'name'];
+
 function isSortEntry(value: unknown): value is NonNullable<PrefsPatch['sortPerFilter']>[number] {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const entry = value as { filterKey?: unknown; sortKey?: unknown; direction?: unknown };
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { filterKey?: unknown }).filterKey === 'string' &&
-    typeof (value as { sortKey?: unknown }).sortKey === 'string' &&
-    ((value as { direction?: unknown }).direction === 'asc' ||
-      (value as { direction?: unknown }).direction === 'desc')
+    FILTER_KEYS.includes(entry.filterKey as string) &&
+    SORT_KEYS.includes(entry.sortKey as string) &&
+    (entry.direction === 'asc' || entry.direction === 'desc')
   );
 }
 

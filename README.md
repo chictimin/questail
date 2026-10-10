@@ -42,12 +42,16 @@ After startup, open `http://127.0.0.1:4747` in a browser. The connect screen app
 
 ## Data Directory
 
-- Default: `data/` under the repository root. Set the `QUESTAIL_DATA_DIR` environment variable to store it elsewhere, then restart the app.
+- Default location is `data/<steamid64>/`. The account folder is created under `data/` in the repository root when Steam connection succeeds. Before connecting, there is no account folder.
+- Set the `QUESTAIL_DATA_DIR` environment variable and restart the app to use that path as is. No account subfolder is created in this case.
+- The legacy single folder `data/questail.db` from earlier versions is still used as is. However, the app does not start if it exists together with an account folder, or if it has no linked Steam ID but holds game records. It then shows "legacy data/questail.db and an account folder exist together — move one of them or set QUESTAIL_DATA_DIR" (the message itself is in Korean); move one of them, or set the folder to use with `QUESTAIL_DATA_DIR`.
+- When the legacy `data/` is used, backups and `steam.key` are located directly under `data/`.
+- Only one process may use the same data folder. Keep it on a local disk. Locking is not guaranteed on network or synced folders (for example iCloud, Dropbox, NAS).
 - Warning: deleting the repository folder or running `git clean -fdx` deletes `data/` together with it.
 
 ## Backup
 
-- Manual backup: quit the app, then copy the whole data folder (SQLite files).
+- Manual backup: quit the app, then copy the whole data folder (`data/<steamid64>/`, SQLite files).
 
 ## Port
 
@@ -71,7 +75,7 @@ node apps/web/dist/src/server/run.js
 
 ## Key Handling
 
-- The API key is stored only in the `steam.key` file inside the data directory.
+- The API key is stored only in the `steam.key` file inside the account data folder (`data/<steamid64>/`). If `QUESTAIL_DATA_DIR` is set, it is stored in that folder.
 - Do not share the API key. If it leaks, revoke it on the key page, register a new one, and replace it in the app.
 - On Windows, key file permission checks (600) do not apply. The permission check is skipped.
 

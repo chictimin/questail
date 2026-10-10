@@ -190,7 +190,7 @@ describe('업적 저장 트랜잭션·stop·실패 집계', () => {
       const row = db
         .prepare('SELECT status AS s, item_count AS c, failed_items AS n FROM sync_runs WHERE id = ?')
         .get(runId) as { s: string; c: number; n: number };
-      expect(row).toEqual({ s: 'failed', c: 3, n: 0 });
+      expect(row).toEqual({ s: 'failed', c: 3, n: null });
       expect(
         db
           .prepare("SELECT COUNT(*) AS n FROM checkpoints WHERE source = 'achievements' AND sync_run_id = ?")
