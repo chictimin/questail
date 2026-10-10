@@ -153,6 +153,8 @@ ownership_status: "owned"
     badgeFilling: 'Filling in info',
     badgeHidden: 'Hidden',
     badgeJustRated: 'Just rated',
+    achievementsLabel: 'Achievements {ach}/{total}',
+    achievementsComplete: 'All achievements earned {ach}/{total}',
     justNote: 'Leaves this list next time you open the tab',
     progress: 'Scroll for more · showing {shown} of {total}',
     emptyAllTitle: 'No games owned',

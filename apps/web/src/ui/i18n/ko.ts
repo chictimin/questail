@@ -153,6 +153,8 @@ ownership_status: "owned"
     badgeFilling: '정보 채우는 중',
     badgeHidden: '숨김',
     badgeJustRated: '방금 매김',
+    achievementsLabel: '업적 {ach}/{total}',
+    achievementsComplete: '업적 전부 달성 {ach}/{total}',
     justNote: '탭을 다시 열면 이 목록에서 빠져요',
     progress: '스크롤하면 이어서 보여요 · {total}개 중 {shown}개 표시',
     emptyAllTitle: '보유한 게임이 없어요',

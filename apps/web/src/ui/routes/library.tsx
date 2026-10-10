@@ -118,6 +118,7 @@ export function LibraryPage(): React.JSX.Element {
         setGames(fetchedGames as RowGame[]);
         const nextPrefs = fetchedPrefs as Prefs;
         setPrefs(nextPrefs);
+        setHideShortPlaytime(nextPrefs.hideShortPlaytime === true);
         setSortSpec(rememberedSort(nextPrefs, filterKey));
         setStatus('ready');
       } catch {
@@ -272,12 +273,26 @@ export function LibraryPage(): React.JSX.Element {
     setKeep([]);
   }
 
-  function persistHideShortPlaytime(_value: boolean): void {}
+  async function persistHideShortPlaytime(value: boolean): Promise<void> {
+    try {
+      const response = await fetch(
+        `${'/api/prefs'}?fallback=${detectLocale(navigator.language)}`,
+        {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ hideShortPlaytime: value }),
+        },
+      );
+      setPrefs((await readJson(response)) as Prefs);
+    } catch {
+      setToast({ message: text('library.prefsFailed') });
+    }
+  }
 
   function toggleHideShortPlaytime(): void {
     const next = !hideShortPlaytime;
     setHideShortPlaytime(next);
-    persistHideShortPlaytime(next);
+    persistHideShortPlaytime(next).catch(() => undefined);
   }
 
   async function changeSort(next: SortSpec): Promise<void> {

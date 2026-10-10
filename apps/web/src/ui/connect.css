@@ -185,6 +185,29 @@ main[data-route='connect'] .connect-examples code {
   word-break: break-all;
 }
 
+/* 업적 함께 수집 — 주 버튼 위. 폼 카드 gap 20 안에 들어가는 묶음이라 레이아웃 수치 변경 없음. */
+main[data-route='connect'] .connect-ach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+main[data-route='connect'] .connect-ach-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--text-14);
+  line-height: 20px;
+  font-weight: 600;
+}
+
+main[data-route='connect'] .connect-ach-row .qt-toggle {
+  flex: none;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
 /* 주 버튼 줄 — 넓은 폭 내용 폭, 좁은 폭 100%. 성공 문구는 옆에 12px 보조. */
 main[data-route='connect'] .connect-actions {
   display: flex;

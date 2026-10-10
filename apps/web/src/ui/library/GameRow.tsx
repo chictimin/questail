@@ -3,7 +3,7 @@
  * 별점 PUT·숨김은 부모 콜백으로 올린다. 행 메뉴 없이 아이콘 버튼 2개 직접 노출(U2b).
  */
 import type { GameFacts } from '../../data/library.js';
-import { Check, CircleNotch, Eye, EyeSlash, Image, LinkBreak, SteamLogo } from '@phosphor-icons/react';
+import { Check, CircleNotch, Eye, EyeSlash, Image, LinkBreak, SteamLogo, Trophy } from '@phosphor-icons/react';
 import { t, type Locale } from '../i18n/index.js';
 import { useLocale } from '../i18n/context.js';
 import { filterKeyOf } from './filter.js';
@@ -66,6 +66,15 @@ export function GameRow({
   const displayGenres = genreDisplayNames(facts.genres, locale);
   const noteId = `just-note-${facts.key.platform}-${facts.key.externalId}`;
   const hideLabel = text(facts.hidden ? 'library.unhide' : 'library.hide');
+  const summary = facts.achievementSummary;
+  const achComplete = summary !== null && summary.achieved === summary.total;
+  const achLabel =
+    summary === null
+      ? null
+      : t(locale, achComplete ? 'library.achievementsComplete' : 'library.achievementsLabel', {
+          ach: new Intl.NumberFormat(locale).format(summary.achieved),
+          total: new Intl.NumberFormat(locale).format(summary.total),
+        });
 
   return (
     <article
@@ -98,6 +107,16 @@ export function GameRow({
             {year === null ? null : <span>{year}</span>}
             {displayGenres.length === 0 ? null : (
               <span>{displayGenres.join(', ')}</span>
+            )}
+            {summary === null || achLabel === null ? null : (
+              <span
+                className={achComplete ? 'game-ach game-ach--complete' : 'game-ach'}
+                aria-label={achLabel}
+                title={achLabel}
+              >
+                {achComplete ? <Trophy size={12} aria-hidden /> : null}
+                {`(${new Intl.NumberFormat(locale).format(summary.achieved)}/${new Intl.NumberFormat(locale).format(summary.total)})`}
+              </span>
             )}
           </div>
         </div>

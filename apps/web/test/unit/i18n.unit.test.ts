@@ -510,6 +510,11 @@ describe('UI 하드코딩 문자열 0', () => {
     'visible', // visibilityState 값(화면 미노출)
     'visibilitychange', // DOM 이벤트명(화면 미노출)
     'focus', // DOM 이벤트명(화면 미노출)
+    'connect-ach', // CSS 클래스 식별자(화면 미노출)
+    'connect-ach-row', // CSS 클래스 식별자(화면 미노출)
+    'qt-toggle', // CSS 클래스 식별자(화면 미노출)
+    'game-ach', // CSS 클래스 식별자(화면 미노출)
+    'game-ach game-ach--complete', // CSS 클래스 식별자(화면 미노출)
   ]);
 
   /** 소스 1건 스캔 → 위반 목록. 행 위치 무관, 태그 사이 텍스트(>…<)를 잡는다. */

@@ -81,6 +81,8 @@ export function ConnectPage({
   const [showKey, setShowKey] = useState(false);
   const [keyText, setKeyText] = useState('');
   const [steamId, setSteamId] = useState('');
+  // 업적 함께 수집 — 기본값 false(서버 achievement_enabled 행 없음 = OFF, 계약 C-1).
+  const [achEnabled, setAchEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [keyError, setKeyError] = useState<TextKey | null>(null);
@@ -124,6 +126,23 @@ export function ConnectPage({
             permissionEnforced: body.permissionEnforced === true,
           });
           setSteamId(body.steamId);
+          // 재입력(?edit=1)·키 교체 진입 시 현재 설정값을 초기값으로.
+          try {
+            const settingsResponse = await fetch('/api/settings/achievements');
+            if (settingsResponse.ok) {
+              const settingsBody = (await settingsResponse.json()) as {
+                enabled?: unknown;
+              };
+              const enabled = settingsBody.enabled;
+              if (enabled === true || enabled === false) {
+                if (!cancelled) {
+                  setAchEnabled(enabled);
+                }
+              }
+            }
+          } catch {
+            // 조회 실패면 기본값(false) 유지.
+          }
         } else {
           setConnected(null);
         }
@@ -196,8 +215,13 @@ export function ConnectPage({
         method: 'POST',
         body: JSON.stringify(
           vanityToSend === undefined
-            ? { keyText, steamId: idToSend }
-            : { keyText, steamId: idToSend, vanity: vanityToSend },
+            ? { keyText, steamId: idToSend, achievementsEnabled: achEnabled }
+            : {
+                keyText,
+                steamId: idToSend,
+                vanity: vanityToSend,
+                achievementsEnabled: achEnabled,
+              },
         ),
       });
       const body = (await response.json()) as SubmitBody;
@@ -501,6 +525,34 @@ export function ConnectPage({
                       </ul>
                     </div>
                   )}
+                  <div className="connect-ach">
+                    <div className="connect-ach-row">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={achEnabled}
+                        aria-label={text('settings.achRow')}
+                        disabled={busy}
+                        className="qt-toggle"
+                        onClick={() => {
+                          setAchEnabled((prev) => !prev);
+                        }}
+                      />
+                      <span>{text('settings.achRow')}</span>
+                    </div>
+                    <p className="connect-hint">{text('settings.tbtiNote')}</p>
+                    <p className="connect-hint">
+                      {text('settings.achPublic')}{' '}
+                      {/* sync/models.ts:82와 동일 URL(공개 설정). 범위 밖 connectLinks.ts는 손대지 않음. */}
+                      <a
+                        href="https://steamcommunity.com/my/edit/settings"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {text('sync.achOpenLink')}
+                      </a>
+                    </p>
+                  </div>
                   <div className="connect-actions">
                     <button
                       ref={submitRef}

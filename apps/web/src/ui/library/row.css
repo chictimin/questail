@@ -85,6 +85,18 @@ main[data-route='library'] .game-row-meta span + span::before {
   content: ' · ';
 }
 
+/* 업적 (달성/전체) — 메타 줄 안에서만, 단줄 ellipsis 유지. 전부 달성 시 별점 노랑. */
+main[data-route='library'] .game-ach {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+main[data-route='library'] .game-ach--complete {
+  color: var(--rating);
+}
+
 main[data-route='library'] .game-row-sub {
   flex: none;
   width: 150px;
