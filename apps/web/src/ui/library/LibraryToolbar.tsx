@@ -17,10 +17,12 @@ export interface LibraryToolbarProps {
   resultCount: number;
   sortSpec: SortSpec;
   showEnded: boolean;
+  hideShortPlaytime: boolean;
   onFilter: (key: FilterKey) => void;
   onScore: (score: number | null) => void;
   onSort: (spec: SortSpec) => void;
   onToggleEnded: () => void;
+  onToggleHideShortPlaytime: () => void;
 }
 
 export function LibraryToolbar({
@@ -31,10 +33,12 @@ export function LibraryToolbar({
   resultCount,
   sortSpec,
   showEnded,
+  hideShortPlaytime,
   onFilter,
   onScore,
   onSort,
   onToggleEnded,
+  onToggleHideShortPlaytime,
 }: LibraryToolbarProps): React.JSX.Element {
   return (
     <div className="lib-toolbar">
@@ -47,10 +51,16 @@ export function LibraryToolbar({
         />
         <FilterButton
           locale={locale}
-          badgeCount={showEnded ? 1 : null}
+          badgeCount={
+            showEnded || hideShortPlaytime
+              ? (showEnded ? 1 : 0) + (hideShortPlaytime ? 1 : 0)
+              : null
+          }
           showEnded={showEnded}
+          hideShortPlaytime={hideShortPlaytime}
           sortSpec={sortSpec}
           onToggleEnded={onToggleEnded}
+          onToggleHideShortPlaytime={onToggleHideShortPlaytime}
           onSort={onSort}
         />
       </div>

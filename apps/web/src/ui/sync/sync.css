@@ -198,6 +198,8 @@ main[data-route='sync'] > div:has(> .sync-rows) {
   font-size: 15px;
   line-height: 20px;
   flex: none;
+  /* 15px 아이콘을 20px 첫 줄 중심에 맞추는 +2px(#11 실측: 보정 전 -2). */
+  margin-top: 2px;
 }
 
 .sync-tail {
@@ -286,7 +288,8 @@ main[data-route='sync'] > div:has(> .sync-rows) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-10) var(--space-12);
-  align-items: center;
+  /* 첫 줄 기준 아이콘 정렬 — 본문·액션이 2줄 이상이어도 아이콘은 첫 줄에(#11 실측: center 보정 전 -6.5). */
+  align-items: flex-start;
   padding: var(--space-12) var(--space-16);
   border-radius: var(--corner-12);
   background: var(--qt-red);
@@ -300,6 +303,8 @@ main[data-route='sync'] > div:has(> .sync-rows) {
   line-height: 20px;
   flex: none;
   align-self: flex-start;
+  /* 18px 아이콘을 20px 첫 줄 중심에 맞추는 +1px(#11 실측). */
+  margin-top: 1px;
 }
 
 .sync-notice-body {
@@ -315,6 +320,7 @@ main[data-route='sync'] > div:has(> .sync-rows) {
 
 .sync-notice-action {
   margin-left: auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: var(--space-6);

@@ -74,6 +74,7 @@ export function GameRow({
       className="game-row"
       data-just-rated={justRated || undefined}
       data-missing={badges.missing || undefined}
+      data-hidden={facts.hidden || undefined}
     >
         {facts.coverUrl === null ? (
           <span
@@ -150,6 +151,16 @@ export function GameRow({
               <Check size={14} aria-hidden />
             </span>
           )}
+          {facts.hidden && (
+            <span
+              className="game-badge game-badge--hidden"
+              role="img"
+              aria-label={text('library.badgeHidden')}
+              title={text('library.badgeHidden')}
+            >
+              <EyeSlash size={14} aria-hidden />
+            </span>
+          )}
         </div>
         <div className="game-row-actions">
           <button
@@ -169,6 +180,8 @@ export function GameRow({
             <a
               className="qt-icon-btn row-action"
               href={`${STEAM_STORE_URL}/${encodeURIComponent(facts.key.externalId)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label={text('library.ariaStore')}
               title={text('library.ariaStore')}
             >

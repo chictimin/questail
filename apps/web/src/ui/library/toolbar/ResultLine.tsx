@@ -5,7 +5,9 @@ import type { SortSpec } from '../sort.js';
 
 const SORT_LABELS: Record<string, Parameters<typeof t>[1]> = {
   'playtime:desc': 'library.sortPlaytimeDesc',
+  'playtime:asc': 'library.sortPlaytimeAsc',
   'ratedAt:desc': 'library.sortRatedAtDesc',
+  'ratedAt:asc': 'library.sortRatedAtAsc',
 };
 
 export function ResultLine({
@@ -28,7 +30,7 @@ export function ResultLine({
       </span>
       {label !== undefined && (
         <span className="result-sort">
-          {'·'}
+          {'· '}
           {t(locale, label)}
         </span>
       )}

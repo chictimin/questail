@@ -217,7 +217,8 @@ main[data-route] {
   color: var(--error);
 }
 
-/* 알림 아이콘은 첫 줄 텍스트에 맞춤 — 공통 규칙. */
+/* 알림 아이콘은 첫 줄 텍스트에 맞춤 — 공통 규칙.
+   18px 아이콘을 20px 첫 줄 중심에 맞추는 +1px(#11 실측: 보정 전 -0.5). */
 .qt-alert > svg,
 .qt-alert > i,
 .qt-notice--info > svg,
@@ -227,6 +228,7 @@ main[data-route] {
 .qt-notice--error > svg,
 .qt-notice--error > i {
   align-self: flex-start;
+  margin-top: 1px;
   line-height: 20px;
   flex: none;
 }

@@ -19,6 +19,8 @@ import logoUrl from '../../assets/logo-mark.png';
 
 /** 가상 행 높이 고정값 — 시각 확정 전 자리값(행 높이 고정 원칙만 따른다). 디자인 확정 시 교체. */
 const ROW_HEIGHT = 72;
+/** 30분 이하 가리기 판정 상한(분). */
+const SHORT_PLAYTIME_MINUTES = 30;
 /** 스켈레톤 행 수(UX: 고정 높이 8개). */
 const SKELETON_ROWS = 8;
 /** 숨김 토스트 유지 시간. */
@@ -87,6 +89,7 @@ export function LibraryPage(): React.JSX.Element {
   const [score, setScore] = useState<number | null>(null);
   const [sortSpec, setSortSpec] = useState<SortSpec>({ sortKey: 'playtime', direction: 'desc' });
   const [showEnded, setShowEnded] = useState(false);
+  const [hideShortPlaytime, setHideShortPlaytime] = useState(false);
   const [keep, setKeep] = useState<string[]>([]);
   const [pending, setPending] = useState<string[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
@@ -141,8 +144,11 @@ export function LibraryPage(): React.JSX.Element {
       score,
       keep,
     });
-    return sortGames(filtered, locale, sortSpec);
-  }, [games, filterKey, score, keep, locale, sortSpec]);
+    const withoutShort = hideShortPlaytime
+      ? filtered.filter((facts) => facts.confirmedMinutes > SHORT_PLAYTIME_MINUTES)
+      : filtered;
+    return sortGames(withoutShort, locale, sortSpec);
+  }, [games, filterKey, score, keep, locale, sortSpec, hideShortPlaytime]);
 
   const counts = useMemo<Record<FilterKey, number>>(
     () => {
@@ -266,6 +272,14 @@ export function LibraryPage(): React.JSX.Element {
     setKeep([]);
   }
 
+  function persistHideShortPlaytime(_value: boolean): void {}
+
+  function toggleHideShortPlaytime(): void {
+    const next = !hideShortPlaytime;
+    setHideShortPlaytime(next);
+    persistHideShortPlaytime(next);
+  }
+
   async function changeSort(next: SortSpec): Promise<void> {
     setSortSpec(next);
     const entry = {
@@ -358,10 +372,12 @@ export function LibraryPage(): React.JSX.Element {
             resultCount={visible.length}
             sortSpec={sortSpec}
             showEnded={showEnded}
+            hideShortPlaytime={hideShortPlaytime}
             onFilter={changeFilter}
             onScore={changeScore}
             onSort={(spec) => changeSort(spec).catch(() => undefined)}
             onToggleEnded={() => setShowEnded((prev) => !prev)}
+            onToggleHideShortPlaytime={() => toggleHideShortPlaytime()}
           />
           )}
           {visible.length === 0 ? (

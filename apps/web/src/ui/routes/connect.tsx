@@ -9,6 +9,8 @@ import {
   CaretUp,
   Check,
   CircleNotch,
+  Eye,
+  EyeSlash,
   HandPalm,
   HardDrives,
   Key,
@@ -18,7 +20,7 @@ import {
   Warning,
   XCircle,
 } from '@phosphor-icons/react';
-import { Link, useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { useLocale } from '../i18n/context.js';
 import { STEAM_LINKS } from '../connectLinks.js';
 import { parseSteamIdInput } from '../steamId.js';
@@ -69,9 +71,14 @@ export function ConnectPage({
   const { locale, text } = useLocale();
   type TextKey = Parameters<typeof text>[0];
   const [, navigate] = useLocation();
+  const search = useSearch();
   const [checking, setChecking] = useState(true);
   const [connected, setConnected] = useState<Connected | null>(null);
-  const [editing, setEditing] = useState(false);
+  // PM 결정(#89998): 설정 "키 교체" → /connect?edit=1로 편집 상태(키 입력 폼) 바로 진입.
+  const [editing, setEditing] = useState(
+    () => new URLSearchParams(search).get('edit') === '1',
+  );
+  const [showKey, setShowKey] = useState(false);
   const [keyText, setKeyText] = useState('');
   const [steamId, setSteamId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -201,6 +208,7 @@ export function ConnectPage({
         }));
         setEditing(false);
         setKeyText('');
+        setShowKey(false);
         setBusy(false);
         setSucceeded(true);
         return;
@@ -241,7 +249,13 @@ export function ConnectPage({
       <ol className="connect-steps">
         <li>
           <span>
-            <a href={STEAM_LINKS.apiKey}>{text('connect.issueStep1')}</a>
+            <a
+              href={STEAM_LINKS.apiKey}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {text('connect.issueStep1')}
+            </a>
           </span>
         </li>
         <li>
@@ -286,7 +300,16 @@ export function ConnectPage({
           </summary>
           <div className="connect-acc-body">
             <p>{text('connect.accNote')}</p>
-            <p>{text('connect.issueLimited')}</p>
+            <p>
+              {text('connect.issueLimited')}{' '}
+              <a
+                href={STEAM_LINKS.limitedFaq}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {text('connect.faqLinkText')}
+              </a>
+            </p>
           </div>
         </details>
       </div>
@@ -328,10 +351,6 @@ export function ConnectPage({
                   <p>{text('connect.noPermissionNote')}</p>
                 )}
                 <p>{text('connect.fixedIdNotice')}</p>
-                <p>
-                  {text('connect.localeNotice')}{' '}
-                  <Link href="/settings">{text('nav.settings')}</Link>
-                </p>
                 <button
                   className="qt-btn qt-btn--secondary"
                   onClick={() => {
@@ -369,7 +388,7 @@ export function ConnectPage({
                       <input
                         id="connect-key"
                         ref={keyRef}
-                        type="password"
+                        type={showKey ? 'text' : 'password'}
                         className="qt-input"
                         value={keyText}
                         placeholder={text('connect.keyPh')}
@@ -382,6 +401,23 @@ export function ConnectPage({
                           setKeyText(event.currentTarget.value);
                         }}
                       />
+                      <button
+                        type="button"
+                        className="qt-btn qt-icon-btn"
+                        aria-pressed={showKey}
+                        aria-label={text(
+                          showKey ? 'connect.hideKey' : 'connect.showKey',
+                        )}
+                        onClick={() => {
+                          setShowKey((prev) => !prev);
+                        }}
+                      >
+                        {showKey ? (
+                          <EyeSlash size={16} aria-hidden />
+                        ) : (
+                          <Eye size={16} aria-hidden />
+                        )}
+                      </button>
                     </div>
                     {keyError === null && (
                       <p id="connect-key-hint" className="connect-hint">
@@ -499,12 +535,6 @@ export function ConnectPage({
                     </button>
                     {succeeded && (
                       <span className="connect-golist">{text('connect.goList')}</span>
-                    )}
-                    {succeeded && (
-                      <p className="connect-hint">
-                        {text('connect.localeNotice')}{' '}
-                        <Link href="/settings">{text('nav.settings')}</Link>
-                      </p>
                     )}
                   </div>
                 </form>

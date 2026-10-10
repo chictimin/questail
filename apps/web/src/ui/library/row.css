@@ -44,6 +44,11 @@ main[data-route='library'] .game-row[data-missing] .game-cover {
   filter: grayscale(1);
 }
 
+/* 숨긴 행 흐림 — missing과 구분되게 opacity만, grayscale 없음. */
+main[data-route='library'] .game-row[data-hidden] .game-cover {
+  opacity: 0.55;
+}
+
 main[data-route='library'] .game-row-main {
   flex: 1;
   min-width: 0;
@@ -139,6 +144,11 @@ main[data-route='library'] .game-badge--filling {
 main[data-route='library'] .game-badge--just {
   background: color-mix(in srgb, var(--success) 12%, transparent);
   color: var(--success);
+}
+
+main[data-route='library'] .game-badge--hidden {
+  background: var(--qt-white-8);
+  color: var(--text-secondary);
 }
 
 main[data-route='library'] .game-row-actions {

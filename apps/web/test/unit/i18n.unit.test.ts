@@ -493,6 +493,23 @@ describe('UI 하드코딩 문자열 0', () => {
     'tab', // ARIA role — 화면 미노출
     'tablist', // ARIA role — 화면 미노출
     'fill', // Phosphor 아이콘 weight prop 값(화면 미노출)
+    'game-badge game-badge--hidden', // CSS 클래스 조합(화면 미노출)
+    'playtime:asc', // 정렬 식별자(화면 미노출)
+    'ratedAt:asc', // 정렬 식별자(화면 미노출)
+    'sort-direction', // radio name(화면 미노출)
+    'edit', // 쿼리 키(화면 미노출)
+    'text', // input 타입값(화면 미노출)
+    'qt-btn qt-icon-btn', // CSS 클래스 조합(화면 미노출)
+    '/connect?edit=1', // 라우트/쿼리 경로(화면 미노출)
+    'NETWORK', // 서버 오류 코드(화면 미노출)
+    'PAYLOAD_CORRUPT', // 서버 오류 코드(화면 미노출)
+    'HELD_DEPENDENCY', // 서버 오류 코드(화면 미노출)
+    'TAG_FAILED', // 서버 오류 코드(화면 미노출)
+    'TAG_EMPTY', // 서버 오류 코드(화면 미노출)
+    'steamspy', // 소스 계약값(화면 미노출)
+    'visible', // visibilityState 값(화면 미노출)
+    'visibilitychange', // DOM 이벤트명(화면 미노출)
+    'focus', // DOM 이벤트명(화면 미노출)
   ]);
 
   /** 소스 1건 스캔 → 위반 목록. 행 위치 무관, 태그 사이 텍스트(>…<)를 잡는다. */

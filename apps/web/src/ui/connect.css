@@ -124,6 +124,8 @@ main[data-route='connect'] .connect-error > svg {
   flex: none;
   font-size: 16px;
   line-height: 20px;
+  /* 16px 아이콘을 20px 첫 줄 중심에 맞추는 +1.5px(F5 실측: 보정 전 -1.5). */
+  margin-top: 1.5px;
 }
 
 main[data-route='connect'] .connect-error strong {
@@ -307,6 +309,8 @@ main[data-route='connect'] .connect-need > svg {
   font-size: 16px;
   line-height: 20px;
   color: var(--qt-mint);
+  /* 16px 아이콘을 20px 첫 줄 중심에 맞추는 +1.5px(F5 실측: 보정 전 -1.5). */
+  margin-top: 1.5px;
 }
 
 main[data-route='connect'] .connect-need:last-child > svg {

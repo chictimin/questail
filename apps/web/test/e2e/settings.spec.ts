@@ -94,7 +94,7 @@ test.describe('설정 빈 상태', () => {
     );
     await expect(page.getByRole('link', { name: '키 교체' })).toHaveAttribute(
       'href',
-      '/connect',
+      '/connect?edit=1',
     );
   });
 

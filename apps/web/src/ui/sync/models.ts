@@ -1,6 +1,6 @@
 /**
  * U3b [2] sync 화면 매핑 — 순수 함수. DTO → 행 모델·상단 시각·검토 목록.
- * f(부분 실패): pill hold + causeInfoPart {n} + 재수집 (U3b 결정, 보고 명시).
+ * f(부분 실패): pill hold + causeInfoPart(info 외·{n})·causeTagsPart(태그·{n}) + 재수집 (U3b 결정, 보고 명시).
  * 업적 OFF는 호출 측에서 덮어쓴다(행 모델 아님).
  */
 import type { SyncErrorCode } from '@questail/core';
@@ -53,7 +53,7 @@ export function rowViewFor(
       pill: 'hold',
       body: {
         kind: 'cause',
-        key: 'sync.causeInfoPart',
+        key: entry.source === 'steamspy' ? 'sync.causeTagsPart' : 'sync.causeInfoPart',
         params: { n: entry.failedItems },
       },
       retry: true,

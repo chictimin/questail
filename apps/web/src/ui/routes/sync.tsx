@@ -1,6 +1,7 @@
 /**
- * U3b [2] 수집 상태 화면 조립 — GET status + 2초 폴링(running 있을 때만) +
- * 재수집 resume + 표시값. 수집 실행 자체는 D-06 executor 몫.
+ * U3b [2] 수집 상태 화면 조립 — GET status + 폴링(running 2초·정착 시 중지·hidden 정지,
+ * 진입·라우트 이동·visible 복귀·focus 1회 reload는 statusContext) + 재수집 resume + 표시값.
+ * 수집 실행 자체는 D-06 executor 몫.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowClockwise } from '@phosphor-icons/react';

@@ -9,7 +9,7 @@ export function SiteFooter(): React.JSX.Element {
   return (
     <footer className="site-footer">
       <span className="site-footer-notice">{text('connect.valveNotice')}</span>
-      <a className="site-footer-link" href={STEAM_LINKS.store}>
+      <a className="site-footer-link" href={STEAM_LINKS.store} target="_blank" rel="noopener noreferrer">
         <SteamLogo size={15} aria-hidden />
         <span>{text('shell.storeLink')}</span>
         <ArrowUpRight size={12} aria-hidden />

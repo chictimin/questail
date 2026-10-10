@@ -127,14 +127,20 @@ export function Connection(): React.JSX.Element {
                 {text('settings.keySaved')}
               </span>
             ) : null}
-            <Link href="/connect">
+            <Link href="/connect?edit=1">
               <Key size={14} aria-hidden />
               {text('connect.reEnter')}
             </Link>
           </div>
           <p>
             {text('settings.keyHint')}{' '}
-            <a href={STEAM_LINKS.apiKey}>{text('settings.keyPage')}</a>
+            <a
+              href={STEAM_LINKS.apiKey}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {text('settings.keyPage')}
+            </a>
           </p>
         </div>
       </div>

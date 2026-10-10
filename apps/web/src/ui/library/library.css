@@ -140,9 +140,14 @@ main[data-route='library'] .stars[data-preview] .stars-num {
    상한은 추정치(헤더 64 + 패딩 68 + 제목 32 + 툴바 + 결과 줄 + 푸터) — QA 대조용. */
 main[data-route='library'] .library-list {
   overflow-y: auto;
+  scrollbar-width: none;
   min-height: 280px;
   max-height: calc(100dvh - 360px);
   border-top: 1px solid var(--qt-white-8);
+}
+
+main[data-route='library'] .library-list::-webkit-scrollbar {
+  display: none;
 }
 
 main[data-route='library'] .lib-virtual {

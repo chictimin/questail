@@ -114,6 +114,8 @@ main[data-route='export'] > h1 + p {
   line-height: 20px;
   flex: none;
   align-self: flex-start;
+  /* 18px 아이콘을 20px 첫 줄 중심에 맞추는 +1px(#11 실측: 보정 전 -0.5). */
+  margin-top: 1px;
 }
 
 .export-alert-body {
@@ -131,7 +133,8 @@ main[data-route='export'] > h1 + p {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-10) var(--space-12);
-  align-items: center;
+  /* 첫 줄 기준 아이콘 정렬 — 본문이 1줄이면 액션 높이(32px)에 끌려가지 않게(#11 실측: center 보정 전 -6.5). */
+  align-items: flex-start;
   padding: var(--space-12) 14px;
   border-radius: var(--corner-12);
   background: var(--qt-mint);
@@ -145,6 +148,8 @@ main[data-route='export'] > h1 + p {
   line-height: 20px;
   flex: none;
   align-self: flex-start;
+  /* 18px 아이콘을 20px 첫 줄 중심에 맞추는 +1px(#11 실측). */
+  margin-top: 1px;
 }
 
 .export-done-body {
@@ -160,6 +165,7 @@ main[data-route='export'] > h1 + p {
 
 .export-again {
   margin-left: auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: var(--space-6);
