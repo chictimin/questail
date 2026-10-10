@@ -27,10 +27,10 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deriveGameMeta, type AppDetailsData } from '../packages/core/src/metadata/index.js';
-import { parseGameNote, extractSubjectiveFields } from '../packages/core/src/storage/gameNote.js';
-import { splitFrontmatterDoc, formatScalar } from '../packages/core/src/storage/frontmatter.js';
-import { parseLibraryMarkdown } from '../packages/core/src/storage/library.js';
+import { deriveGameMeta, type AppDetailsData } from '../metadata/index.js';
+import { parseGameNote, extractSubjectiveFields } from '../storage/gameNote.js';
+import { splitFrontmatterDoc, formatScalar } from '../storage/frontmatter.js';
+import { parseLibraryMarkdown } from '../storage/library.js';
 
 const REPO_ROOT = resolve(join(new URL('.', import.meta.url).pathname, '..'));
 const GAMES_DIR = join(REPO_ROOT, 'games');

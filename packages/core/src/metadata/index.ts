@@ -27,7 +27,7 @@
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import type { GameMeta } from '../types.js';
 
@@ -60,16 +60,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 // ─── 디스크 캐시 ─────────────────────────────────────────────
-
-/**
- * 캐시 루트 결정. QUESTAIL_CACHE_DIR이 있으면 그 아래 appdetails,
- * 없으면 실행 시점 cwd(= questail 프로젝트 루트) 아래 .cache/appdetails.
- */
-export function resolveAppMetaCacheDir(): string {
-  const override = process.env.QUESTAIL_CACHE_DIR?.trim();
-  if (override) return join(resolve(override), 'appdetails');
-  return join(resolve('.cache'), 'appdetails');
-}
 
 /**
  * 캐시 스키마 버전. v2부터 파싱된 GameMeta가 아니라 appdetails 원문
@@ -376,7 +366,7 @@ export function deriveGameMeta(
   return meta;
 }
 
-// ─── 공개 API (시그니처 고정 — fetchAppMeta(appId: string)) ──
+// ─── 공개 API (options 필수 — cacheDir 없는 호출은 타입 오류) ──
 
 /** 캐시 디렉터리명. 데이터 디렉터리 아래에 둔다. 웹 run.ts가 조립해 주입한다. */
 export const META_CACHE_DIR_NAME = 'meta';
@@ -389,13 +379,13 @@ const DEFAULT_INTERVAL_MS = 2_000;
 
 /**
  * 메타 조회 옵션 (D-07).
- * cacheDir은 명시 인자다(env·cwd 해석 없음). 없으면 기존 resolve(호환).
+ * cacheDir은 명시 인자다(env·cwd 해석 없음). 필수.
  * intervalMs 기본 2000 — 테스트 전용 주입이며 설정과 연계하지 않는다(P-9).
  * locale 기본 'en'. fetchFn·now·sleepFn 주입 시 가짜 fetch·clock 테스트가
  * 된다. bypassCache는 사용자 새로받기용.
  */
 export interface MetaFetchOptions {
-  cacheDir?: string;
+  cacheDir: string;
   intervalMs?: number;
   locale?: 'en' | 'ko';
   fetchFn?: (url: string, init: { signal: AbortSignal }) => Promise<Response>;
@@ -429,8 +419,11 @@ interface ResolvedMetaOptions {
 }
 
 function resolveMetaOptions(options?: MetaFetchOptions): ResolvedMetaOptions {
+  if (options?.cacheDir === undefined) {
+    throw new Error('[metadata] cacheDir 필수 — 호출 측이 명시 전달한다');
+  }
   return {
-    cacheDir: options?.cacheDir ?? resolveAppMetaCacheDir(),
+    cacheDir: options.cacheDir,
     intervalMs: options?.intervalMs ?? DEFAULT_INTERVAL_MS,
     locale: options?.locale ?? 'en',
     fetchFn: options?.fetchFn ?? ((url, init) => fetch(url, init)),
@@ -490,7 +483,7 @@ function enterCooldown(now: number): void {
  * 단일 locale 1요청만 한다(P-9). 시그니처와 반환 타입(Promise<GameMeta>)은
  * 바꾸지 않는다. 간격 기본은 D-07에 따라 2초이다.
  */
-export async function fetchAppMeta(appId: string, options?: MetaFetchOptions): Promise<GameMeta> {
+export async function fetchAppMeta(appId: string, options: MetaFetchOptions): Promise<GameMeta> {
   return (await fetchAppMetaStatus(appId, options)).meta;
 }
 
@@ -523,7 +516,7 @@ function linkAbort(signal: AbortSignal | undefined): {
  */
 export async function fetchAppMetaStatus(
   appId: string,
-  options?: MetaFetchOptions,
+  options: MetaFetchOptions,
 ): Promise<MetaFetchResult> {
   if (!/^\d+$/.test(appId)) {
     throw new Error(`유효하지 않은 appId: ${appId}`);
@@ -600,7 +593,7 @@ export interface FetchAppMetaBatchOptions {
   onRateLimit?: 'throw' | 'wait' | 'stop';
   /** 테스트·호출 측 주입. fetchAppMeta 옵션 그대로 전달한다. */
   fetchFn?: (url: string, init: { signal: AbortSignal }) => Promise<Response>;
-  cacheDir?: string;
+  cacheDir: string;
   locale?: 'en' | 'ko';
   bypassCache?: boolean;
   now?: () => number;
@@ -616,27 +609,18 @@ export interface FetchAppMetaBatchOptions {
  */
 export async function fetchAppMetaBatch(
   appIds: string[],
-  options?: FetchAppMetaBatchOptions,
+  options: FetchAppMetaBatchOptions,
 ): Promise<GameMeta[]> {
   const out: GameMeta[] = [];
-  const childOptions =
-    options?.fetchFn !== undefined ||
-    options?.cacheDir !== undefined ||
-    options?.locale !== undefined ||
-    options?.bypassCache !== undefined ||
-    options?.now !== undefined ||
-    options?.sleepFn !== undefined ||
-    options?.signal !== undefined
-      ? {
-          fetchFn: options.fetchFn,
-          cacheDir: options.cacheDir,
-          locale: options.locale,
-          bypassCache: options.bypassCache,
-          now: options.now,
-          sleepFn: options.sleepFn,
-          signal: options.signal,
-        }
-      : undefined;
+  const childOptions = {
+    fetchFn: options.fetchFn,
+    cacheDir: options.cacheDir,
+    locale: options.locale,
+    bypassCache: options.bypassCache,
+    now: options.now,
+    sleepFn: options.sleepFn,
+    signal: options.signal,
+  };
   for (let i = 0; i < appIds.length; i++) {
     const id = appIds[i];
     try {

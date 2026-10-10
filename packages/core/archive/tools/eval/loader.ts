@@ -16,15 +16,15 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseGameNote, extractSubjectiveFields } from '../../packages/core/src/storage/gameNote.js';
-import { parseLibraryMarkdown } from '../../packages/core/src/storage/library.js';
+import { parseGameNote, extractSubjectiveFields } from '../../storage/gameNote.js';
+import { parseLibraryMarkdown } from '../../storage/library.js';
 import type {
   AgentDeps,
   EvidenceChunk,
   NoteEntry,
   QueryCategory,
-} from '../../packages/core/src/agent/types.js';
-import type { LibraryIndex, TasteProfile } from '../../packages/core/src/types.js';
+} from '../../agent/types.js';
+import type { LibraryIndex, TasteProfile } from '../../../src/types.js';
 
 const EVAL_DIR = dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = join(EVAL_DIR, 'docs');

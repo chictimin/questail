@@ -22,9 +22,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseGameNote } from '../packages/core/src/storage/gameNote.js';
-import { parseLibraryMarkdown, writeLibraryIndex, renderLibraryMarkdown } from '../packages/core/src/storage/library.js';
-import type { NormalizedGame, Platform, GameSource } from '../packages/core/src/types.js';
+import { parseGameNote } from '../storage/gameNote.js';
+import { parseLibraryMarkdown, writeLibraryIndex, renderLibraryMarkdown } from '../storage/library.js';
+import type { NormalizedGame, Platform, GameSource } from '../src/types.js';
 
 const REPO_ROOT = resolve(join(new URL('.', import.meta.url).pathname, '..'));
 const GAMES_DIR = join(REPO_ROOT, 'games');

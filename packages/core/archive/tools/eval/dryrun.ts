@@ -20,13 +20,13 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadAgentDeps } from './loader.js';
 import { toolScoreFor } from './score.js';
-import { routeQuestion } from '../../packages/core/src/agent/router.js';
+import { routeQuestion } from '../../agent/router.js';
 import {
   CATEGORIES,
   type QueryCategory,
   type ToolCall,
   type ToolName,
-} from '../../packages/core/src/agent/types.js';
+} from '../../agent/types.js';
 
 const EVAL_DIR = dirname(fileURLToPath(import.meta.url));
 const CACHE_PATH = join(EVAL_DIR, 'data', 'classify_cache.json');

@@ -16,16 +16,17 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { fetchOwnedGames, fetchPlayerAchievements, fetchWishlistAppIds, resolveToSteamId, toAchievementInputs, type SteamConfig } from './connectors/steam.js';
-import { normalizeSteamGame } from './normalize/index.js';
+import { fetchOwnedGames, fetchPlayerAchievements, fetchWishlistAppIds, resolveToSteamId, toAchievementInputs, type SteamConfig } from '../src/connectors/steam.js';
+import { normalizeSteamGame } from '../src/normalize/index.js';
 import { appendHistoryLog, buildHistoryRecords, HISTORY_FILENAME, writeGameNote, writeLibraryIndex, parseLibraryMarkdown } from './storage/index.js';
 import { buildTasteProfile } from './profile/index.js';
 import { analyzeLibrary, REPORT_SCHEMA_VERSION, type AnalysisReportJson, type QuantitativeStats, toReportJson } from './analyze/index.js';
 import { parseReportChart, renderReportMarkdown, type ReportChart } from './analyze/report.js';
-import { fetchAppMetaBatch } from './metadata/index.js';
-import { fetchSteamSpyUserTags, resolveSteamSpyCacheDir } from './connectors/steamspy.js';
+import { fetchAppMetaBatch } from '../src/metadata/index.js';
+import { fetchSteamSpyUserTags } from '../src/connectors/steamspy.js';
+import { resolveAppMetaCacheDir, resolveSteamSpyCacheDir } from './cache-dir.js';
 import { detectLocale, t, type Locale } from './i18n.js';
-import type { GameMeta, NormalizedGame } from './types.js';
+import type { GameMeta, NormalizedGame } from '../src/types.js';
 import {
   QUESTAIL_LLM_API_KEY,
   QUESTAIL_LLM_BASE_URL,
@@ -365,6 +366,7 @@ async function cmdGatherSteam(): Promise<void> {
     const metas = await fetchAppMetaBatch(
       data.response.games.map(g => String(g.appid)),
       {
+        cacheDir: resolveAppMetaCacheDir(),
         // gather는 수동 아카이빙이라 전수 확보 우선 — 레이트리밋 시 대기 후 재개가 기본값
         onRateLimit: 'wait',
         onProgress: (done, total, appId) => console.error(llmText(

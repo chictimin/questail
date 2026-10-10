@@ -22,8 +22,9 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fetchAppMetaBatch } from '../packages/core/src/metadata/index.js';
-import { parseLibraryMarkdown } from '../packages/core/src/storage/library.js';
+import { fetchAppMetaBatch } from '../metadata/index.js';
+import { resolveAppMetaCacheDir } from '../cache-dir.js';
+import { parseLibraryMarkdown } from '../storage/library.js';
 
 const DEFAULT_LIBRARY_PATH = resolve('games/library.md');
 
@@ -81,6 +82,7 @@ async function main(): Promise<void> {
 
   const startedAt = Date.now();
   const metas = await fetchAppMetaBatch(appIds, {
+    cacheDir: resolveAppMetaCacheDir(),
     onRateLimit,
     onProgress: (done, total, appId) => {
       console.error(`[recache] ${done}/${total} (app ${appId})`);

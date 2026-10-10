@@ -18,7 +18,7 @@
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 const STEAMSPY_API_BASE = 'https://steamspy.com';
 const STEAMSPY_PATH = '/api.php';
@@ -97,16 +97,6 @@ const defaultClock: SteamSpyClock = {
 const defaultLimiter = createSteamSpyLimiter();
 
 // ─── 디스크 캐시 ───
-
-/**
- * 캐시 루트 결정 (보관: 구 CLI 경로. core 수집 함수는 직접 읽지 않는다).
- * QUESTAIL_CACHE_DIR이 있으면 그 아래 steamspy, 없으면 cwd 아래 .cache/steamspy.
- */
-export function resolveSteamSpyCacheDir(): string {
-  const override = process.env.QUESTAIL_CACHE_DIR?.trim();
-  if (override) return join(resolve(override), 'steamspy');
-  return join(resolve('.cache'), 'steamspy');
-}
 
 function cacheFilePath(cacheDir: string, appId: string): string {
   return join(cacheDir, `${appId}.json`);
