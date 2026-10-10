@@ -87,19 +87,37 @@ function currentGeneration(db: Database.Database, source: CollectSource): number
 }
 
 function bumpGeneration(db: Database.Database, source: CollectSource): number {
-  const orm = drizzle(db);
-  const next = currentGeneration(db, source) + 1;
-  const existing = orm
-    .select({ source: syncGenerations.source })
-    .from(syncGenerations)
-    .where(eq(syncGenerations.source, source))
-    .get();
-  if (existing) {
-    orm.update(syncGenerations).set({ generation: next }).where(eq(syncGenerations.source, source)).run();
-  } else {
-    orm.insert(syncGenerations).values({ source, generation: next }).run();
-  }
-  return next;
+  return bumpGenerationTx(db, source, false);
+}
+
+/**
+ * 세대 +1. copyResume가 참이면 같은 트랜잭션에서 직전 세대의 그 소스
+ * 체크포인트 행 전부를 새 세대로 복사한다(item_key·done_at·sync_run_id 원본 값).
+ * 복사 대상은 성공 체크포인트뿐이다(실패는 체크포인트 없음).
+ */
+function bumpGenerationTx(db: Database.Database, source: CollectSource, copyResume: boolean): number {
+  const apply = db.transaction((): number => {
+    const next = currentGeneration(db, source) + 1;
+    const orm = drizzle(db);
+    const existing = orm
+      .select({ source: syncGenerations.source })
+      .from(syncGenerations)
+      .where(eq(syncGenerations.source, source))
+      .get();
+    if (existing) {
+      orm.update(syncGenerations).set({ generation: next }).where(eq(syncGenerations.source, source)).run();
+    } else {
+      orm.insert(syncGenerations).values({ source, generation: next }).run();
+    }
+    if (copyResume) {
+      const prev = next - 1;
+      db.prepare(
+        'INSERT INTO checkpoints (generation, source, item_key, done_at, sync_run_id) SELECT ?, source, item_key, done_at, sync_run_id FROM checkpoints WHERE generation = ? AND source = ?',
+      ).run(next, prev, source);
+    }
+    return next;
+  });
+  return apply();
 }
 
 function parseIssue(code: string | null, params: string | null): SyncIssue | null {
@@ -156,6 +174,9 @@ export function startSync(
 /**
  * 소스 단독 재수집. 해당 소스만 보고 다른 소스 실행은 허용한다.
  * mode 기본 resume. locale 필수.
+ * 게임 단위 소스(meta·steamspy·achievements) + resume일 때만 세대 +1과 같은
+ * 트랜잭션에서 직전 세대 체크포인트를 새 세대로 복사한다. refresh·startSync·
+ * 응답 단위 소스(owned·wishlist)·recover는 복사 없음.
  */
 export function resyncSource(
   db: Database.Database,
@@ -170,7 +191,10 @@ export function resyncSource(
     return { code: 'SYNC_IN_PROGRESS', source };
   }
   state.running.add(source);
-  const generation = bumpGeneration(db, source);
+  const mode = opts.mode ?? 'resume';
+  const copyResume =
+    mode === 'resume' && (source === 'meta' || source === 'steamspy' || source === 'achievements');
+  const generation = bumpGenerationTx(db, source, copyResume);
   const id = startRun(db, { source, startedAt: Math.floor(Date.now() / 1000), observedDay: toLocalDay(Date.now(), opts.timeZone), generation });
   state.meta.set(id, { source, generation, locale: opts.locale });
   state.progress.set(id, { done: 0, total: null });

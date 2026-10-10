@@ -126,7 +126,7 @@ describe('runSteamspy failedItems', () => {
     }
   });
 
-  it('저장 예외 경로도 실패로 센다', async () => {
+  it('저장 예외 시 failed 행은 쓰고 체크포인트는 쓰지 않는다', async () => {
     const db = freshDb();
     const dir = mkdtempSync(join(tmpdir(), 'questail-u3aspyrun-'));
     try {
@@ -145,9 +145,15 @@ describe('runSteamspy failedItems', () => {
         const run = service.getSyncStatus().find((row) => row.source === 'steamspy');
         expect(run).toMatchObject({ state: 'ok', failedItems: 1, issue: null });
         const row = db
-          .prepare('SELECT failed_items AS n FROM sync_runs ORDER BY id DESC LIMIT 1')
-          .get() as { n: number };
-        expect(row.n).toBe(1);
+          .prepare('SELECT item_count AS c, failed_items AS n FROM sync_runs ORDER BY id DESC LIMIT 1')
+          .get() as { c: number; n: number };
+        expect(row).toEqual({ c: 2, n: 1 });
+        expect(
+          db.prepare("SELECT tag_status AS s FROM tag_sources WHERE external_id = '990012'").get(),
+        ).toEqual({ s: 'failed' });
+        expect(
+          db.prepare("SELECT COUNT(*) AS n FROM checkpoints WHERE item_key = 'steam:990012:steamspy'").get(),
+        ).toEqual({ n: 0 });
       });
     } finally {
       db.close();

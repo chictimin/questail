@@ -121,8 +121,8 @@ function serviceWith(
   });
 }
 
-async function settled(service: ReturnType<typeof createSyncService>): Promise<void> {
-  for (let i = 0; i < 400; i++) {
+async function settled(service: ReturnType<typeof createSyncService>, maxIter = 400): Promise<void> {
+  for (let i = 0; i < maxIter; i++) {
     const rows = service.getSyncStatus();
     if (rows.every((row) => row.state !== 'running')) return;
     await new Promise((resolve) => setTimeout(resolve, 5));
@@ -341,7 +341,8 @@ describe('jobs collect', () => {
       expect(buildQueue(db, { source: 'meta', generation: 1, mode: 'resume' })).toEqual([
         'steam:990011:meta',
       ]);
-      await settled(service);
+      // meta 스로틀 2초가 기본 settled 예산(400회·약 2초)을 넘길 수 있어 이 테스트만 600회로 대기한다
+      await settled(service, 600);
     } finally {
       db.close();
       resetSyncLocksForTest();

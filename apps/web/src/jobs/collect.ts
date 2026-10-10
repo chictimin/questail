@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { dirname, join } from 'node:path';
 import {
+  AppMetaRateLimitedError,
   buildOwnedGamesPath,
   buildPlayerAchievementsPath,
   buildWishlistPath,
@@ -20,7 +21,7 @@ import {
   type SteamSpyLimiter,
   type SyncErrorCode,
 } from '@questail/core';
-import { ownershipSpans, syncRuns, wishlistSpans, checkpoints } from '../db/schema.js';
+import { ownershipSpans, syncRuns, wishlistSpans } from '../db/schema.js';
 import { applyOwnedDiff } from '../data/ownership.js';
 import { applyWishlistDiff } from '../data/wishlist.js';
 import { recordPlaytimeSnapshot } from '../data/playtime.js';
@@ -30,11 +31,15 @@ import { saveCollectedTags } from '../data/tags.js';
 import { getAchievementSettings } from '../data/viewState.js';
 import { createSteamRequest, getConnection, type FetchLike } from '../data/connection.js';
 import type { CollectSource, Locale } from '../data/sync.js';
+import { rateLimitIssue } from '../data/sync.js';
 import { toLocalDay } from '../data/syncRuns.js';
 import {
   buildQueue,
+  failedKeysOfRun,
+  isMetaFailed,
   itemKey,
   readLastCollectLocale,
+  runAggregates,
   writeCheckpoint,
   writeLastCollectLocale,
 } from './queue.js';
@@ -186,6 +191,23 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
     code: SyncErrorCode,
     params: IssueParams,
   ): void {
+    if (job.source === 'meta' || job.source === 'steamspy' || job.source === 'achievements') {
+      const agg = runAggregates(ctx.db, {
+        source: job.source,
+        generation: job.generation,
+        mode: job.mode,
+        runId: job.runId,
+      });
+      ctx.transitions.finishSyncRun(job.runId, job.source, {
+        status: 'failed',
+        finishedAt: Math.floor(now() / 1000),
+        itemCount: agg.total,
+        isFinalized: true,
+        issue: { code, params },
+        failedItems: agg.failed,
+      });
+      return;
+    }
     ctx.transitions.finishSyncRun(job.runId, job.source, {
       status: 'failed',
       finishedAt: Math.floor(now() / 1000),
@@ -411,10 +433,13 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       return;
     }
     const steamId = connection.steamId;
-    const targets = buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
-      (key) => key.split(':')[1],
+    const targets = pendingTargets(
+      job,
+      buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
+        (key) => key.split(':')[1],
+      ),
     );
-    ctx.transitions.progressRun(job.runId, job.source, { done: 0, total: targets.length });
+    reportProgress(job);
     const baseFetch: FetchLike = ctx.fetchFn ?? ((url) => fetch(url));
     for (const appid of targets) {
       if (stopped) break;
@@ -448,49 +473,60 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           finishFailed(job, 'PAYLOAD_CORRUPT', { appid: Number(appid) });
           return;
         }
-        saveCollectedAchievements(
-          ctx.db,
-          { platform: 'steam', externalId: appid },
-          collected,
-          { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
-        );
+        if (signal.aborted || stopped) return; // stop 중단 항목 — 결과 행·체크포인트 없이 recover 대상에 둔다
+        const store = ctx.db.transaction(() => {
+          saveCollectedAchievements(
+            ctx.db,
+            { platform: 'steam', externalId: appid },
+            collected,
+            { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
+          );
+          writeCheckpoint(ctx.db, {
+            generation: job.generation,
+            source: job.source,
+            itemKey: itemKey('steam', appid, job.source),
+            syncRunId: job.runId,
+            doneAt: Math.floor(now() / 1000),
+          });
+        });
+        store();
       } finally {
         release();
       }
       if (stopped) break; // 중단된 항목은 체크포인트 없이 recover 대상에 둔다
-      writeCheckpoint(ctx.db, {
-        generation: job.generation,
-        source: job.source,
-        itemKey: itemKey('steam', appid, job.source),
-        syncRunId: job.runId,
-        doneAt: Math.floor(now() / 1000),
-      });
-      ctx.transitions.progressRun(job.runId, job.source, {
-        done: checkpointDone(ctx.db, job),
-        total: targets.length,
-      });
+      reportProgress(job);
     }
     if (stopped) return; // running 유지·recover 대상. held로 끝내지 않는다.
+    const achAgg = runAggregates(ctx.db, {
+      source: job.source,
+      generation: job.generation,
+      mode: job.mode,
+      runId: job.runId,
+    });
     ctx.transitions.finishSyncRun(job.runId, job.source, {
       status: 'ok',
       finishedAt: Math.floor(now() / 1000),
-      itemCount: targets.length,
+      itemCount: achAgg.total,
       isFinalized: true,
       issue: null,
+      failedItems: achAgg.failed,
     });
   }
 
   async function runSteamspy(job: CollectJob): Promise<void> {
-    const targets = buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
-      (key) => key.split(':')[1],
+    const targets = pendingTargets(
+      job,
+      buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
+        (key) => key.split(':')[1],
+      ),
     );
-    ctx.transitions.progressRun(job.runId, job.source, { done: 0, total: targets.length });
+    reportProgress(job);
     const spyDir = join(dirname(ctx.cacheDir), STEAMSPY_CACHE_DIR_NAME);
     const baseFetch: FetchLike = ctx.fetchFn ?? ((url) => fetch(url));
-    let failedItems = 0;
     for (const appid of targets) {
       if (stopped) break;
       const { signal, release } = trackController();
+      const gameKey = { platform: 'steam', externalId: appid };
       try {
         const collected = await fetchSteamSpyUserTags({
           appId: appid,
@@ -500,47 +536,65 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           clock: steamSpyTestHooks?.clock,
           limiter: steamSpyTestHooks?.limiter ?? spyLimiter,
           baseUrl: ctx.steamSpyBaseUrl,
+          bypassCache: job.mode === 'refresh',
         });
-        if (collected.status === 'failed') failedItems += 1;
-        saveCollectedTags(
-          ctx.db,
-          { platform: 'steam', externalId: appid },
-          collected,
-          { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
-        );
-      } catch {
-        if (signal.aborted && stopped) break;
-        failedItems += 1;
+        if (signal.aborted || stopped) return; // stop 중단 항목 — failed 행·체크포인트 없이 recover 대상에 둔다
+        const store = ctx.db.transaction(() => {
+          saveCollectedTags(
+            ctx.db,
+            gameKey,
+            collected,
+            { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
+          );
+          if (collected.status !== 'failed') {
+            writeCheckpoint(ctx.db, {
+              generation: job.generation,
+              source: job.source,
+              itemKey: itemKey('steam', appid, job.source),
+              syncRunId: job.runId,
+              doneAt: Math.floor(now() / 1000),
+            });
+          }
+        });
+        store();
+      } catch (error) {
+        if (signal.aborted) return; // stop — running 유지, recover가 잇는다
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        try {
+          saveCollectedTags(
+            ctx.db,
+            gameKey,
+            { status: 'failed', tags: [], failure: { reason: 'network' } },
+            { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
+          );
+        } catch {
+          /* failed 결과 행 쓰기까지 실패 — running 유지·recover 대상 */
+        }
       } finally {
         release();
       }
       if (stopped) break; // 중단된 항목은 체크포인트 없이 recover 대상에 둔다
-      writeCheckpoint(ctx.db, {
-        generation: job.generation,
-        source: job.source,
-        itemKey: itemKey('steam', appid, job.source),
-        syncRunId: job.runId,
-        doneAt: Math.floor(now() / 1000),
-      });
-      ctx.transitions.progressRun(job.runId, job.source, {
-        done: checkpointDone(ctx.db, job),
-        total: targets.length,
-      });
+      reportProgress(job);
     }
     if (stopped) return; // running 유지·recover 대상. held로 끝내지 않는다.
+    const spyAgg = runAggregates(ctx.db, {
+      source: job.source,
+      generation: job.generation,
+      mode: job.mode,
+      runId: job.runId,
+    });
     ctx.transitions.finishSyncRun(job.runId, job.source, {
       status: 'ok',
       finishedAt: Math.floor(now() / 1000),
-      itemCount: targets.length,
+      itemCount: spyAgg.total,
       isFinalized: true,
       issue: null,
-      failedItems,
+      failedItems: spyAgg.failed,
     });
   }
 
   async function runMeta(job: CollectJob): Promise<void> {
-    if (job.locale === null) {
-      ctx.transitions.finishSyncRun(job.runId, job.source, {
+    if (job.locale === null) {      ctx.transitions.finishSyncRun(job.runId, job.source, {
         status: 'ok',
         finishedAt: Math.floor(now() / 1000),
         itemCount: 0,
@@ -549,19 +603,25 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       });
       return;
     }
-    const targets = buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
-      (key) => key.split(':')[1],
+    const targets = pendingTargets(
+      job,
+      buildQueue(ctx.db, { source: job.source, generation: job.generation, mode: job.mode }).map(
+        (key) => key.split(':')[1],
+      ),
     );
-    ctx.transitions.progressRun(job.runId, job.source, { done: 0, total: targets.length });
-    let failedItems = 0;
+    reportProgress(job);
     for (const appid of targets) {
       if (stopped) break;
       const { signal, release } = trackController();
+      const gameKey = { platform: 'steam', externalId: appid };
       try {
         const result = await fetchAppMetaStatus(appid, {
           cacheDir: ctx.cacheDir,
           locale: job.locale as 'ko' | 'en',
           baseUrl: ctx.storeBaseUrl,
+          bypassCache:
+            job.mode === 'refresh' ||
+            (job.mode === 'resume' && isMetaFailed(ctx.db, gameKey.platform, gameKey.externalId)),
           fetchFn: (url: string, init: { signal: AbortSignal }) =>
             raceWithSignal(authedFetch(init.signal)(url), init.signal).then(
               (res) =>
@@ -574,55 +634,114 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           now,
           signal,
         });
-        saveCollectedMeta(
-          ctx.db,
-          { platform: 'steam', externalId: appid },
-          result,
-          {
-            locale: job.locale as 'ko' | 'en',
-            observedAt: Math.floor(now() / 1000),
-            syncRunId: job.runId,
-          },
-        );
-        if (result.state === 'failed') failedItems += 1;
-      } catch {
-        if (signal.aborted && stopped) break;
-        failedItems += 1;
+        const store = ctx.db.transaction(() => {
+          saveCollectedMeta(
+            ctx.db,
+            gameKey,
+            result,
+            {
+              locale: job.locale as 'ko' | 'en',
+              observedAt: Math.floor(now() / 1000),
+              syncRunId: job.runId,
+            },
+          );
+          if (result.state !== 'failed') {
+            writeCheckpoint(ctx.db, {
+              generation: job.generation,
+              source: job.source,
+              itemKey: itemKey('steam', appid, job.source),
+              syncRunId: job.runId,
+              doneAt: Math.floor(now() / 1000),
+            });
+          }
+        });
+        store();
+      } catch (error) {
+        if (error instanceof AppMetaRateLimitedError) {
+          if (stopped) return; // running 유지·recover 대상
+          const limited = runAggregates(ctx.db, {
+            source: job.source,
+            generation: job.generation,
+            mode: job.mode,
+            runId: job.runId,
+          });
+          ctx.transitions.finishSyncRun(job.runId, job.source, {
+            status: 'failed',
+            finishedAt: Math.floor(now() / 1000),
+            itemCount: limited.total,
+            isFinalized: true,
+            issue: rateLimitIssue(error),
+            failedItems: limited.failed,
+          });
+          return;
+        }
+        if (signal.aborted) return; // stop — running 유지, recover가 잇는다
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        try {
+          saveCollectedMeta(
+            ctx.db,
+            gameKey,
+            { meta: { appId: appid, genres: [] }, state: 'failed', fromCache: false },
+            {
+              locale: job.locale as 'ko' | 'en',
+              observedAt: Math.floor(now() / 1000),
+              syncRunId: job.runId,
+            },
+          );
+        } catch {
+          /* failed 결과 행 쓰기까지 실패 — running 유지·recover 대상 */
+        }
       } finally {
         release();
       }
-      writeCheckpoint(ctx.db, {
-        generation: job.generation,
-        source: job.source,
-        itemKey: itemKey('steam', appid, job.source),
-        syncRunId: job.runId,
-        doneAt: Math.floor(now() / 1000),
-      });
-      ctx.transitions.progressRun(job.runId, job.source, {
-        done: checkpointDone(ctx.db, job),
-        total: targets.length,
-      });
+      if (stopped) break; // 중단된 항목은 체크포인트 없이 recover 대상에 둔다
+      reportProgress(job);
     }
     if (stopped) return; // running 유지·recover 대상. held로 끝내지 않는다.
+    const metaAgg = runAggregates(ctx.db, {
+      source: job.source,
+      generation: job.generation,
+      mode: job.mode,
+      runId: job.runId,
+    });
     ctx.transitions.finishSyncRun(job.runId, job.source, {
       status: 'ok',
       finishedAt: Math.floor(now() / 1000),
-      itemCount: targets.length,
+      itemCount: metaAgg.total,
       isFinalized: true,
       issue: null,
-      failedItems,
+      failedItems: metaAgg.failed,
     });
   }
 
   function checkpointDone(db: Database.Database, job: CollectJob): number {
-    return (
-      drizzle(db)
-        .select({ itemKey: checkpoints.itemKey })
-        .from(checkpoints)
-        .where(eq(checkpoints.generation, job.generation))
-        .all()
-        .filter((row) => row.itemKey.endsWith(`:${job.source}`))
-    ).length;
+    return runAggregates(db, {
+      source: job.source,
+      generation: job.generation,
+      mode: job.mode,
+      runId: job.runId,
+    }).succeeded;
+  }
+
+  /** 진행 보고. DB 재구성 집계(done = succeeded(run), total = succeeded + failed + remaining). */
+  function reportProgress(job: CollectJob): void {
+    const agg = runAggregates(ctx.db, {
+      source: job.source,
+      generation: job.generation,
+      mode: job.mode,
+      runId: job.runId,
+    });
+    ctx.transitions.progressRun(job.runId, job.source, {
+      done: checkpointDone(ctx.db, job),
+      total: agg.total,
+    });
+  }
+
+  /** 그 run에서 이미 failed인 항목 제외. 새 runId면 빈 집합이라 무변화, recover면 제외된다. */
+  function pendingTargets(job: CollectJob, appids: string[]): string[] {
+    const failed = failedKeysOfRun(ctx.db, job.source, job.runId);
+    if (failed.size === 0) return appids;
+    return appids.filter((appid) => !failed.has(itemKey('steam', appid, job.source)));
   }
 
   return {
