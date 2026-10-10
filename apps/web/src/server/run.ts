@@ -35,28 +35,38 @@ await main({
       ? undefined
       : createSyncService({
           db,
+          // D16-2 — holder가 있으면 holder의 파생 경로를 쓴다(값은 boot 조립과 동일).
           keyPath: connectKeyPath(dataDir),
           cacheDir: join(dataDir, META_CACHE_DIR_NAME),
           ...storeBasePair(steamApiBaseUrl),
           timeZone,
           executor: createJobExecutor,
         }),
-  createApp: (ctx) =>
-    createServerApp({
+  createApp: (ctx) => {
+    // D16-2 — 파생 경로는 holder에서 읽는다. holder 없음(테스트 배선)은 ctx fallback.
+    const layer = ctx.holder?.get();
+    const dataDir = layer?.dataDir ?? ctx.dataDir;
+    const keyPath = layer?.keyPath ?? ctx.keyPath ?? connectKeyPath(dataDir);
+    const exportDir = layer?.exportDir ?? ctx.exportDir ?? join(dataDir, EXPORT_DIR_NAME);
+    const syncService = layer?.syncService ?? ctx.syncService;
+    const db = layer?.db ?? ctx.db;
+    return createServerApp({
       staticRoot: uiDistDir(),
       exportDeps:
-        ctx.db === undefined
+        db === undefined
           ? undefined
-          : { db: ctx.db, exportDir: join(ctx.dataDir, EXPORT_DIR_NAME) },
+          : { db, exportDir },
       connectDeps:
-        ctx.db === undefined
+        db === undefined
           ? undefined
           : {
-              db: ctx.db,
-              keyPath: connectKeyPath(ctx.dataDir),
+              db,
+              keyPath,
               baseUrl: steamApiBaseUrl,
             },
-      settingsDeps: { dataDir: ctx.dataDir, version: ctx.version },
-      syncService: ctx.syncService,
-    }),
+      settingsDeps: { dataDir, version: ctx.version },
+      syncService,
+      holder: ctx.holder,
+    });
+  },
 });

@@ -6,6 +6,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { BACKUP_DIR_NAME } from '../../db/backup.js';
+import type { DataHolder } from '../dataHolder.js';
 import { settingsInternalError, type SettingsDeps } from './settings-info.js';
 
 export const SETTINGS_BACKUPS_PATH = '/api/settings/backups';
@@ -17,12 +18,14 @@ export interface BackupEntry {
   mtime: number;
 }
 
-export function registerSettingsBackupsRoutes(app: Hono, deps?: SettingsDeps): void {
+export function registerSettingsBackupsRoutes(app: Hono, deps?: SettingsDeps, holder?: DataHolder): void {
   app.get(SETTINGS_BACKUPS_PATH, (c) => {
-    if (deps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const dataDir = holder?.get().dataDir ?? deps?.dataDir;
+    if (dataDir === undefined) {
       return settingsInternalError(c);
     }
-    return c.json({ backups: listBackups(deps.dataDir) });
+    return c.json({ backups: listBackups(dataDir) });
   });
 }
 

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import type { Hono } from 'hono';
 import type { ServerType } from '@hono/node-server';
+import { META_CACHE_DIR_NAME } from '@questail/core';
 import type { SyncService } from '../data/service.js';
 import {
   OWNER_LOCK_BUSY_MESSAGE,
@@ -19,6 +20,9 @@ import {
 } from '../db/ownerLock.js';
 import { createServerApp } from './app.js';
 import { resolvePort, startServer, type StartedServer } from './serve.js';
+import { EXPORT_DIR_NAME } from './export.js';
+import { connectKeyPath } from './routes/connect.js';
+import { createDataHolder, type DataHolder } from './dataHolder.js';
 
 /** 데이터 디렉터리 환경변수 (PM 확정). 기본 = 저장소 루트 data/ (캡틴 결정, PM #61920). */
 export const DATA_DIR_ENV = 'QUESTAIL_DATA_DIR';
@@ -84,6 +88,16 @@ export type AppContext = {
   version: string;
   /** U3b+W13: 라우트가 쓰는 동기 서비스. 없으면 sync 라우트 500. */
   syncService?: SyncService;
+  /**
+   * D16-2 holder — 현재 데이터 계층 참조. boot이 기동 시 1회 set한다
+   * (이 단위에서는 항상 부착). run.ts createApp은 파생 경로를
+   * ctx.dataDir가 아니라 holder에서 읽는다.
+   */
+  holder?: DataHolder;
+  /** holder와 같은 값의 파생 경로(라우트·서비스 주입용, 읽기 전용). */
+  keyPath?: string;
+  cacheDir?: string;
+  exportDir?: string;
 };
 
 /**
@@ -188,11 +202,28 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
   if (syncService !== undefined) {
     await syncService.recover();
   }
+  // D16-2 — 파생 경로는 dataDir에서 1회 조립해 holder에 넣는다.
+  // 이 단위에서는 기동 시 항상 부착(현행과 같음).
+  const version = readWebVersion();
+  const holder = createDataHolder({
+    db: rawDb,
+    bootDb: db,
+    dataDir,
+    version,
+    syncService,
+    keyPath: connectKeyPath(dataDir),
+    cacheDir: join(dataDir, META_CACHE_DIR_NAME),
+    exportDir: join(dataDir, EXPORT_DIR_NAME),
+  });
   const app = (deps.createApp ?? (() => createServerApp()))({
     db: rawDb,
     dataDir,
-    version: readWebVersion(),
+    version,
     syncService,
+    holder,
+    keyPath: holder.get().keyPath,
+    cacheDir: holder.get().cacheDir,
+    exportDir: holder.get().exportDir,
   });
   const { server, port } = await (deps.listen ?? startServer)(
     app,
@@ -201,21 +232,23 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
 
   const controller = new AbortController();
   const signal = controller.signal;
-  const state: { cron?: CronHandle } = {};
 
+  // D16-2 — background·shutdown은 기동 closure가 아니라 holder에서 읽는다.
+  // 요청 처리와 같은 규칙: 시작 시 holder 1회 읽기.
   const background = (async (): Promise<void> => {
+    const layer = holder.get();
     if (signal.aborted) {
       return;
     }
-    const connected = await deps.isConnected({ db: rawDb });
+    const connected = await deps.isConnected({ db: layer.db });
     if (signal.aborted) {
       return;
     }
     if (connected) {
       await deps.runOverdueSnapshot({
         signal,
-        service: syncService,
-        db: rawDb,
+        service: layer.syncService,
+        db: layer.db,
         timeZone: deps.timeZone,
       });
     }
@@ -223,16 +256,17 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
       return;
     }
     const cron = deps.registerCron({
-      service: syncService,
-      db: rawDb,
+      service: layer.syncService,
+      db: layer.db,
       timeZone: deps.timeZone,
     });
     if (signal.aborted) {
       cron.unregister();
       return;
     }
-    state.cron = cron;
+    holder.get().cron = cron;
   })();
+  holder.get().background = background;
 
   let shutdownOnce: Promise<void> | null = null;
   const shutdown = (): Promise<void> => {
@@ -272,15 +306,17 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
         ).closeIdleConnections?.();
       });
       // ② abort → ③ background 정착 대기.
+      // D16-2 — holder 기준 기존 6단계(리스너 → abort → background 정착
+      // → service.stop → cron 해제 → db close).
       controller.abort();
-      await background.then(
+      await (holder.get().background ?? background).then(
         () => undefined,
         () => undefined,
       );
       // ③.5 동기 서비스 정지 — 리스너 close 뒤·DB close 전, 상한 10초, throw 0.
       try {
         await Promise.race([
-          syncService?.stop() ?? Promise.resolve(),
+          holder.get().syncService?.stop() ?? Promise.resolve(),
           new Promise<void>((_, reject) => {
             setTimeout(() => reject(new Error('sync stop timeout')), 10000);
           }),
@@ -289,9 +325,9 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
         // 정지 실패·초과해도 종료는 계속한다
       }
       // ④ 확보된 cron 해제 → ⑤ DB close.
-      state.cron?.unregister();
-      state.cron = undefined;
-      await db.close();
+      holder.get().cron?.unregister();
+      holder.get().cron = undefined;
+      await holder.get().bootDb.close();
     })();
     return shutdownOnce;
   };

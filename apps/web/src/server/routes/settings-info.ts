@@ -4,6 +4,7 @@
  */
 import type { Context, Hono } from 'hono';
 import type { RequestDeniedBody } from '../request-errors.js';
+import type { DataHolder } from '../dataHolder.js';
 
 export const SETTINGS_INFO_PATH = '/api/settings/info';
 
@@ -17,11 +18,15 @@ export function settingsInternalError(c: Context): Response {
   return c.json(body, 500);
 }
 
-export function registerSettingsInfoRoutes(app: Hono, deps?: SettingsDeps): void {
+export function registerSettingsInfoRoutes(app: Hono, deps?: SettingsDeps, holder?: DataHolder): void {
   app.get(SETTINGS_INFO_PATH, (c) => {
-    if (deps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const dataDir = layer?.dataDir ?? deps?.dataDir;
+    const version = layer?.version ?? deps?.version;
+    if (dataDir === undefined || version === undefined) {
       return settingsInternalError(c);
     }
-    return c.json({ dataDir: deps.dataDir, version: deps.version });
+    return c.json({ dataDir, version });
   });
 }

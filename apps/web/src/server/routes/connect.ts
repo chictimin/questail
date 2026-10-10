@@ -12,6 +12,7 @@ import type { Hono } from 'hono';
 import type { VerifyFetchFn } from '../../data/connection.js';
 import { KEY_FILE_NAME, getConnection, saveConnection } from '../../data/index.js';
 import { createLogger } from '../logging.js';
+import type { DataHolder } from '../dataHolder.js';
 import { parseJsonBody, type BodyGuard } from '../validate.js';
 
 export const CONNECT_STATUS_PATH = '/api/connect/status';
@@ -92,14 +93,20 @@ function statusFor(code: SyncErrorCode): 400 | 409 | 429 | 500 | 502 {
 }
 
 /** 앱 인스턴스당 직렬화 상태는 클로저에 둔다(모듈 전역 없음). */
-export function registerConnectRoutes(app: Hono, deps?: ConnectDeps): void {
+export function registerConnectRoutes(app: Hono, deps?: ConnectDeps, holder?: DataHolder): void {
   let inFlight = false;
 
   app.get(CONNECT_STATUS_PATH, (c) => {
     if (deps === undefined) {
       throw new Error('[web] connect 미배선 — deps 없음');
     }
-    return c.json(getConnection(deps.db));
+    // D16-2 — 요청 시작 시 holder 1회 읽기(db·keyPath는 holder, fetchFn·baseUrl은 주입 그대로).
+    const layer = holder?.get();
+    const db = layer?.db ?? deps.db;
+    if (db === undefined) {
+      throw new Error('[web] connect 미배선 — deps 없음');
+    }
+    return c.json(getConnection(db));
   });
 
   app.post(CONNECT_PATH, async (c) => {
@@ -107,7 +114,14 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps): void {
     if (!parsed.ok) {
       return parsed.response;
     }
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
     if (deps === undefined) {
+      throw new Error('[web] connect 미배선 — deps 없음');
+    }
+    const layer = holder?.get();
+    const db = layer?.db ?? deps.db;
+    const keyPath = layer?.keyPath ?? deps.keyPath;
+    if (db === undefined || keyPath === undefined) {
       throw new Error('[web] connect 미배선 — deps 없음');
     }
     if (inFlight) {
@@ -137,8 +151,8 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps): void {
         steamId = resolved.steamId;
       }
       const result = await saveConnection({
-        db: deps.db,
-        keyPath: deps.keyPath,
+        db,
+        keyPath,
         keyText: parsed.value.keyText,
         steamId,
         achievementsEnabled: parsed.value.achievementsEnabled,

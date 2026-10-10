@@ -28,6 +28,7 @@ import {
   registerSettingsInfoRoutes,
   type SettingsDeps,
 } from './routes/settings-info.js';
+import type { DataHolder } from './dataHolder.js';
 import { parseJsonBody, type BodyGuard } from './validate.js';
 // U5-[1] W-S2 — W-S1(info import)과 별도 hunk로 둔다.
 import { registerSettingsBackupsRoutes } from './routes/settings-backups.js';
@@ -148,18 +149,20 @@ function syncResult(
   return c.json(body, 409);
 }
 
-function registerSyncRoutes(app: Hono, syncService?: SyncService): void {
+function registerSyncRoutes(app: Hono, syncService?: SyncService, holder?: DataHolder): void {
   app.post(SYNC_PATH, async (c) => {
     const parsed = await parseJsonBody(c, syncStartGuard);
     if (!parsed.ok) {
       return parsed.response;
     }
-    if (syncService === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const service = holder?.get().syncService ?? syncService;
+    if (service === undefined) {
       return internalError(c);
     }
     return syncResult(
       c,
-      syncService.startSync({
+      service.startSync({
         ...(parsed.value.sources === undefined
           ? {}
           : { sources: parsed.value.sources }),
@@ -176,22 +179,26 @@ function registerSyncRoutes(app: Hono, syncService?: SyncService): void {
     if (!parsed.ok) {
       return parsed.response;
     }
-    if (syncService === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const service = holder?.get().syncService ?? syncService;
+    if (service === undefined) {
       return internalError(c);
     }
     return syncResult(
       c,
-      syncService.resyncSource(source, {
+      service.resyncSource(source, {
         ...(parsed.value.mode === undefined ? {} : { mode: parsed.value.mode }),
         locale: parsed.value.locale,
       }),
     );
   });
   app.get(SYNC_STATUS_PATH, (c) => {
-    if (syncService === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const service = holder?.get().syncService ?? syncService;
+    if (service === undefined) {
       return internalError(c);
     }
-    return c.json(syncService.getSyncStatus());
+    return c.json(service.getSyncStatus());
   });
 }function isScoreValue(value: unknown): value is ScoreValue {
   return (
@@ -323,9 +330,10 @@ export function createApp(
   connectDeps?: ConnectDeps,
   settingsDeps?: SettingsDeps,
   syncService?: SyncService,
+  holder?: DataHolder,
 ): Hono {
   const app = new Hono();
-  registerRoutes(app, exportDeps, connectDeps, settingsDeps, syncService);
+  registerRoutes(app, exportDeps, connectDeps, settingsDeps, syncService, holder);
   return app;
 }
 
@@ -343,6 +351,8 @@ export function createServerApp(opts?: {
   connectDeps?: ConnectDeps;
   settingsDeps?: SettingsDeps;
   syncService?: SyncService;
+  /** D16-2 holder — 있으면 라우트가 closure 대신 holder에서 읽는다. */
+  holder?: DataHolder;
 }): Hono {
   const app = new Hono();
   app.use(hostCheck);
@@ -355,7 +365,7 @@ export function createServerApp(opts?: {
     const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
     return c.json(body, 500);
   });
-  registerRoutes(app, opts?.exportDeps, opts?.connectDeps, opts?.settingsDeps, opts?.syncService);
+  registerRoutes(app, opts?.exportDeps, opts?.connectDeps, opts?.settingsDeps, opts?.syncService, opts?.holder);
   if (opts?.staticRoot !== undefined) {
     wireStatic(app, opts.staticRoot);
   }
@@ -368,13 +378,17 @@ function registerRoutes(
   connectDeps?: ConnectDeps,
   settingsDeps?: SettingsDeps,
   syncService?: SyncService,
+  holder?: DataHolder,
 ): void {
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
-  registerConnectRoutes(app, connectDeps);
-  registerSettingsInfoRoutes(app, settingsDeps);
-  registerSyncRoutes(app, syncService);
+  registerConnectRoutes(app, connectDeps, holder);
+  registerSettingsInfoRoutes(app, settingsDeps, holder);
+  registerSyncRoutes(app, syncService, holder);
   app.get(LIBRARY_PATH, (c) => {
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const db = layer?.db ?? exportDeps?.db;
+    if (db === undefined) {
       return internalError(c);
     }
     const raw = c.req.query('includeEnded');
@@ -382,7 +396,7 @@ function registerRoutes(
       return invalidBody(c, 'includeEnded');
     }
     return c.json(
-      listLibrary(exportDeps.db, { includeEnded: raw === 'true' }),
+      listLibrary(db, { includeEnded: raw === 'true' }),
     );
   });
   app.put('/api/ratings/:platform/:externalId', async (c) => {
@@ -390,13 +404,15 @@ function registerRoutes(
     if (!parsed.ok) {
       return parsed.response;
     }
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const db = holder?.get().db ?? exportDeps?.db;
+    if (db === undefined) {
       return internalError(c);
     }
     try {
       return c.json(
         setRating(
-          exportDeps.db,
+          db,
           {
             platform: c.req.param('platform'),
             externalId: c.req.param('externalId'),
@@ -418,10 +434,12 @@ function registerRoutes(
     if (fallback === null) {
       return invalidBody(c, 'fallback');
     }
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const db = holder?.get().db ?? exportDeps?.db;
+    if (db === undefined) {
       return internalError(c);
     }
-    return c.json(getPrefs(exportDeps.db, fallback));
+    return c.json(getPrefs(db, fallback));
   });
   app.put(PREFS_PATH, async (c) => {
     const fallback = parseFallback(c);
@@ -432,37 +450,47 @@ function registerRoutes(
     if (!parsed.ok) {
       return parsed.response;
     }
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const db = holder?.get().db ?? exportDeps?.db;
+    if (db === undefined) {
       return internalError(c);
     }
-    setPrefs(exportDeps.db, parsed.value);
-    return c.json(getPrefs(exportDeps.db, fallback));
+    setPrefs(db, parsed.value);
+    return c.json(getPrefs(db, fallback));
   });
   app.get(ACHIEVEMENTS_PATH, (c) => {
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const db = holder?.get().db ?? exportDeps?.db;
+    if (db === undefined) {
       return internalError(c);
     }
-    return c.json(getAchievementSettings(exportDeps.db));
+    return c.json(getAchievementSettings(db));
   });
   app.put(ACHIEVEMENTS_PATH, async (c) => {
     const parsed = await parseJsonBody(c, achievementsBodyGuard);
     if (!parsed.ok) {
       return parsed.response;
     }
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const db = holder?.get().db ?? exportDeps?.db;
+    if (db === undefined) {
       return internalError(c);
     }
-    setAchievementSettings(exportDeps.db, parsed.value);
-    return c.json(getAchievementSettings(exportDeps.db));
+    setAchievementSettings(db, parsed.value);
+    return c.json(getAchievementSettings(db));
   });
   // U5-[1] W-S2 — W-S1(info 마운트)와 별도 hunk로 둔다.
-  registerSettingsBackupsRoutes(app, settingsDeps);
+  registerSettingsBackupsRoutes(app, settingsDeps, holder);
   app.post(EXPORT_PATH, async (c) => {
     const parsed = await parseJsonBody(c, exportBodyGuard);
     if (!parsed.ok) {
       return parsed.response;
     }
-    if (exportDeps === undefined) {
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const db = layer?.db ?? exportDeps?.db;
+    const exportDir = layer !== undefined ? layer.exportDir : exportDeps?.exportDir;
+    if (db === undefined || exportDir === undefined) {
       const body: ExportDeniedBody = {
         code: 'EXPORT_FAILED',
         params: { reason: 'not_configured' },
@@ -471,11 +499,11 @@ function registerRoutes(
     }
     try {
       const files = renderExportFiles(
-        readExportGames(exportDeps.db),
+        readExportGames(db),
         parsed.value.locale,
       );
-      const { written } = writeExportFiles(exportDeps.exportDir, files);
-      return c.json({ written, dir: exportDeps.exportDir });
+      const { written } = writeExportFiles(exportDir, files);
+      return c.json({ written, dir: exportDir });
     } catch (error) {
       if (!(error instanceof ExportWriteError)) {
         throw error;
