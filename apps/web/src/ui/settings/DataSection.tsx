@@ -105,7 +105,7 @@ export function DataSection(): React.JSX.Element {
               }}
             >
               <Copy size={15} aria-hidden />
-              {text('export.copyDir')}
+              {text('settings.copyDir')}
             </button>
           </div>
           {copied && <p aria-live="polite">{text('export.copied')}</p>}

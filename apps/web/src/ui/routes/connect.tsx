@@ -38,6 +38,7 @@ type StatusBody = {
 /**
  * 실패 코드+reason → 표시 문구 키. 순수 함수(단위 테스트용).
  * fixed_id는 d_body, 그 외 AUTH_ID_MISMATCH는 e_id다(계약 v1.5.4 384-386/445·495).
+ * KEY_STORE_FAILED는 attach·shutdown이 폼 알림(저장 완료·부착 전), dir_conflict가 steamId 자리, 그 외는 기존 문구다(계약 v1.5.13 790-804).
  */
 export function resolveConnectError(
   code: string,
@@ -53,6 +54,15 @@ export function resolveConnectError(
     return { field: 'steamId', key: 'error.AUTH_ID_MISMATCH' };
   }
   if (code === 'KEY_STORE_FAILED') {
+    if (reason === 'attach') {
+      return { field: 'notice', key: 'connect.keyStoreAttach' };
+    }
+    if (reason === 'shutdown') {
+      return { field: 'notice', key: 'connect.keyStoreShutdown' };
+    }
+    if (reason === 'dir_conflict') {
+      return { field: 'steamId', key: 'connect.keyStoreDirConflict' };
+    }
     return { field: 'steamId', key: 'error.KEY_STORE_FAILED' };
   }
   return { field: 'notice', key: `error.${code}` };

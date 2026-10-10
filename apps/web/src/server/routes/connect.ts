@@ -5,30 +5,33 @@
  * 고정 ID 거부는 Steam 검증보다 먼저(saveConnection 순서, hemo #67489) — Steam 호출 없이 409.
  * 실패 본문은 {code, params}만(원문·키 미반향, L-1).
  */
-import { join } from 'node:path';
 import type Database from 'better-sqlite3';
 import { resolveVanityName, type SyncErrorCode } from '@questail/core';
 import type { Hono } from 'hono';
 import type { VerifyFetchFn } from '../../data/connection.js';
-import { KEY_FILE_NAME, getConnection, saveConnection } from '../../data/index.js';
+import { getConnection, saveConnection } from '../../data/index.js';
+import { unconnectedStatus } from '../../data/connection.js';
+import { createConnectLock, type AttachController } from '../attach.js';
 import { createLogger } from '../logging.js';
-import type { DataHolder } from '../dataHolder.js';
+import { deriveDataPaths, type DataHolder } from '../dataHolder.js';
+import { ACCOUNT_DIR_PATTERN } from '../dataLocation.js';
 import { parseJsonBody, type BodyGuard } from '../validate.js';
 
 export const CONNECT_STATUS_PATH = '/api/connect/status';
 export const CONNECT_PATH = '/api/connect';
 
 export type ConnectDeps = {
-  db: Database.Database;
-  keyPath: string;
+  /** 미부착 기동에서는 없다(attach 경로가 폴더를 만들며 계층에서 읽는다). */
+  db?: Database.Database;
+  keyPath?: string;
   fetchFn?: VerifyFetchFn;
   /** P-6 테스트 주입용 base URL. 없으면 공식 기본. */
   baseUrl?: string;
 };
 
-/** 키 경로 = <dataDir>/KEY_FILE_NAME. 경로는 서버가 주입한다. */
+/** 키 경로 = deriveDataPaths(dataDir).keyPath(경로 조립 단일 출처). 경로는 서버가 주입한다. */
 export function connectKeyPath(dataDir: string): string {
-  return join(dataDir, KEY_FILE_NAME);
+  return deriveDataPaths(dataDir).keyPath;
 }
 
 type ConnectFailBody = {
@@ -92,16 +95,27 @@ function statusFor(code: SyncErrorCode): 400 | 409 | 429 | 500 | 502 {
   }
 }
 
-/** 앱 인스턴스당 직렬화 상태는 클로저에 둔다(모듈 전역 없음). */
-export function registerConnectRoutes(app: Hono, deps?: ConnectDeps, holder?: DataHolder): void {
-  let inFlight = false;
+/**
+ * 앱 인스턴스당 직렬화 상태는 클로저에 둔다(모듈 전역 없음).
+ * attach(미부착 기동)가 있으면 잠금도 그 컨트롤러 것을 쓴다 — 부착 중 PUT이 같은 잠금을 기다린다.
+ */
+export function registerConnectRoutes(
+  app: Hono,
+  deps?: ConnectDeps,
+  holder?: DataHolder,
+  attach?: AttachController,
+): void {
+  const lock = attach?.lock ?? createConnectLock();
 
   app.get(CONNECT_STATUS_PATH, (c) => {
+    // 요청 시작 시 holder 1회 읽기. 미부착이면 DB 없이 연결 안 됨 응답.
+    const layer = holder?.get();
+    if (holder !== undefined && layer === undefined) {
+      return c.json(unconnectedStatus());
+    }
     if (deps === undefined) {
       throw new Error('[web] connect 미배선 — deps 없음');
     }
-    // D16-2 — 요청 시작 시 holder 1회 읽기(db·keyPath는 holder, fetchFn·baseUrl은 주입 그대로).
-    const layer = holder?.get();
     const db = layer?.db ?? deps.db;
     if (db === undefined) {
       throw new Error('[web] connect 미배선 — deps 없음');
@@ -114,20 +128,23 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps, holder?: Da
     if (!parsed.ok) {
       return parsed.response;
     }
-    // D16-2 — 요청 시작 시 holder 1회 읽기.
-    if (deps === undefined) {
-      throw new Error('[web] connect 미배선 — deps 없음');
-    }
+    // 요청 시작 시 holder 1회 읽기.
     const layer = holder?.get();
-    const db = layer?.db ?? deps.db;
-    const keyPath = layer?.keyPath ?? deps.keyPath;
-    if (db === undefined || keyPath === undefined) {
+    const unattached = holder !== undefined && layer === undefined && attach !== undefined;
+    if (!unattached) {
+      if (deps === undefined) {
+        throw new Error('[web] connect 미배선 — deps 없음');
+      }
+    }
+    const db = layer?.db ?? deps?.db;
+    const keyPath = layer?.keyPath ?? deps?.keyPath;
+    if (!unattached && (db === undefined || keyPath === undefined)) {
       throw new Error('[web] connect 미배선 — deps 없음');
     }
-    if (inFlight) {
+    const release = lock.tryAcquire();
+    if (release === null) {
       return c.json({ code: 'CONNECT_IN_PROGRESS', params: {} }, 409);
     }
-    inFlight = true;
     // 요청 스코프 로거 — 이 요청의 keyText만 알고 요청 종료 후 보관 없음.
     const log = createLogger([parsed.value.keyText]);
     // P-7: vanity가 있으면 steamId를 무시하고 resolve 결과 id만 쓴다. 파싱 위치는 UI 하나.
@@ -142,22 +159,41 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps, holder?: Da
         const resolved = await resolveVanityName({
           vanity: parsed.value.vanity,
           keyText: parsed.value.keyText,
-          baseUrl: deps.baseUrl,
-          fetchFn: deps.fetchFn,
+          baseUrl: deps?.baseUrl,
+          fetchFn: deps?.fetchFn,
+          ...(unattached && attach !== undefined ? { signal: attach.signal } : {}),
         });
         if (!resolved.ok) {
           return fail(resolved.code, resolved.params);
         }
         steamId = resolved.steamId;
       }
+      // 비형식 ID는 Steam 요청 전에 거부(미부착·부착 공통). vanity 경로는 resolve 결과 id에 같은 검사.
+      if (!ACCOUNT_DIR_PATTERN.test(steamId)) {
+        return fail('AUTH_ID_MISMATCH', { reason: 'not_found' });
+      }
+      if (unattached && attach !== undefined) {
+        // [부착] 1~5 — 잠금 보유 중. 6(시작)은 attach가 background로 낸다.
+        const attached = await attach.connect({
+          keyText: parsed.value.keyText,
+          steamId,
+          achievementsEnabled: parsed.value.achievementsEnabled,
+          fetchFn: deps?.fetchFn,
+          baseUrl: deps?.baseUrl,
+        });
+        if (attached.ok) {
+          return c.json({ connected: true }, 200);
+        }
+        return fail(attached.code, attached.params);
+      }
       const result = await saveConnection({
-        db,
-        keyPath,
+        db: db as Database.Database,
+        keyPath: keyPath as string,
         keyText: parsed.value.keyText,
         steamId,
         achievementsEnabled: parsed.value.achievementsEnabled,
-        fetchFn: deps.fetchFn,
-        baseUrl: deps.baseUrl,
+        fetchFn: deps?.fetchFn,
+        baseUrl: deps?.baseUrl,
       });
       if (result.ok) {
         return c.json({ connected: true }, 200);
@@ -167,7 +203,7 @@ export function registerConnectRoutes(app: Hono, deps?: ConnectDeps, holder?: Da
       log.error('[web] connect 예외');
       throw error;
     } finally {
-      inFlight = false;
+      release();
     }
   });
 }

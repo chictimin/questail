@@ -66,6 +66,7 @@ describe('i18n 키 정합', () => {
     'EXPORT_FAILED',
     'GAME_NOT_FOUND',
     'SYNC_IN_PROGRESS',
+    'NOT_CONNECTED',
     'INTERNAL',
       'INVALID_BODY',
       'INVALID_HOST',
@@ -226,6 +227,9 @@ describe('UI 하드코딩 문자열 0', () => {
     '_blank', // 링크 타깃 — 화면 미노출
     'noopener noreferrer', // 링크 rel — 화면 미노출
     'fixed_id', // 계약 params.reason 값(v1.5.4 384행) — 화면 미노출
+    'attach', // 계약 params.reason 값(KEY_STORE_FAILED, v1.5.13 790-804) — 화면 미노출
+    'shutdown', // 계약 params.reason 값(KEY_STORE_FAILED, v1.5.13 790-804) — 화면 미노출
+    'dir_conflict', // 계약 params.reason 값(KEY_STORE_FAILED, v1.5.13 790-804) — 화면 미노출
     'key', // 에러 자리 식별자(ui 내부) — 화면 미노출
     'steamId', // 에러 자리 식별자(ui 내부) — 화면 미노출
     'notice', // 에러 자리 식별자(ui 내부) — 화면 미노출

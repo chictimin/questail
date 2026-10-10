@@ -28,6 +28,7 @@ export const en = {
     INTERNAL: 'Something went wrong while processing. Please try again later.',
     EXPORT_FAILED: 'Couldn’t write to the exports folder. Check the folder’s write permission, then export again.',
     CONNECT_IN_PROGRESS: 'A connection request is already in progress. Please check again shortly.',
+    NOT_CONNECTED: 'Steam isn’t connected yet. Connect Steam on the connect screen, then try again.',
   },
   export: {
     playtime: 'Playtime',
@@ -65,7 +66,7 @@ ownership_status: "owned"
     again: 'Export again',
     wordDone: 'Done',
     wordFail: 'Error',
-    copyDir: 'Copy',
+    copyDir: 'Copy path',
     copied: 'Folder path copied',
     copyFallback: 'Copy failed. Copy the address above directly.',
     noKey: 'Your key is never included.',
@@ -121,6 +122,9 @@ ownership_status: "owned"
     accNote: 'If you see a "Limited user account" notice, your account can\'t get a key yet.',
     goList: 'Opening your library',
     fixedIdError: 'Each data folder records one Steam account. To use another account, set a new folder with QUESTAIL_DATA_DIR and restart the app.',
+    keyStoreAttach: 'Your key and account were saved, but the connection isn’t finished yet. Connect again or restart the app and it will pick up where it left off.',
+    keyStoreShutdown: 'Your key and account were saved, but the app is shutting down so the connection isn’t finished. Restart the app or connect again and it will pick up where it left off.',
+    keyStoreDirConflict: 'The key wasn’t saved because this data folder belongs to another account or is damaged. Check the folder or choose a new one, then try again.',
   },
   library: {
     title: 'Library',
@@ -223,6 +227,7 @@ ownership_status: "owned"
     licenseValue: 'MIT',
     dataTitle: 'Data',
     folderLabel: 'Data folder',
+    copyDir: 'Copy',
     envBefore: 'To store it elsewhere, set the environment variable',
     envAfter: ' to a path and restart the app.',
     backupTitle: 'Automatic backups',
@@ -231,7 +236,7 @@ ownership_status: "owned"
     sizeUnit: 'MB',
   },
   sync: {
-    sub: 'Last full collection {t}',
+    sub: 'Last collected {t}',
     localeNote: 'Game info is only fetched in the current display language.',
     collectAll: 'Collect everything again',
     sourceOwned: 'Owned games',

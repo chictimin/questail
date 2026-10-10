@@ -10,7 +10,8 @@ export type RequestErrorCode =
   | 'EXPORT_FAILED'
   | 'CONNECT_IN_PROGRESS'
   | 'GAME_NOT_FOUND'
-  | 'SYNC_IN_PROGRESS';
+  | 'SYNC_IN_PROGRESS'
+  | 'NOT_CONNECTED';
 
 export type RequestDeniedBody = {
   code: RequestErrorCode;

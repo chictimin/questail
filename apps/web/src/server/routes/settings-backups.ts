@@ -21,7 +21,12 @@ export interface BackupEntry {
 export function registerSettingsBackupsRoutes(app: Hono, deps?: SettingsDeps, holder?: DataHolder): void {
   app.get(SETTINGS_BACKUPS_PATH, (c) => {
     // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const dataDir = holder?.get().dataDir ?? deps?.dataDir;
+    const layer = holder?.get();
+    // 미부착(연동 전)은 빈 목록.
+    if (holder !== undefined && layer === undefined) {
+      return c.json({ backups: [] });
+    }
+    const dataDir = layer?.dataDir ?? deps?.dataDir;
     if (dataDir === undefined) {
       return settingsInternalError(c);
     }

@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import type { Hono } from 'hono';
 import type { ServerType } from '@hono/node-server';
-import { META_CACHE_DIR_NAME } from '@questail/core';
 import type { SyncService } from '../data/service.js';
 import {
   OWNER_LOCK_BUSY_MESSAGE,
@@ -20,9 +19,18 @@ import {
 } from '../db/ownerLock.js';
 import { createServerApp } from './app.js';
 import { resolvePort, startServer, type StartedServer } from './serve.js';
-import { EXPORT_DIR_NAME } from './export.js';
-import { connectKeyPath } from './routes/connect.js';
-import { createDataHolder, type DataHolder } from './dataHolder.js';
+import {
+  CONNECT_DRAIN_MS,
+  createAttachController,
+  type AttachController,
+} from './attach.js';
+import { resolveDataLocation } from './dataLocation.js';
+import {
+  createDataHolder,
+  createDataLayer,
+  type DataHolder,
+  type DataLayer,
+} from './dataHolder.js';
 
 /** 데이터 디렉터리 환경변수 (PM 확정). 기본 = 저장소 루트 data/ (캡틴 결정, PM #61920). */
 export const DATA_DIR_ENV = 'QUESTAIL_DATA_DIR';
@@ -82,7 +90,9 @@ export const SHUTDOWN_GRACE_MS = 5000;
 
 /** createApp 주입 컨텍스트 — db는 마이그레이션이 반환한 같은 open 핸들이다(PM #63860). */
 export type AppContext = {
+  /** 미부착(연동 전) 기동이면 undefined. */
   db: Database.Database | undefined;
+  /** 해석된 데이터 폴더 D. 미부착이면 저장 예정 위치 R. */
   dataDir: string;
   /** 사용자 표시용 앱 버전 — apps/web/package.json, boot 1회 읽기. */
   version: string;
@@ -94,7 +104,9 @@ export type AppContext = {
    * ctx.dataDir가 아니라 holder에서 읽는다.
    */
   holder?: DataHolder;
-  /** holder와 같은 값의 파생 경로(라우트·서비스 주입용, 읽기 전용). */
+  /** 미부착 기동에서만 있다 — 대기 값·connect 잠금·종료 플래그·부착 흐름(P-12). */
+  attach?: AttachController;
+  /** holder와 같은 값의 파생 경로(라우트·서비스 주입용, 읽기 전용). 미부착이면 없다. */
   keyPath?: string;
   cacheDir?: string;
   exportDir?: string;
@@ -154,6 +166,12 @@ export type BootDeps = {
   env?: NodeJS.ProcessEnv;
   /** B 소유 — 리스너 close 유예(ms) 오버라이드, 테스트용. 미지정 시 SHUTDOWN_GRACE_MS. */
   shutdownGraceMs?: number;
+  /** 종료 시 connect 잠금 해제 대기(ms) 오버라이드, 테스트용. 미지정 시 10초. */
+  connectDrainMs?: number;
+  /** 부착 중 PUT 대기 상한(ms) 오버라이드(시간 주입), 테스트용. 미지정 시 30초. */
+  connectWaitMs?: number;
+  /** ② 루트 R 오버라이드, 테스트용. 미지정 시 <저장소>/data. */
+  dataRoot?: string;
 };
 
 /**
@@ -180,50 +198,75 @@ export type BootedServer = {
 
 export async function boot(deps: BootDeps): Promise<BootedServer> {
   const env = deps.env ?? process.env;
-  const dataDir = resolveDataDir(env);
-  // D16-1 — 현행 디렉터리 해석은 그대로, DB를 열기 전에 소유 잠금 취득.
-  // 레지스트리가 프로세스 수명 동안 연결을 쥐고 해제 = 프로세스 종료.
-  let ownerLock: OwnerLock;
-  try {
-    ownerLock = await (deps.acquireOwnerLock ?? acquireOwnerLock)(dataDir);
-  } catch (error) {
-    throw new Error(
-      isOwnerLockBusy(error)
-        ? OWNER_LOCK_BUSY_MESSAGE
-        : OWNER_LOCK_UNAVAILABLE_MESSAGE,
+  // 소유 잠금(P-12 ⑥) — 취득 실패는 안내만(값·키·경로 원문 없음). 레지스트리가 프로세스 수명 동안 쥔다.
+  const lockOrThrow = async (dir: string): Promise<OwnerLock> => {
+    try {
+      return await (deps.acquireOwnerLock ?? acquireOwnerLock)(dir);
+    } catch (error) {
+      throw new Error(
+        isOwnerLockBusy(error)
+          ? OWNER_LOCK_BUSY_MESSAGE
+          : OWNER_LOCK_UNAVAILABLE_MESSAGE,
+      );
+    }
+  };
+  // 1 데이터 폴더 해석(P-12 ①~⑦) — 해석 전에 필요한 잠금(D, ②면 R도)을 DB 열기 전에 취득한다.
+  const location = await resolveDataLocation(env, DATA_DIR_ENV, {
+    acquireLock: lockOrThrow,
+    defaultRoot: () => deps.dataRoot ?? defaultDataDir(),
+  });
+  const version = readWebVersion();
+  const holder = createDataHolder();
+  let attach: AttachController | undefined;
+  let background: Promise<void> = Promise.resolve();
+  let rawDb: Database.Database | undefined;
+  let syncService: SyncService | undefined;
+  let dataDir: string;
+
+  if (location.mode === 'unattached') {
+    // 미부착 기동 — DB·서비스·cron 없이 listen. 연동 성공 시 attach가 계층을 공개한다.
+    dataDir = location.root;
+    attach = createAttachController({
+      root: location.root,
+      version,
+      timeZone: deps.timeZone,
+      holder,
+      backupDatabase: deps.backupDatabase,
+      migrateDatabase: deps.migrateDatabase,
+      createSyncService: deps.createSyncService,
+      registerCron: deps.registerCron,
+      acquireOwnerLock: deps.acquireOwnerLock,
+      waitMs: deps.connectWaitMs,
+    });
+  } else {
+    dataDir = location.dir;
+    const db = await deps.migrateDatabase(dataDir, {
+      backupBeforeApply: () => deps.backupDatabase(dataDir),
+    });
+    rawDb = (db as Partial<{ db: Database.Database }>).db;
+    syncService = deps.createSyncService?.({ db: rawDb, dataDir });
+    if (syncService !== undefined) {
+      await syncService.recover();
+    }
+    holder.set(
+      createDataLayer({ db: rawDb, bootDb: db, dataDir, version, syncService }),
     );
   }
-  void ownerLock;
-  const db = await deps.migrateDatabase(dataDir, {
-    backupBeforeApply: () => deps.backupDatabase(dataDir),
-  });
-  const rawDb = (db as Partial<{ db: Database.Database }>).db;
-  const syncService = deps.createSyncService?.({ db: rawDb, dataDir });
-  if (syncService !== undefined) {
-    await syncService.recover();
-  }
-  // D16-2 — 파생 경로는 dataDir에서 1회 조립해 holder에 넣는다.
-  // 이 단위에서는 기동 시 항상 부착(현행과 같음).
-  const version = readWebVersion();
-  const holder = createDataHolder({
-    db: rawDb,
-    bootDb: db,
-    dataDir,
-    version,
-    syncService,
-    keyPath: connectKeyPath(dataDir),
-    cacheDir: join(dataDir, META_CACHE_DIR_NAME),
-    exportDir: join(dataDir, EXPORT_DIR_NAME),
-  });
+  const initialLayer = holder.get();
   const app = (deps.createApp ?? (() => createServerApp()))({
     db: rawDb,
     dataDir,
     version,
     syncService,
     holder,
-    keyPath: holder.get().keyPath,
-    cacheDir: holder.get().cacheDir,
-    exportDir: holder.get().exportDir,
+    ...(attach === undefined ? {} : { attach }),
+    ...(initialLayer === undefined
+      ? {}
+      : {
+          keyPath: initialLayer.keyPath,
+          cacheDir: initialLayer.cacheDir,
+          exportDir: initialLayer.exportDir,
+        }),
   });
   const { server, port } = await (deps.listen ?? startServer)(
     app,
@@ -233,40 +276,41 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  // D16-2 — background·shutdown은 기동 closure가 아니라 holder에서 읽는다.
-  // 요청 처리와 같은 규칙: 시작 시 holder 1회 읽기.
-  const background = (async (): Promise<void> => {
-    const layer = holder.get();
-    if (signal.aborted) {
-      return;
-    }
-    const connected = await deps.isConnected({ db: layer.db });
-    if (signal.aborted) {
-      return;
-    }
-    if (connected) {
-      await deps.runOverdueSnapshot({
-        signal,
+  // 기동 부착 계층의 background — 계층을 시작 시 1회 읽고, cron도 그 계층 객체에 건다.
+  if (initialLayer !== undefined) {
+    const layer = initialLayer;
+    background = (async (): Promise<void> => {
+      if (signal.aborted) {
+        return;
+      }
+      const connected = await deps.isConnected({ db: layer.db });
+      if (signal.aborted) {
+        return;
+      }
+      if (connected) {
+        await deps.runOverdueSnapshot({
+          signal,
+          service: layer.syncService,
+          db: layer.db,
+          timeZone: deps.timeZone,
+        });
+      }
+      if (signal.aborted) {
+        return;
+      }
+      const cron = deps.registerCron({
         service: layer.syncService,
         db: layer.db,
         timeZone: deps.timeZone,
       });
-    }
-    if (signal.aborted) {
-      return;
-    }
-    const cron = deps.registerCron({
-      service: layer.syncService,
-      db: layer.db,
-      timeZone: deps.timeZone,
-    });
-    if (signal.aborted) {
-      cron.unregister();
-      return;
-    }
-    holder.get().cron = cron;
-  })();
-  holder.get().background = background;
+      if (signal.aborted) {
+        cron.unregister();
+        return;
+      }
+      layer.cron = cron;
+    })();
+    layer.background = background;
+  }
 
   let shutdownOnce: Promise<void> | null = null;
   const shutdown = (): Promise<void> => {
@@ -274,7 +318,14 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
       return shutdownOnce;
     }
     shutdownOnce = (async (): Promise<void> => {
-      // ① 리스너 close — 새 TCP 연결은 즉시 거부된다. close() 콜백은 열린
+      // ① 종료 플래그 + 진행 중 connect abort → ② connect 잠금 해제 대기(상한).
+      // 플래그 이후 공개 0 — attach는 5 직전에 플래그를 확인한다. 아래부터는 계층을 1회만 읽는다.
+      if (attach !== undefined) {
+        attach.beginShutdown();
+        await attach.lock.waitIdle(deps.connectDrainMs ?? CONNECT_DRAIN_MS);
+      }
+      const layer: DataLayer | undefined = holder.get();
+      // ③-① 리스너 close — 새 TCP 연결은 즉시 거부된다. close() 콜백은 열린
       // 연결이 끊기길 기다리느라 늦어질 수 있어, 유휴 연결을 먼저 끊고
       // 유예 안에 끝나지 않으면 전 연결을 강제 절단한다(PM #62944).
       const graceMs = deps.shutdownGraceMs ?? SHUTDOWN_GRACE_MS;
@@ -305,18 +356,17 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
           server as unknown as { closeIdleConnections?: () => void }
         ).closeIdleConnections?.();
       });
-      // ② abort → ③ background 정착 대기.
-      // D16-2 — holder 기준 기존 6단계(리스너 → abort → background 정착
-      // → service.stop → cron 해제 → db close).
+      // ② abort → ③ background 정착 대기(연동 후 시작 작업 포함).
       controller.abort();
-      await (holder.get().background ?? background).then(
-        () => undefined,
-        () => undefined,
-      );
+      await Promise.allSettled([
+        background,
+        ...(layer?.background === undefined ? [] : [layer.background]),
+        ...(attach?.startTasks() ?? []),
+      ]);
       // ③.5 동기 서비스 정지 — 리스너 close 뒤·DB close 전, 상한 10초, throw 0.
       try {
         await Promise.race([
-          holder.get().syncService?.stop() ?? Promise.resolve(),
+          layer?.syncService?.stop() ?? Promise.resolve(),
           new Promise<void>((_, reject) => {
             setTimeout(() => reject(new Error('sync stop timeout')), 10000);
           }),
@@ -324,10 +374,12 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
       } catch {
         // 정지 실패·초과해도 종료는 계속한다
       }
-      // ④ 확보된 cron 해제 → ⑤ DB close.
-      holder.get().cron?.unregister();
-      holder.get().cron = undefined;
-      await holder.get().bootDb.close();
+      // ④ 확보된 cron 해제 → ⑤ DB close. 미부착이면 리스너만.
+      if (layer !== undefined) {
+        layer.cron?.unregister();
+        layer.cron = undefined;
+        await layer.bootDb.close();
+      }
     })();
     return shutdownOnce;
   };

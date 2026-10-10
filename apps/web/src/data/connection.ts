@@ -177,97 +177,160 @@ export function saveConnection(input: {
   renameTmp?: (tmpPath: string, keyPath: string) => void;
 }): Promise<SaveResult> {
   return (async (): Promise<SaveResult> => {
-    const key = input.keyText.trim();
-    if (!isKeyShapeValid(key)) {
-      return { ok: false, code: 'AUTH_INVALID_KEY', params: { reason: 'format' } };
-    }
-    const base =
-      input.baseUrl === undefined ? DEFAULT_STEAM_API_BASE : normalizeSteamBaseUrl(input.baseUrl);
-    if (base === null) {
-      return { ok: false, code: 'NETWORK', params: { reason: 'upstream' } };
-    }
-    const existing = storedSteamId(input.db);
-    if (existing !== null && existing !== input.steamId) {
-      return { ok: false, code: 'AUTH_ID_MISMATCH', params: { reason: 'fixed_id' } };
-    }
-    const verified = await verifyKeyOnce({
-      base,
-      key,
+    const verified = await verifyConnection({
+      keyText: input.keyText,
       steamId: input.steamId,
-      fetchFn: input.fetchFn ?? fetch,
+      existingSteamId: storedSteamId(input.db),
+      fetchFn: input.fetchFn,
       signal: input.signal,
+      baseUrl: input.baseUrl,
     });
     if (!verified.ok) return verified;
-    const prevAccount = readAccountRow(input.db);
-    let prevOption: OptionSnapshot | null = null;
-    if (input.achievementsEnabled !== undefined) {
-      try {
-        prevOption = readOptionRow(input.db);
-      } catch {
-        return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
-      }
-    }
-    const tmpPath = `${input.keyPath}.${process.pid}.tmp`;
-    const removeTmp = (): void => {
-      try {
-        rmSync(tmpPath, { force: true });
-      } catch {
-        /* 정리 실패는 무시한다 */
-      }
-    };
-    try {
-      mkdirSync(dirname(input.keyPath), { recursive: true });
-      writeFileSync(tmpPath, key, { mode: 0o600 });
-      if (!isWindows()) {
-        chmodSync(tmpPath, 0o600);
-      }
-    } catch {
-      removeTmp();
-      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
-    }
-    if (!isWindows() && !hasSecureMode(tmpPath)) {
-      removeTmp();
-      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'permission' } };
-    }
-    try {
-      const storeAll = input.db.transaction(() => {
-        writeAccount(input.db, input.steamId);
-        if (input.achievementsEnabled !== undefined) {
-          writeOption(input.db, input.achievementsEnabled);
-        }
-      });
-      storeAll();
-    } catch {
-      removeTmp();
-      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
-    }
-    try {
-      (input.renameTmp ?? renameSync)(tmpPath, input.keyPath);
-    } catch {
-      try {
-        const compensate = input.db.transaction(() => {
-          if (prevAccount === null) {
-            deleteAccount(input.db);
-          } else {
-            restoreAccount(input.db, prevAccount);
-          }
-          if (input.achievementsEnabled !== undefined) {
-            if (prevOption === null) {
-              deleteOption(input.db);
-            } else {
-              restoreOption(input.db, prevOption);
-            }
-          }
-        });
-        compensate();
-      } catch {
-        /* 보상 실패도 같은 코드로 답한다. 계정·옵션·키 상태는 미보장 */
-      }
-      removeTmp();
-      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
-    }
-    return { ok: true };
+    return persistConnection({
+      db: input.db,
+      keyPath: input.keyPath,
+      key: verified.key,
+      steamId: input.steamId,
+      achievementsEnabled: input.achievementsEnabled,
+      renameTmp: input.renameTmp,
+    });
   })();
+}
+
+/**
+ * 저장 전 검증(P-5) — 형태·base·고정 ID 충돌·Steam 1회 검증. 쓰기 0.
+ * D16-3: [부착] 1단계가 계정 DB 없이 이 부분만 쓰도록 saveConnection에서 분리했다(동작 변화 0).
+ * existingSteamId = 이미 저장된 계정의 ID(없으면 null·생략).
+ * 성공 시 trim한 키를 돌려준다(호출 측이 persistConnection에 넘기고 보관하지 않는다).
+ */
+export async function verifyConnection(input: {
+  keyText: string;
+  steamId: string;
+  existingSteamId?: string | null;
+  fetchFn?: VerifyFetchFn;
+  signal?: AbortSignal;
+  baseUrl?: string;
+}): Promise<{ ok: true; key: string } | { ok: false; code: SyncErrorCode; params: IssueParams }> {
+  const key = input.keyText.trim();
+  if (!isKeyShapeValid(key)) {
+    return { ok: false, code: 'AUTH_INVALID_KEY', params: { reason: 'format' } };
+  }
+  const base =
+    input.baseUrl === undefined ? DEFAULT_STEAM_API_BASE : normalizeSteamBaseUrl(input.baseUrl);
+  if (base === null) {
+    return { ok: false, code: 'NETWORK', params: { reason: 'upstream' } };
+  }
+  const existing = input.existingSteamId ?? null;
+  if (existing !== null && existing !== input.steamId) {
+    return { ok: false, code: 'AUTH_ID_MISMATCH', params: { reason: 'fixed_id' } };
+  }
+  const verified = await verifyKeyOnce({
+    base,
+    key,
+    steamId: input.steamId,
+    fetchFn: input.fetchFn ?? fetch,
+    signal: input.signal,
+  });
+  if (!verified.ok) return verified;
+  return { ok: true, key };
+}
+
+/**
+ * 저장(②~④) — 검증이 끝난 trim 키를 받아 임시 파일 → 한 트랜잭션 → rename.
+ * extraWrites는 같은 트랜잭션 안에서 실행되고, 되돌림 함수를 돌려준다(rename 실패 보상 트랜잭션에서 호출).
+ * 실패 규칙은 saveConnection 주석(R12-3)과 같다.
+ */
+export function persistConnection(input: {
+  db: Database.Database;
+  keyPath: string;
+  key: string;
+  steamId: string;
+  achievementsEnabled?: boolean;
+  renameTmp?: (tmpPath: string, keyPath: string) => void;
+  extraWrites?: (db: Database.Database) => () => void;
+}): SaveResult {
+  const key = input.key;
+  const prevAccount = readAccountRow(input.db);
+  let prevOption: OptionSnapshot | null = null;
+  if (input.achievementsEnabled !== undefined) {
+    try {
+      prevOption = readOptionRow(input.db);
+    } catch {
+      return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+    }
+  }
+  const tmpPath = `${input.keyPath}.${process.pid}.tmp`;
+  const removeTmp = (): void => {
+    try {
+      rmSync(tmpPath, { force: true });
+    } catch {
+      /* 정리 실패는 무시한다 */
+    }
+  };
+  try {
+    mkdirSync(dirname(input.keyPath), { recursive: true });
+    writeFileSync(tmpPath, key, { mode: 0o600 });
+    if (!isWindows()) {
+      chmodSync(tmpPath, 0o600);
+    }
+  } catch {
+    removeTmp();
+    return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+  }
+  if (!isWindows() && !hasSecureMode(tmpPath)) {
+    removeTmp();
+    return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'permission' } };
+  }
+  let undoExtra: (() => void) | undefined;
+  try {
+    const storeAll = input.db.transaction(() => {
+      writeAccount(input.db, input.steamId);
+      if (input.achievementsEnabled !== undefined) {
+        writeOption(input.db, input.achievementsEnabled);
+      }
+      undoExtra = input.extraWrites?.(input.db);
+    });
+    storeAll();
+  } catch {
+    removeTmp();
+    return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+  }
+  try {
+    (input.renameTmp ?? renameSync)(tmpPath, input.keyPath);
+  } catch {
+    try {
+      const compensate = input.db.transaction(() => {
+        if (prevAccount === null) {
+          deleteAccount(input.db);
+        } else {
+          restoreAccount(input.db, prevAccount);
+        }
+        if (input.achievementsEnabled !== undefined) {
+          if (prevOption === null) {
+            deleteOption(input.db);
+          } else {
+            restoreOption(input.db, prevOption);
+          }
+        }
+        undoExtra?.();
+      });
+      compensate();
+    } catch {
+      /* 보상 실패도 같은 코드로 답한다. 계정·옵션·키 상태는 미보장 */
+    }
+    removeTmp();
+    return { ok: false, code: 'KEY_STORE_FAILED', params: { reason: 'io' } };
+  }
+  return { ok: true };
+}
+
+/** 미부착(연동 전) 연결 상태 — DB 없이 같은 응답 형태. */
+export function unconnectedStatus(): {
+  connected: false;
+  steamId: null;
+  permissionEnforced: boolean;
+} {
+  return { connected: false, steamId: null, permissionEnforced: !isWindows() };
 }
 
 /** 연결 상태. permissionEnforced는 POSIX 600 강제 여부다. */

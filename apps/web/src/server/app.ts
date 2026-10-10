@@ -29,6 +29,11 @@ import {
   type SettingsDeps,
 } from './routes/settings-info.js';
 import type { DataHolder } from './dataHolder.js';
+import {
+  readPendingPrefs,
+  writePendingPrefs,
+  type AttachController,
+} from './attach.js';
 import { parseJsonBody, type BodyGuard } from './validate.js';
 // U5-[1] W-S2 — W-S1(info import)과 별도 hunk로 둔다.
 import { registerSettingsBackupsRoutes } from './routes/settings-backups.js';
@@ -151,12 +156,15 @@ function syncResult(
 
 function registerSyncRoutes(app: Hono, syncService?: SyncService, holder?: DataHolder): void {
   app.post(SYNC_PATH, async (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
     const parsed = await parseJsonBody(c, syncStartGuard);
     if (!parsed.ok) {
       return parsed.response;
     }
     // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const service = holder?.get().syncService ?? syncService;
+    const service = holder?.get()?.syncService ?? syncService;
     if (service === undefined) {
       return internalError(c);
     }
@@ -171,6 +179,9 @@ function registerSyncRoutes(app: Hono, syncService?: SyncService, holder?: DataH
     );
   });
   app.post(`${SYNC_PATH}/:source/retry`, async (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
     const source = c.req.param('source');
     if (!isCollectSource(source)) {
       return invalidBody(c, 'source');
@@ -180,7 +191,7 @@ function registerSyncRoutes(app: Hono, syncService?: SyncService, holder?: DataH
       return parsed.response;
     }
     // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const service = holder?.get().syncService ?? syncService;
+    const service = holder?.get()?.syncService ?? syncService;
     if (service === undefined) {
       return internalError(c);
     }
@@ -193,8 +204,11 @@ function registerSyncRoutes(app: Hono, syncService?: SyncService, holder?: DataH
     );
   });
   app.get(SYNC_STATUS_PATH, (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
     // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const service = holder?.get().syncService ?? syncService;
+    const service = holder?.get()?.syncService ?? syncService;
     if (service === undefined) {
       return internalError(c);
     }
@@ -310,6 +324,22 @@ function invalidBody(c: Context, reason: string): Response {
   return c.json(body, 400);
 }
 
+/** 연동 전(미부착) 데이터 API — 409 NOT_CONNECTED(웹 소유 문구). */
+function notConnected(c: Context): Response {
+  const body: RequestDeniedBody = { code: 'NOT_CONNECTED', params: {} };
+  return c.json(body, 409);
+}
+
+/** holder가 있고 아직 계층이 없으면 미부착이다. */
+function isUnattached(holder: DataHolder | undefined): boolean {
+  return holder !== undefined && holder.get() === undefined;
+}
+
+function connectInProgress(c: Context): Response {
+  const body: RequestDeniedBody = { code: 'CONNECT_IN_PROGRESS', params: {} };
+  return c.json(body, 409);
+}
+
 function internalError(c: Context): Response {
   const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
   return c.json(body, 500);
@@ -331,9 +361,10 @@ export function createApp(
   settingsDeps?: SettingsDeps,
   syncService?: SyncService,
   holder?: DataHolder,
+  attach?: AttachController,
 ): Hono {
   const app = new Hono();
-  registerRoutes(app, exportDeps, connectDeps, settingsDeps, syncService, holder);
+  registerRoutes(app, exportDeps, connectDeps, settingsDeps, syncService, holder, attach);
   return app;
 }
 
@@ -353,6 +384,8 @@ export function createServerApp(opts?: {
   syncService?: SyncService;
   /** D16-2 holder — 있으면 라우트가 closure 대신 holder에서 읽는다. */
   holder?: DataHolder;
+  /** 미부착 기동의 대기 값·connect 잠금·부착 흐름(P-12). */
+  attach?: AttachController;
 }): Hono {
   const app = new Hono();
   app.use(hostCheck);
@@ -365,7 +398,15 @@ export function createServerApp(opts?: {
     const body: RequestDeniedBody = { code: 'INTERNAL', params: {} };
     return c.json(body, 500);
   });
-  registerRoutes(app, opts?.exportDeps, opts?.connectDeps, opts?.settingsDeps, opts?.syncService, opts?.holder);
+  registerRoutes(
+    app,
+    opts?.exportDeps,
+    opts?.connectDeps,
+    opts?.settingsDeps,
+    opts?.syncService,
+    opts?.holder,
+    opts?.attach,
+  );
   if (opts?.staticRoot !== undefined) {
     wireStatic(app, opts.staticRoot);
   }
@@ -379,12 +420,16 @@ function registerRoutes(
   settingsDeps?: SettingsDeps,
   syncService?: SyncService,
   holder?: DataHolder,
+  attach?: AttachController,
 ): void {
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
-  registerConnectRoutes(app, connectDeps, holder);
+  registerConnectRoutes(app, connectDeps, holder, attach);
   registerSettingsInfoRoutes(app, settingsDeps, holder);
   registerSyncRoutes(app, syncService, holder);
   app.get(LIBRARY_PATH, (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
     // D16-2 — 요청 시작 시 holder 1회 읽기.
     const layer = holder?.get();
     const db = layer?.db ?? exportDeps?.db;
@@ -400,12 +445,15 @@ function registerRoutes(
     );
   });
   app.put('/api/ratings/:platform/:externalId', async (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
     const parsed = await parseJsonBody(c, ratingBodyGuard);
     if (!parsed.ok) {
       return parsed.response;
     }
     // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const db = holder?.get().db ?? exportDeps?.db;
+    const db = holder?.get()?.db ?? exportDeps?.db;
     if (db === undefined) {
       return internalError(c);
     }
@@ -434,8 +482,14 @@ function registerRoutes(
     if (fallback === null) {
       return invalidBody(c, 'fallback');
     }
-    // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const db = holder?.get().db ?? exportDeps?.db;
+    // 요청 시작 시 holder 1회 읽기. 미부착이면 메모리 대기 값 위에 기본값.
+    const db = holder?.get()?.db ?? exportDeps?.db;
+    if (isUnattached(holder)) {
+      if (attach === undefined) {
+        return notConnected(c);
+      }
+      return c.json(readPendingPrefs(attach.pending, fallback));
+    }
     if (db === undefined) {
       return internalError(c);
     }
@@ -450,8 +504,25 @@ function registerRoutes(
     if (!parsed.ok) {
       return parsed.response;
     }
-    // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const db = holder?.get().db ?? exportDeps?.db;
+    // 미부착(부착 중 포함)이면 connect 잠금 해제까지 대기(최대 attach.waitMs). 초과 → 409·쓰기 0.
+    // 대기 뒤 holder를 다시 읽는다: 공개됐으면 부착 계층 DB, 아니면 메모리 대기 값.
+    if (isUnattached(holder) && attach !== undefined) {
+      if (!(await attach.lock.waitIdle(attach.waitMs))) {
+        return connectInProgress(c);
+      }
+    }
+    const db = holder?.get()?.db ?? exportDeps?.db;
+    if (isUnattached(holder)) {
+      if (attach === undefined) {
+        return notConnected(c);
+      }
+      // 게임 행이 없어 숨김 목록은 받을 수 없다.
+      if (parsed.value.hidden !== undefined && parsed.value.hidden.length > 0) {
+        return invalidBody(c, 'hidden');
+      }
+      writePendingPrefs(attach.pending, parsed.value);
+      return c.json(readPendingPrefs(attach.pending, fallback));
+    }
     if (db === undefined) {
       return internalError(c);
     }
@@ -459,8 +530,14 @@ function registerRoutes(
     return c.json(getPrefs(db, fallback));
   });
   app.get(ACHIEVEMENTS_PATH, (c) => {
-    // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const db = holder?.get().db ?? exportDeps?.db;
+    // 요청 시작 시 holder 1회 읽기. 미부착이면 메모리 대기 값(기본 false).
+    const db = holder?.get()?.db ?? exportDeps?.db;
+    if (isUnattached(holder)) {
+      if (attach === undefined) {
+        return notConnected(c);
+      }
+      return c.json({ enabled: attach.pending.achievementsEnabled ?? false });
+    }
     if (db === undefined) {
       return internalError(c);
     }
@@ -471,8 +548,20 @@ function registerRoutes(
     if (!parsed.ok) {
       return parsed.response;
     }
-    // D16-2 — 요청 시작 시 holder 1회 읽기.
-    const db = holder?.get().db ?? exportDeps?.db;
+    // 미부착이면 connect 잠금 해제까지 대기(최대 attach.waitMs) 후 다시 읽는다(PUT /api/prefs와 같은 규칙).
+    if (isUnattached(holder) && attach !== undefined) {
+      if (!(await attach.lock.waitIdle(attach.waitMs))) {
+        return connectInProgress(c);
+      }
+    }
+    const db = holder?.get()?.db ?? exportDeps?.db;
+    if (isUnattached(holder)) {
+      if (attach === undefined) {
+        return notConnected(c);
+      }
+      attach.pending.achievementsEnabled = parsed.value.enabled;
+      return c.json({ enabled: parsed.value.enabled });
+    }
     if (db === undefined) {
       return internalError(c);
     }
@@ -482,6 +571,9 @@ function registerRoutes(
   // U5-[1] W-S2 — W-S1(info 마운트)와 별도 hunk로 둔다.
   registerSettingsBackupsRoutes(app, settingsDeps, holder);
   app.post(EXPORT_PATH, async (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
     const parsed = await parseJsonBody(c, exportBodyGuard);
     if (!parsed.ok) {
       return parsed.response;

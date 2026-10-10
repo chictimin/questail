@@ -28,6 +28,7 @@ export const ko = {
     INTERNAL: '처리 중에 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.',
     EXPORT_FAILED: 'exports 폴더에 파일을 쓰지 못했어요. 폴더 쓰기 권한을 확인한 뒤 다시 내보내 주세요.',
     CONNECT_IN_PROGRESS: '이미 연결 요청이 진행 중이에요. 잠시 뒤 다시 확인해 주세요.',
+    NOT_CONNECTED: '아직 Steam이 연결되지 않았어요. 연결 화면에서 Steam을 연결한 뒤 다시 시도해 주세요.',
   },
   export: {
     playtime: '플레이타임',
@@ -65,7 +66,7 @@ ownership_status: "owned"
     again: '다시 내보내기',
     wordDone: '완료',
     wordFail: '오류',
-    copyDir: '복사',
+    copyDir: '경로 복사',
     copied: '폴더 경로를 복사했어요',
     copyFallback: '복사에 실패했어요. 위 주소를 직접 복사해 주세요.',
     noKey: '키는 포함되지 않아요.',
@@ -121,6 +122,9 @@ ownership_status: "owned"
     accNote: '"제한된 사용자 계정" 안내가 뜨면 아직 키를 받을 수 없는 계정이에요.',
     goList: '라이브러리로 이동해요',
     fixedIdError: '한 데이터 폴더는 한 Steam 계정만 기록해요. 다른 계정을 쓰려면 QUESTAIL_DATA_DIR로 새 폴더를 지정하고 앱을 다시 켜 주세요.',
+    keyStoreAttach: '키와 계정은 저장했지만 아직 연결을 마치지 못했어요. 다시 연결하거나 앱을 다시 켜면 이어서 진행돼요.',
+    keyStoreShutdown: '키와 계정은 저장했지만 앱이 꺼지는 중이라 연결을 마치지 못했어요. 앱을 다시 켜거나 다시 연결하면 이어서 진행돼요.',
+    keyStoreDirConflict: '이 데이터 폴더가 다른 계정의 것이거나 손상돼 있어 키를 저장하지 못했어요. 폴더를 확인하거나 새 폴더를 지정한 뒤 다시 시도해 주세요.',
   },
   library: {
     title: '라이브러리',
@@ -223,6 +227,7 @@ ownership_status: "owned"
     licenseValue: 'MIT',
     dataTitle: '데이터',
     folderLabel: '데이터 폴더',
+    copyDir: '복사',
     envBefore: '다른 곳에 두려면 환경변수',
     envAfter: '에 경로를 지정하고 앱을 다시 켜요.',
     backupTitle: '자동 백업',
@@ -230,7 +235,7 @@ ownership_status: "owned"
     backupEmpty: '아직 자동 백업이 없어요',
     sizeUnit: 'MB',  },
   sync: {
-    sub: '마지막 전체 수집 {t}',
+    sub: '마지막 수집 {t}',
     localeNote: '게임 정보는 현재 표시 언어로만 받아요.',
     collectAll: '전체 다시 수집',
     sourceOwned: '보유 게임',

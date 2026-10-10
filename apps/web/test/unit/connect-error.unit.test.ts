@@ -38,4 +38,12 @@ describe('resolveConnectError', () => {
       key: 'error.RATE_LIMITED',
     });
   });
+
+  it('KEY_STORE_FAILED reason 분기 → attach·shutdown은 notice, dir_conflict는 steamId 자리', () => {
+    expect(resolveConnectError('KEY_STORE_FAILED', 'attach')).toMatchObject({ field: 'notice' });
+    expect(resolveConnectError('KEY_STORE_FAILED', 'shutdown')).toMatchObject({ field: 'notice' });
+    expect(resolveConnectError('KEY_STORE_FAILED', 'dir_conflict')).toMatchObject({
+      field: 'steamId',
+    });
+  });
 });
