@@ -341,8 +341,8 @@ describe('jobs collect', () => {
       expect(buildQueue(db, { source: 'meta', generation: 1, mode: 'resume' })).toEqual([
         'steam:990011:meta',
       ]);
-      // meta 스로틀 2초가 기본 settled 예산(400회·약 2초)을 넘길 수 있어 이 테스트만 600회로 대기한다
-      await settled(service, 600);
+      // meta 스로틀 2회분(4초)+여유 2초 ≈ 6초. 부하 시 3797ms 실측(10-10). 스로틀 주입 seam이 생기면 교체
+      await settled(service, 1200);
     } finally {
       db.close();
       resetSyncLocksForTest();

@@ -10,6 +10,13 @@ import type Database from 'better-sqlite3';
 import type { Hono } from 'hono';
 import type { ServerType } from '@hono/node-server';
 import type { SyncService } from '../data/service.js';
+import {
+  OWNER_LOCK_BUSY_MESSAGE,
+  OWNER_LOCK_UNAVAILABLE_MESSAGE,
+  acquireOwnerLock,
+  isOwnerLockBusy,
+  type OwnerLock,
+} from '../db/ownerLock.js';
 import { createServerApp } from './app.js';
 import { resolvePort, startServer, type StartedServer } from './serve.js';
 
@@ -97,6 +104,11 @@ export function readWebVersion(fromDir?: string): string {
 
 export type BootDeps = {
   backupDatabase: (dataDir: string) => Promise<void>;
+  /**
+   * D16-1 소유 잠금(P-12 ⑥) — DB 열기 전 취득·프로세스 수명 유지.
+   * 미지정 시 실구현. 취득 실패 → 기동 실패(값·키·경로 원문 없음).
+   */
+  acquireOwnerLock?: (dataDir: string) => OwnerLock | Promise<OwnerLock>;
   migrateDatabase: (
     dataDir: string,
     opts?: { backupBeforeApply?: () => Promise<void> },
@@ -155,6 +167,19 @@ export type BootedServer = {
 export async function boot(deps: BootDeps): Promise<BootedServer> {
   const env = deps.env ?? process.env;
   const dataDir = resolveDataDir(env);
+  // D16-1 — 현행 디렉터리 해석은 그대로, DB를 열기 전에 소유 잠금 취득.
+  // 레지스트리가 프로세스 수명 동안 연결을 쥐고 해제 = 프로세스 종료.
+  let ownerLock: OwnerLock;
+  try {
+    ownerLock = await (deps.acquireOwnerLock ?? acquireOwnerLock)(dataDir);
+  } catch (error) {
+    throw new Error(
+      isOwnerLockBusy(error)
+        ? OWNER_LOCK_BUSY_MESSAGE
+        : OWNER_LOCK_UNAVAILABLE_MESSAGE,
+    );
+  }
+  void ownerLock;
   const db = await deps.migrateDatabase(dataDir, {
     backupBeforeApply: () => deps.backupDatabase(dataDir),
   });
