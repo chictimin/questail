@@ -288,11 +288,12 @@ section[aria-labelledby='settings-about-heading'] .settings-body > p {
   line-height: 20px;
 }
 
-/* 거부 대화상자 — :has로 식별하는 화면 덮개 + 460 카드. */
+/* 거부 대화상자 — :has로 식별하는 화면 덮개 + 460 카드.
+   헤더 20보다 위 — modal. */
 section[aria-labelledby='settings-conn-heading'] > div:has(> [role='alertdialog']) {
   position: fixed;
   inset: 0;
-  z-index: 8;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;

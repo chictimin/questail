@@ -137,6 +137,12 @@ export function ConnectPage({
   }, []);
 
   useEffect(() => {
+    if (succeeded) {
+      submitRef.current?.focus();
+    }
+  }, [succeeded]);
+
+  useEffect(() => {
     if (!succeeded) {
       return;
     }
@@ -160,7 +166,7 @@ export function ConnectPage({
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
-    if (busy) {
+    if (busy || succeeded) {
       return;
     }
     const parsed = parseSteamIdInput(steamId);
@@ -195,8 +201,8 @@ export function ConnectPage({
         }));
         setEditing(false);
         setKeyText('');
+        setBusy(false);
         setSucceeded(true);
-        submitRef.current?.focus();
         return;
       }
       setBusy(false);
@@ -464,6 +470,7 @@ export function ConnectPage({
                       ref={submitRef}
                       disabled={busy}
                       aria-busy={busy}
+                      aria-disabled={succeeded || undefined}
                       className={
                         succeeded
                           ? 'qt-btn qt-btn--primary connect-submit is-success'

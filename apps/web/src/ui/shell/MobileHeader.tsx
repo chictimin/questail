@@ -20,32 +20,38 @@ export function MobileHeader(): React.JSX.Element {
   const [path] = useLocation();
   const [hidden, setHidden] = useState(false);
   const [frost, setFrost] = useState(false);
-  const lastY = useRef(0);
+  const lastY = useRef(new WeakMap<object, number>());
+
+  useEffect(() => {
+    setHidden(false);
+    setFrost(false);
+    lastY.current = new WeakMap();
+  }, [path]);
 
   useEffect(() => {
     const onScroll = (event: Event): void => {
       const target = event.target;
+      let key: object;
       let y: number;
       if (
         target instanceof Element &&
         target !== document.documentElement &&
-        target !== document.body &&
-        target.scrollHeight > target.clientHeight
-      ) {
-        // 수직 내부 스크롤 컨테이너 — 그 컨테이너의 scrollTop을 쓴다.
-        y = target.scrollTop;
-      } else if (
-        target instanceof Element &&
-        target !== document.documentElement &&
         target !== document.body
       ) {
-        // 수평 스크롤(메뉴 줄 등) — 헤더 상태와 무관하므로 현재 window 값을 유지한다.
-        y = window.scrollY;
+        if (target.scrollHeight <= target.clientHeight) {
+          // 수평 스크롤(메뉴 줄 등) — 상태·기준값 갱신 없음.
+          return;
+        }
+        // 수직 내부 스크롤 컨테이너 — 같은 원천의 직전 값과만 비교한다.
+        key = target;
+        y = target.scrollTop;
       } else {
+        key = document;
         y = window.scrollY;
       }
-      const dy = y - lastY.current;
-      lastY.current = y;
+      const prev = lastY.current.get(key) ?? 0;
+      const dy = y - prev;
+      lastY.current.set(key, y);
       if (y < 8) {
         setHidden(false);
         setFrost(false);
