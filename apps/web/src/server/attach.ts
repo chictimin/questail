@@ -318,7 +318,7 @@ export function createAttachController(deps: AttachDeps): AttachController {
         }
         layer.cron = cron;
       } catch (error) {
-        log.error(`[web] 연동 후 시작 실패 source=${stage} code=${causeCode(error)}`);
+        log.error(`[web] post-attach start failed source=${stage} code=${causeCode(error)}`);
       }
     })();
     layer.background = task;

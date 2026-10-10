@@ -45,7 +45,7 @@ export function setRating(
   score: ScoreValue | null,
 ): SetRatingResult {
   if (score !== null && !isScoreValue(score)) {
-    throw new RangeError('score는 1~10 정수 또는 null이다');
+    throw new RangeError('score must be an integer 1-10 or null');
   }
   const orm = drizzle(db);
   const cond = and(eq(ratings.platform, key.platform), eq(ratings.externalId, key.externalId));

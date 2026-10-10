@@ -57,7 +57,7 @@ export function findRepoRoot(fromDir?: string): string {
     const parent = dirname(dir);
     if (parent === dir) {
       throw new Error(
-        `[web] 저장소 루트를 못 찾음(${WORKSPACE_MARKER} 없음) — ${DATA_DIR_ENV}로 데이터 디렉터리를 직접 지정해라`,
+        `[web] repo root not found (no ${WORKSPACE_MARKER}) — set the data directory with ${DATA_DIR_ENV}`,
       );
     }
     dir = parent;
@@ -123,7 +123,7 @@ export function readWebVersion(fromDir?: string): string {
   );
   const parsed = JSON.parse(raw) as { version?: unknown };
   if (typeof parsed.version !== 'string' || parsed.version === '') {
-    throw new Error('[web] 앱 버전 확인 실패');
+    throw new Error('[web] app version check failed');
   }
   return parsed.version;
 }
@@ -340,7 +340,7 @@ export async function boot(deps: BootDeps): Promise<BootedServer> {
             server as unknown as { closeAllConnections?: () => void }
           ).closeAllConnections?.();
           console.error(
-            `[web] shutdown: 리스너 close가 ${graceMs}ms 안에 끝나지 않아 연결 강제 절단`,
+            `[web] shutdown: listener close did not finish within ${graceMs}ms — forcing connections closed`,
           );
           resolve();
         }, graceMs);

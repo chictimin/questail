@@ -120,7 +120,7 @@ function countOpen(
 /** 중단 경합. 원본 promise는 race가 구독하므로 미처리 거부가 남지 않는다. */
 function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) {
-    return Promise.reject(new DOMException('수집 중단', 'AbortError'));
+    return Promise.reject(new DOMException('collection aborted', 'AbortError'));
   }
   return Promise.race([
     promise,
@@ -128,7 +128,7 @@ function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T>
       signal.addEventListener(
         'abort',
         () => {
-          reject(new DOMException('수집 중단', 'AbortError'));
+          reject(new DOMException('collection aborted', 'AbortError'));
         },
         { once: true },
       );

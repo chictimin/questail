@@ -80,13 +80,13 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   try {
     new Intl.DateTimeFormat('en-CA', { timeZone: deps.timeZone });
   } catch {
-    throw new RangeError('timeZone은 IANA 시간대다(호출 계약 위반)');
+    throw new RangeError('timeZone must be an IANA time zone (caller contract violation)');
   }
   if (deps.storeBaseUrl !== undefined && normalizeSteamBaseUrl(deps.storeBaseUrl) === null) {
-    throw new RangeError('storeBaseUrl은 http(s) 루프백 URL이다(호출 계약 위반)');
+    throw new RangeError('storeBaseUrl must be an http(s) loopback URL (caller contract violation)');
   }
   if (deps.steamSpyBaseUrl !== undefined && normalizeSteamBaseUrl(deps.steamSpyBaseUrl) === null) {
-    throw new RangeError('steamSpyBaseUrl은 http(s) 루프백 URL이다(호출 계약 위반)');
+    throw new RangeError('steamSpyBaseUrl must be an http(s) loopback URL (caller contract violation)');
   }
   const { db } = deps;
   let executor: JobExecutor | null = null;

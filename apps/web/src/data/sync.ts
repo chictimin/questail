@@ -150,7 +150,7 @@ export function startSync(
   opts: { sources?: CollectSource[]; locale: Locale; timeZone: string },
 ): StartResult {
   if (!isLocale(opts.locale)) {
-    throw new RangeError('locale은 ko|en이다(호출 계약 위반)');
+    throw new RangeError('locale must be ko|en (caller contract violation)');
   }
   const state = stateFor(db);
   const targets = opts.sources ?? ALL_SOURCES;
@@ -184,7 +184,7 @@ export function resyncSource(
   opts: { mode?: 'resume' | 'refresh'; locale: Locale; timeZone: string },
 ): StartResult {
   if (!isLocale(opts.locale)) {
-    throw new RangeError('locale은 ko|en이다(호출 계약 위반)');
+    throw new RangeError('locale must be ko|en (caller contract violation)');
   }
   const state = stateFor(db);
   if (state.running.has(source)) {

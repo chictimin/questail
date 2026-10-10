@@ -90,7 +90,7 @@ export function resolveSteamApiBaseUrl(
   const normalized = normalizeSteamBaseUrl(raw);
   if (normalized === null) {
     throw new Error(
-      `[web] ${STEAM_API_BASE_ENV} 형태가 아니다 — http(s) URL(공식 기본 또는 루프백)만 허용한다. 값 없이 종료한다`,
+      `[web] ${STEAM_API_BASE_ENV} is invalid — only http(s) URLs (the official default or loopback) are allowed. Exiting without echoing the value`,
     );
   }
   return normalized;

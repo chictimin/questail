@@ -317,7 +317,7 @@ describe('boot 종료', () => {
       expect(calls).toContain('close');
       expect(errSpy).toHaveBeenCalledTimes(1);
       expect(errSpy.mock.calls[0]).toHaveLength(1);
-      expect(String(errSpy.mock.calls[0][0])).toContain('강제 절단');
+      expect(String(errSpy.mock.calls[0][0])).toContain('forcing connections closed');
     } finally {
       errSpy.mockRestore();
     }

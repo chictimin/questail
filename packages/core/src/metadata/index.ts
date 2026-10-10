@@ -50,7 +50,7 @@ let consecutiveSoftFail = 0;
 /** 쿨다운 진입 중 — 호출자가 식별해 중단한다. 자동 재개하지 않는다. */
 export class AppMetaRateLimitedError extends Error {
   constructor(public readonly retryAfterMs: number) {
-    super(`Steam appdetails rate limit. ${Math.ceil(retryAfterMs / 1000)}초 후 재개하세요.`);
+    super(`Steam appdetails rate limit. Resume in ${Math.ceil(retryAfterMs / 1000)} seconds.`);
     this.name = 'AppMetaRateLimitedError';
   }
 }
@@ -420,7 +420,7 @@ interface ResolvedMetaOptions {
 
 function resolveMetaOptions(options?: MetaFetchOptions): ResolvedMetaOptions {
   if (options?.cacheDir === undefined) {
-    throw new Error('[metadata] cacheDir 필수 — 호출 측이 명시 전달한다');
+    throw new Error('[metadata] cacheDir required — caller must pass it explicitly');
   }
   return {
     cacheDir: options.cacheDir,
@@ -519,7 +519,7 @@ export async function fetchAppMetaStatus(
   options: MetaFetchOptions,
 ): Promise<MetaFetchResult> {
   if (!/^\d+$/.test(appId)) {
-    throw new Error(`유효하지 않은 appId: ${appId}`);
+    throw new Error(`invalid appId: ${appId}`);
   }
   const cfg = resolveMetaOptions(options);
   const cacheDir = cfg.cacheDir;

@@ -18,7 +18,7 @@ export function resolvePort(env: NodeJS.ProcessEnv = process.env): number {
   const port = Number(raw);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(
-      `[web] ${PORT_ENV}="${raw}" — 1~65535 정수를 넣어 다시 기동해라 (기본 ${DEFAULT_PORT})`,
+      `[web] ${PORT_ENV}="${raw}" — set an integer 1-65535 and restart (default ${DEFAULT_PORT})`,
     );
   }
   return port;
@@ -50,7 +50,7 @@ export function startServer(app: Hono, port: number): Promise<StartedServer> {
       if (error.code === 'EADDRINUSE') {
         reject(
           new Error(
-            `[web] 포트 ${port} 사용 중 — 점유 프로세스를 끝내거나 ${PORT_ENV}로 다른 포트를 지정해 다시 기동해라`,
+            `[web] port ${port} in use — stop the occupying process or set ${PORT_ENV} to another port and restart`,
           ),
         );
       } else {

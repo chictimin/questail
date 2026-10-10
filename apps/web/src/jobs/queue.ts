@@ -151,7 +151,7 @@ function targetGames(
   if (source === 'steamspy') return openUnion(db);
   if (source === 'achievements') return openGames(db, ownershipSpans);
   if (source === 'owned') return openGames(db, ownershipSpans);
-  throw new RangeError(`보충 대상 미정의 소스: ${source}`);
+  throw new RangeError(`no supplement queue target defined for source: ${source}`);
 }
 
 /** 그 run에서 이미 failed인 게임 단위 항목 키 집합. recover 제외·remaining 계산용. */

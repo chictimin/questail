@@ -197,13 +197,13 @@ describe('P-12 ② 해석', () => {
     const root = mkRoot();
     await seedDb(root, { steamId: ID });
     await seedDb(join(root, OTHER_ID), { steamId: OTHER_ID });
-    await expect(bootAt(root)).rejects.toThrow('레거시');
+    await expect(bootAt(root)).rejects.toThrow('legacy');
   });
 
   it('②-a 연동 0·games ≥1 → 기동 실패', async () => {
     const root = mkRoot();
     await seedDb(root, { game: true });
-    await expect(bootAt(root)).rejects.toThrow('레거시');
+    await expect(bootAt(root)).rejects.toThrow('legacy');
   });
 
   it('②-a 빈 레거시 → 무시·경고 1줄·미부착으로 진행', async () => {
@@ -220,7 +220,7 @@ describe('P-12 ② 해석', () => {
   it('②-a 손상 레거시 → 기동 실패', async () => {
     const root = mkRoot();
     writeFileSync(join(root, 'questail.db'), 'not a sqlite file at all');
-    await expect(bootAt(root)).rejects.toThrow('읽지 못해');
+    await expect(bootAt(root)).rejects.toThrow('cannot read');
   });
 
   it('②-b 연동된 레거시만 → R 그대로 부착', async () => {
@@ -252,10 +252,10 @@ describe('P-12 ② 해석', () => {
   it('③ 폴더 이름과 DB 계정 ID 불일치·NULL → 기동 실패', async () => {
     const root = mkRoot();
     await seedDb(join(root, ID), { steamId: OTHER_ID });
-    await expect(bootAt(root)).rejects.toThrow('계정 ID');
+    await expect(bootAt(root)).rejects.toThrow('account ID');
     const root2 = mkRoot();
     await seedDb(join(root2, ID), {});
-    await expect(bootAt(root2)).rejects.toThrow('계정 ID');
+    await expect(bootAt(root2)).rejects.toThrow('account ID');
   });
 
   it('⑤⑦ 자기 pid 아닌 스테이징·키 임시 파일만 삭제', async () => {
@@ -1019,8 +1019,8 @@ describe('P-12 보완 (j) 시작 6 — recover 뒤 종료', () => {
     });
     expect((await h.request('POST', '/api/connect', connectBody())).status).toBe(200);
     await h.booted.shutdown();
-    const lines = err.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('시작 실패'));
-    expect(lines).toEqual(['[web] 연동 후 시작 실패 source=recover code=EACCES']);
+    const lines = err.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('start failed'));
+    expect(lines).toEqual(['[web] post-attach start failed source=recover code=EACCES']);
     expect(err.mock.calls.flat().join(' ')).not.toContain(KEY);
     expect(err.mock.calls.flat().join(' ')).not.toContain(root);
   });

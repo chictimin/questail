@@ -15,10 +15,10 @@ export const OWNER_LOCK_FILE_NAME = '.owner.lock';
 
 /** 취득 실패(SQLITE_BUSY) 시 기동 실패 안내 — 값·키·경로 원문 없음. */
 export const OWNER_LOCK_BUSY_MESSAGE =
-  '[web] 다른 Questail 프로세스가 같은 데이터 폴더를 쓰는 중';
+  '[web] another Questail process is using the same data folder';
 /** BUSY 외 취득 실패 시 기동 실패 안내 — 값·키·경로 원문 없음. */
 export const OWNER_LOCK_UNAVAILABLE_MESSAGE =
-  '[web] 데이터 폴더 소유 잠금을 취득하지 못해 기동하지 못함';
+  '[web] could not acquire the data folder owner lock; cannot start';
 
 export type OwnerLock = {
   readonly filePath: string;

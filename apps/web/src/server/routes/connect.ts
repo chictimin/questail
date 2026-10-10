@@ -114,11 +114,11 @@ export function registerConnectRoutes(
       return c.json(unconnectedStatus());
     }
     if (deps === undefined) {
-      throw new Error('[web] connect 미배선 — deps 없음');
+      throw new Error('[web] connect not wired — no deps');
     }
     const db = layer?.db ?? deps.db;
     if (db === undefined) {
-      throw new Error('[web] connect 미배선 — deps 없음');
+      throw new Error('[web] connect not wired — no deps');
     }
     return c.json(getConnection(db));
   });
@@ -133,13 +133,13 @@ export function registerConnectRoutes(
     const unattached = holder !== undefined && layer === undefined && attach !== undefined;
     if (!unattached) {
       if (deps === undefined) {
-        throw new Error('[web] connect 미배선 — deps 없음');
+        throw new Error('[web] connect not wired — no deps');
       }
     }
     const db = layer?.db ?? deps?.db;
     const keyPath = layer?.keyPath ?? deps?.keyPath;
     if (!unattached && (db === undefined || keyPath === undefined)) {
-      throw new Error('[web] connect 미배선 — deps 없음');
+      throw new Error('[web] connect not wired — no deps');
     }
     const release = lock.tryAcquire();
     if (release === null) {
@@ -149,7 +149,7 @@ export function registerConnectRoutes(
     const log = createLogger([parsed.value.keyText]);
     // P-7: vanity가 있으면 steamId를 무시하고 resolve 결과 id만 쓴다. 파싱 위치는 UI 하나.
     const fail = (code: SyncErrorCode, params: Record<string, string | number>): Response => {
-      log.error(`[web] connect 실패: ${code}`);
+      log.error(`[web] connect failed: ${code}`);
       const body: ConnectFailBody = { code, params };
       return c.json(body, statusFor(code));
     };
@@ -200,7 +200,7 @@ export function registerConnectRoutes(
       }
       return fail(result.code, result.params);
     } catch (error) {
-      log.error('[web] connect 예외');
+      log.error('[web] connect exception');
       throw error;
     } finally {
       release();

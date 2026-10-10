@@ -41,7 +41,7 @@ export function saveCollectedMeta(
     const gameCond = and(eq(games.platform, key.platform), eq(games.externalId, key.externalId));
     const existing = orm.select().from(games).where(gameCond).get();
     if (!existing) {
-      throw new Error('saveCollectedMeta: games 행 없음 — 숨은 생성 금지');
+      throw new Error('saveCollectedMeta: no games row — implicit creation forbidden');
     }
     upsertMetaState(orm, key, result.state, opts);
     if (result.state === 'failed') return;

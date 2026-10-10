@@ -17,15 +17,15 @@ const STAGING_PATTERN = /^\.staging-(\d{17})-(\d+)-[A-Za-z0-9]+$/;
 const KEY_TMP_PATTERN = /^steam\.key\.(\d+)\.tmp$/;
 
 export const LEGACY_AND_ACCOUNT_MESSAGE =
-  '[web] 레거시 data/questail.db와 계정 폴더가 함께 있다 — 한쪽을 옮기거나 QUESTAIL_DATA_DIR로 지정';
+  '[web] legacy data/questail.db and an account folder exist together — move one of them or set QUESTAIL_DATA_DIR';
 export const LEGACY_UNCONNECTED_GAMES_MESSAGE =
-  '[web] 레거시 data/questail.db에 연동되지 않은 게임 기록이 있어 기동하지 않는다 — QUESTAIL_DATA_DIR로 그 폴더를 지정하거나 수동으로 옮겨라';
+  '[web] legacy data/questail.db has game records that are not linked, so the app does not start — point QUESTAIL_DATA_DIR at that folder or move it manually';
 export const MULTIPLE_ACCOUNTS_MESSAGE =
-  '[web] 계정 폴더가 2개 이상이다 — QUESTAIL_DATA_DIR로 지정';
+  '[web] more than one account folder — set QUESTAIL_DATA_DIR';
 export const LEGACY_UNREADABLE_MESSAGE =
-  '[web] 레거시 data/questail.db를 읽지 못해 기동하지 못함 — 파일을 확인하거나 옮겨라';
+  '[web] cannot read legacy data/questail.db; cannot start — check or move the file';
 export const ACCOUNT_FOLDER_MISMATCH_MESSAGE =
-  '[web] 계정 폴더 안 DB의 계정 ID가 폴더 이름과 다르다 — 그 폴더를 고치거나 옮겨라';
+  '[web] account ID in the account folder DB differs from the folder name — fix or move that folder';
 
 export type DataLocation =
   | { mode: 'explicit' | 'legacy' | 'account'; dir: string; root?: string }
@@ -106,7 +106,7 @@ export function cleanStaging(root: string, selfPid: number = process.pid): void 
     try {
       rmSync(join(root, name), { recursive: true, force: true });
     } catch {
-      createLogger().warn('[web] 스테이징 잔여 정리 실패 — 다음 기동이 다시 시도');
+      createLogger().warn('[web] staging leftover cleanup failed — next boot retries');
     }
   }
 }
@@ -127,7 +127,7 @@ export function cleanKeyTmp(dir: string, selfPid: number = process.pid): void {
     try {
       rmSync(join(dir, name), { force: true });
     } catch {
-      createLogger().warn('[web] 키 임시 파일 정리 실패');
+      createLogger().warn('[web] key temp file cleanup failed');
     }
   }
 }
@@ -176,7 +176,7 @@ export async function resolveDataLocation(
       throw new Error(LEGACY_UNCONNECTED_GAMES_MESSAGE);
     } else {
       // 빈 레거시 — 없는 것으로 보고 진행. 경고는 1줄, 경로 원문 외 정보 없음.
-      createLogger().warn(`[web] 빈 레거시 DB 무시: ${legacyPath}`);
+      createLogger().warn(`[web] ignoring empty legacy DB: ${legacyPath}`);
     }
   }
   if (legacyConnected) {

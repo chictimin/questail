@@ -43,7 +43,7 @@ export function wireShutdown(
       return;
     }
     const timer = setTimeout(() => {
-      console.error('[web] shutdown: 종료 상한 도달 — 프로세스 강제 종료');
+      console.error('[web] shutdown: shutdown cap reached — forcing process exit');
       options.exit(EXIT_FORCED);
     }, options.capMs ?? SHUTDOWN_EXIT_CAP_MS);
     run.then(

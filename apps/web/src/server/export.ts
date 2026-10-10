@@ -30,7 +30,7 @@ export class ExportWriteError extends Error {
   readonly reason: ExportFailureReason;
   constructor(reason: ExportFailureReason, detail?: string) {
     super(
-      `[web] export 쓰기 실패(${reason})${detail === undefined ? '' : `: ${detail}`}`,
+      `[web] export write failed (${reason})${detail === undefined ? '' : `: ${detail}`}`,
     );
     this.reason = reason;
   }

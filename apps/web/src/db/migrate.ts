@@ -95,7 +95,7 @@ function applyMigrations(raw: Database.Database, pending: PendingMigration[]): v
       const violations = raw.prepare('SELECT * FROM pragma_foreign_key_check').all();
       if (violations.length > 0) {
         throw new Error(
-          `migration FK 위반 ${violations.length}건 — ROLLBACK 후 기동 중단`,
+          `migration FK violations: ${violations.length} — rolled back, aborting startup`,
         );
       }
       for (const migration of pending) {

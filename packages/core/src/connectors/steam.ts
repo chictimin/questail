@@ -93,21 +93,21 @@ async function steamFetch<T>(url: string, endpoint: string): Promise<T> {
 
   if (res.status === 401 || res.status === 403) {
     throw new SteamApiError(
-      'Steam API 인증 실패. STEAM_API_KEY가 유효한지 확인하세요.',
+      'Steam API auth failed. Check that STEAM_API_KEY is valid.',
       res.status,
       endpoint,
     );
   }
   if (res.status === 429) {
     throw new SteamApiError(
-      'Steam API rate limit 초과. 잠시 후 다시 시도하세요.',
+      'Steam API rate limit exceeded. Retry later.',
       res.status,
       endpoint,
     );
   }
   if (!res.ok) {
     throw new SteamApiError(
-      `Steam API 오류: ${res.status} ${res.statusText}`,
+      `Steam API error: ${res.status} ${res.statusText}`,
       res.status,
       endpoint,
     );
@@ -235,7 +235,7 @@ export async function resolveVanityUrl(apiKey: string, vanityName: string): Prom
     + `?key=${apiKey}&vanityurl=${encodeURIComponent(vanityName)}&format=json`;
   const data = await steamFetch<ResolveVanityUrlResponse>(url, 'ResolveVanityURL');
   if (data.response.success !== 1) {
-    throw new Error(`SteamID 변환 실패: ${data.response.message ?? '알 수 없는 오류'}`);
+    throw new Error(`SteamID resolve failed: ${data.response.message ?? 'unknown error'}`);
   }
   return data.response.steamid!;
 }
@@ -266,7 +266,7 @@ export async function resolveToSteamId(input: string, apiKey: string): Promise<s
     return resolveVanityUrl(apiKey, input);
   }
 
-  throw new Error(`SteamID를 인식할 수 없습니다: ${input}`);
+  throw new Error(`cannot recognize SteamID: ${input}`);
 }
 
 // ─── D-03 응답 판정·정규화 순수 함수 (동결본 C-3·수집 규칙, 문장 0) ───

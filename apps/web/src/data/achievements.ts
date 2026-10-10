@@ -34,7 +34,7 @@ export function toCollectedAchievements(
 ): CollectedAchievements {
   if (verdict.kind === 'skipGame') return { status: 'empty' };
   if (verdict.kind !== 'ok') {
-    throw new RangeError('failSource는 변환 대상이 아니다(executor 소스 실패)');
+    throw new RangeError('failSource is not convertible (executor source failure)');
   }
   if (normalized.length === 0) return { status: 'empty' };
   return {

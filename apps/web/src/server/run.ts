@@ -15,7 +15,7 @@ import { uiDistDir } from './static.js';
  */
 const steamApiBaseUrl = resolveSteamApiBaseUrl(process.env);
 if (steamApiBaseUrl !== undefined) {
-  console.error('[web] 테스트용 Steam API base 사용 중 (기본값 아님)');
+  console.error('[web] using test Steam API base (not the default)');
 }
 
 /**
