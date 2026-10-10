@@ -32,6 +32,7 @@ import { getAchievementSettings } from '../data/viewState.js';
 import { createSteamRequest, getConnection, type FetchLike } from '../data/connection.js';
 import type { CollectSource, Locale } from '../data/sync.js';
 import { rateLimitIssue } from '../data/sync.js';
+import { createLogger } from '../server/logging.js';
 import { toLocalDay } from '../data/syncRuns.js';
 import {
   buildQueue,
@@ -489,7 +490,16 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
             doneAt: Math.floor(now() / 1000),
           });
         });
-        store();
+        try {
+          store();
+        } catch (error) {
+          // 결과+체크포인트 기록 실패 — run을 finish하지 않고 이 job을 중단한다.
+          // 소스·appid만 싣는다(키·URL·본문 원문 0, 기존 logger/redact 경로).
+          createLogger().error(
+            `collect result unwritable, halting job without finish source=${job.source} appid=${appid}`,
+          );
+          throw error;
+        }
       } finally {
         release();
       }
@@ -568,7 +578,14 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
             { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
           );
         } catch {
-          /* failed 결과 행 쓰기까지 실패 — running 유지·recover 대상 */
+          // 결과+체크포인트 기록과 failed 재저장이 둘 다 실패 — run을 finish하지 않고
+          // 이 job을 중단한다. running 유지 → 다음 기동 recover가 다시 요청한다.
+          // stop 중단(결과 행 미기록)과 원인이 다르며 아래 1줄로 남긴다.
+          // 소스·appid만 싣는다(키·URL·본문 원문 0, 기존 logger/redact 경로).
+          createLogger().error(
+            `collect result unwritable, halting job without finish source=${job.source} appid=${appid}`,
+          );
+          return;
         }
       } finally {
         release();
@@ -689,7 +706,14 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
             },
           );
         } catch {
-          /* failed 결과 행 쓰기까지 실패 — running 유지·recover 대상 */
+          // 결과+체크포인트 기록과 failed 재저장이 둘 다 실패 — run을 finish하지 않고
+          // 이 job을 중단한다. running 유지 → 다음 기동 recover가 다시 요청한다.
+          // stop 중단(결과 행 미기록)과 원인이 다르며 아래 1줄로 남긴다.
+          // 소스·appid만 싣는다(키·URL·본문 원문 0, 기존 logger/redact 경로).
+          createLogger().error(
+            `collect result unwritable, halting job without finish source=${job.source} appid=${appid}`,
+          );
+          return;
         }
       } finally {
         release();

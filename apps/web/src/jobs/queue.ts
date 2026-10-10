@@ -213,7 +213,9 @@ export function runAggregates(
     .where(and(eq(checkpoints.source, input.source), eq(checkpoints.syncRunId, input.runId)))
     .all().length;
   const failedKeys = failedKeysOfRun(db, input.source, input.runId);
-  const queue = buildQueue(db, { source: input.source, generation: input.generation, mode: input.mode });
+  // 집계용 미완료 큐는 mode와 무관하게 현 세대 미완료(체크포인트 제외) 기준이다.
+  // 실행 큐(buildQueue refresh = 전수)는 호출 측이 job.mode로 그대로 만든다.
+  const queue = buildQueue(db, { source: input.source, generation: input.generation, mode: 'resume' });
   const remaining = queue.filter((key) => !failedKeys.has(key)).length;
   return { succeeded, failed: failedKeys.size, remaining, total: succeeded + failedKeys.size + remaining };
 }
