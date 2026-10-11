@@ -118,7 +118,7 @@ export function GameRow({
                 aria-label={achLabel}
                 title={achLabel}
               >
-                {achComplete ? <Trophy size={12} aria-hidden /> : null}
+                <Trophy size={12} aria-hidden />
                 {`(${new Intl.NumberFormat(locale).format(summary.achieved)}/${new Intl.NumberFormat(locale).format(summary.total)})`}
               </span>
             )}
