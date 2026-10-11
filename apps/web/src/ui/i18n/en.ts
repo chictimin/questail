@@ -156,6 +156,8 @@ ownership_status: "owned"
     sortNameAsc: 'Name',
     badgeMissing: 'Missing · reason unknown',
     badgeFilling: 'Filling in info',
+    genrePending: 'Filling in genre and release date',
+    firstSyncBanner: 'Fetched {n} games in your library. Covers and genres are filling in the background — you can rate now.',
     badgeHidden: 'Hidden',
     badgeJustRated: 'Just rated',
     achievementsLabel: 'Achievements {ach}/{total}',

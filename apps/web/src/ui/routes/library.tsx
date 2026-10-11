@@ -15,6 +15,13 @@ import { GameRow, type RowGame } from '../library/GameRow.js';
 import '../library/library.css';
 import { LibraryToolbar } from '../library/LibraryToolbar.js';
 import { sortGames, type Direction, type SortKey, type SortSpec } from '../library/sort.js';
+import { FirstSyncBanner } from '../library/FirstSyncBanner.js';
+import {
+  firstSyncBannerFor,
+  shouldRefetchOnSettle,
+  showOwnedSkeleton,
+} from '../library/bannerState.js';
+import { useSyncStatus } from '../sync/statusContext.js';
 import logoUrl from '../../assets/logo-mark.png';
 
 /** 가상 행 높이 고정값 — 시각 확정 전 자리값(행 높이 고정 원칙만 따른다). 디자인 확정 시 교체. */
@@ -93,6 +100,7 @@ export function LibraryPage(): React.JSX.Element {
   const [keep, setKeep] = useState<string[]>([]);
   const [pending, setPending] = useState<string[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
+  const { entries } = useSyncStatus();
   const listRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
   const [reloadTick, setReloadTick] = useState(0);
@@ -128,6 +136,21 @@ export function LibraryPage(): React.JSX.Element {
     }
     void load();
   }, [showEnded, reloadTick]);
+
+  // 결정 B — meta·owned가 running에서 정착하는 순간 목록만 1회 조용히 재조회(스켈레톤 없음).
+  const previousEntriesRef = useRef(entries);
+  useEffect(() => {
+    const previous = previousEntriesRef.current;
+    previousEntriesRef.current = entries;
+    if (!shouldRefetchOnSettle(previous, entries)) return;
+    const generation = generationRef.current;
+    fetch(`/api/library?includeEnded=${showEnded ? 'true' : 'false'}`)
+      .then(readJson)
+      .then((reloaded) => {
+        if (generationRef.current === generation) setGames(reloaded as RowGame[]);
+      })
+      .catch(() => undefined);
+  }, [entries]);
 
   useEffect(() => {
     if (toast === null || toast.onAction === undefined) return;
@@ -339,6 +362,8 @@ export function LibraryPage(): React.JSX.Element {
   const totalCount = new Intl.NumberFormat(locale).format(games.length);
   const empty = emptyKeys();
   const shownCount = virtualizer.getVirtualItems().length;
+  const banner = firstSyncBannerFor(entries, games);
+  const ownedLoading = showOwnedSkeleton(entries, games.length);
 
   return (
     <main data-route="library">
@@ -349,7 +374,7 @@ export function LibraryPage(): React.JSX.Element {
           {text('library.count')}
         </span>
       </div>
-      {status === 'loading' ? (
+      {status === 'loading' || (status === 'ready' && ownedLoading) ? (
         <div aria-busy={true} className="lib-skel">
           {Array.from({ length: SKELETON_ROWS }, (_, index) => (
             <div key={index} className="lib-skel-row">
@@ -376,8 +401,9 @@ export function LibraryPage(): React.JSX.Element {
           </button>
         </div>
       ) : null}
-      {status === 'ready' ? (
+      {status === 'ready' && !ownedLoading ? (
         <>
+          {banner === null ? null : <FirstSyncBanner model={banner} />}
           {games.length === 0 ? null : (
           <LibraryToolbar
             locale={locale}

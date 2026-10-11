@@ -104,9 +104,13 @@ export function GameRow({
             {displayGameName(facts, locale)}
           </h2>
           <div className="game-row-meta">
-            {year === null ? null : <span>{year}</span>}
-            {displayGenres.length === 0 ? null : (
-              <span>{displayGenres.join(', ')}</span>
+            {displayGenres.length === 0 ? (
+              <span>{text('library.genrePending')}</span>
+            ) : (
+              <>
+                {year === null ? null : <span>{year}</span>}
+                <span>{displayGenres.join(', ')}</span>
+              </>
             )}
             {summary === null || achLabel === null ? null : (
               <span

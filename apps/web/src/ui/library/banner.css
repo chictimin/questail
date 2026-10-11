@@ -1,0 +1,83 @@
+/* 첫 수집 진행 배너 — 레퍼런스 ②-b 인라인 style 실측(면 info · 검은 글씨 13/20 · 막대 6px). */
+main[data-route='library'] [data-first-sync-banner] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-10) var(--space-12);
+  margin: 24px 0; /* 레퍼런스 main gap 24 — 제목 줄 margin-bottom 12와 겹쳐(collapse) 24가 된다 */
+  padding: var(--space-12) 16px;
+  border-radius: var(--corner-12);
+  background: var(--info);
+  color: var(--text-on-pastel);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+/* 아이콘은 첫 줄 중심 — 공통 규칙(⑬). */
+main[data-route='library'] [data-first-sync-banner] > svg {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 1px;
+}
+
+main[data-route='library'] [data-first-sync-banner] > p {
+  flex: 1 1 240px;
+  min-width: 0;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+main[data-route='library'] [data-banner-bar] {
+  display: flex;
+  flex: 0 1 220px;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+main[data-route='library'] [data-banner-bar] > [role='progressbar'] {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: rgba(28, 28, 28, 0.15);
+  overflow: hidden;
+}
+
+main[data-route='library'] [data-banner-bar] [role='progressbar'] > div {
+  height: 100%;
+  background: var(--qt-black);
+}
+
+/* 부정형 — 내보내기 진행 막대와 같은 왕복 슬라이드. */
+main[data-route='library'] [data-banner-bar] [data-busy] {
+  width: 40%;
+  animation: lib-banner-slide 1200ms var(--ease-out-soft) infinite alternate;
+}
+
+main[data-route='library'] [data-banner-bar] > span {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  white-space: nowrap;
+}
+
+@keyframes lib-banner-slide {
+  from {
+    margin-left: 0;
+  }
+
+  to {
+    margin-left: 60%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main[data-route='library'] [data-banner-bar] [data-busy] {
+    animation: none;
+  }
+}
+
+/* 좁은 폭 — 막대가 한 줄 전체로(공통 규칙). */
+@media (max-width: 639.98px) {
+  main[data-route='library'] [data-banner-bar] {
+    flex: 1 1 100%;
+  }
+}

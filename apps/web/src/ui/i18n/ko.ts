@@ -156,6 +156,8 @@ ownership_status: "owned"
     sortNameAsc: '이름순',
     badgeMissing: '빠짐 · 사유 미상',
     badgeFilling: '정보 채우는 중',
+    genrePending: '장르·출시일 채우는 중',
+    firstSyncBanner: '라이브러리 {n}개를 물어왔어요. 커버·장르는 뒤에서 채우는 중이고, 지금도 별점을 매길 수 있어요.',
     badgeHidden: '숨김',
     badgeJustRated: '방금 매김',
     achievementsLabel: '업적 {ach}/{total}',

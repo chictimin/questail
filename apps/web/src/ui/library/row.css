@@ -93,6 +93,13 @@ main[data-route='library'] .game-ach {
   white-space: nowrap;
 }
 
+/* inline-flex 안의 ::before는 flex item이라 앞뒤 공백이 접힌다 — pre로 보존, gap 2px 상쇄, 색은 메타색. */
+main[data-route='library'] .game-ach::before {
+  white-space: pre;
+  margin-right: -2px;
+  color: var(--text-secondary);
+}
+
 main[data-route='library'] .game-ach--complete {
   color: var(--rating);
 }
