@@ -20,9 +20,9 @@ import type { JobExecutor } from '../jobs/collect.js';
 
 /**
  * 동기 서비스 deps exact 형태 (v1.5.5).
- * keyPath·baseUrl·fetchFn·now·executor는 후속 수집기용 보관이다.
- * 현재 전이 함수는 wall clock을 쓰고 DB 핸들을 직접 쓴다.
- * executor 형태는 D06 경계에서 정의한다. 미구현 무동작을 명시한다.
+ * executor가 있으면 서비스가 생성하며 keyPath·baseUrl·fetchFn·now 등 deps를 넘긴다.
+ * executor를 생략하면 수집 실행이 없다.
+ * 현재 전이 함수(data/sync.ts)는 wall clock(Date.now)을 쓰고 DB 핸들을 직접 쓴다.
  */
 /** IANA 시간대(예 Asia/Seoul). observed_day·스냅샷 날짜의 zone 원천이다. */
 export interface SyncServiceDeps {

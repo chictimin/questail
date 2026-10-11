@@ -99,6 +99,7 @@ export function resolveSteamApiBaseUrl(
 /**
  * W-store: 테스트 base가 있으면 baseUrl·storeBaseUrl·steamSpyBaseUrl 모두 같은 값,
  * 없으면 모두 미지정(공식 기본). 새 env 0.
+ * 반환은 3값(baseUrl·storeBaseUrl·steamSpyBaseUrl)이다 — 이름의 Pair는 역사적이다.
  */
 export function storeBasePair(baseUrl: string | undefined): {
   baseUrl?: string;

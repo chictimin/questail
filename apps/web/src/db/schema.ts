@@ -10,7 +10,9 @@
  * 있다. 문서 검색만으로 미지원이라 적은 earlier 주석은 정정한다.
  * FK 이름은 붙이지 않는다(drizzle-kit v1 푸시 차분 방지).
  * 부분 유일은 uniqueIndex + where.
- * `sync_generations` 5행 시딩은 범위 밖(D-02·수집).
+ * `sync_generations`는 5행 일괄 시딩이 없다. 세대 행은 `data/sync.ts`(110행 부근)가
+ * 세대를 올릴 때 생성하고, 마이그레이션 `0002_noisy_human_torch.sql`이 기존
+ * sync_runs에서 백필한다.
  */
 
 import { sql } from 'drizzle-orm';
