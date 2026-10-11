@@ -36,6 +36,13 @@
       "when": 1791630706959,
       "tag": "0004_talented_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791710204309,
+      "tag": "0005_release_date_ko_backfill",
+      "breakpoints": true
     }
   ]
 }
