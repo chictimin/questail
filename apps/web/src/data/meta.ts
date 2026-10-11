@@ -148,7 +148,8 @@ function applyGenres(
     } else {
       // ko: 받은 언어 칸(nameKo)만 갱신, en 칸은 기존값 보존.
       // 첫 수집(en 없음) 행은 genre_name_en NULL로 만든다 — 0003 nullable 전제(C 선행).
-      // ko 응답에 한국어값이 없으면(nameKo null) 기존 ko값 보존(P-9).
+      // ko 응답 장르 description은 한글 여부와 무관하게 nameKo로 받는다.
+      // 빈 description은 장르 행에서 제외되어 이 분기에 오지 않으며, nameKo null이면 기존 ko값 보존.
       const values = {
         platform: key.platform,
         externalId: key.externalId,

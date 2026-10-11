@@ -193,7 +193,7 @@ export function deriveForLocale(
       return {
         id,
         name,
-        nameKo: isKo && koDesc.length > 0 && /[가-힣]/.test(koDesc) ? koDesc : null,
+        nameKo: isKo && koDesc.length > 0 ? koDesc : null,
       };
     })
     .filter(g => g.name.length > 0);
@@ -254,7 +254,7 @@ const EN_MONTH_ABBR_NUMBERS: Record<string, string> = {
 };
 
 /**
- * en 응답 날짜 문자열 → ISO(YYYY-MM-DD). 실측된 두 형식만 변환한다:
+ * 응답 날짜 문자열 → ISO(YYYY-MM-DD). 실측된 영문 두 형식과 ko 형식만 변환한다:
  * 미국식 "<월명> D, YYYY"와 영국식 "D <월 약어>, YYYY".
  * 빈 문자열·월만 있거나 "Coming soon" 같은 값은 undefined를 반환하고
  * 호출 측이 releaseDate를 비운 채 releaseDateRaw만 채운다.
@@ -277,6 +277,14 @@ function toIsoDate(enDate?: string): string | undefined {
     const day = Number(uk[1]);
     if (day < 1 || day > 31) return undefined;
     return `${uk[3]}-${mon}-${String(day).padStart(2, '0')}`;
+  }
+  // ko 응답 "2009년 11월 16일". 연도만·연월만은 일치하지 않아 undefined.
+  const ko = /^\s*(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일\s*$/.exec(enDate);
+  if (ko) {
+    const month = Number(ko[2]);
+    const day = Number(ko[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+    return `${ko[1]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
   return undefined;
 }
