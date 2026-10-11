@@ -13,6 +13,7 @@ import { ExportPage } from './routes/export.js';
 import { Header, LogoHeader } from './shell/header.js';
 import { MobileHeader } from './shell/MobileHeader.js';
 import { SiteFooter } from './shell/footer.js';
+import { rootRedirect } from './rootRedirect.js';
 
 export const ROUTES = [
   { path: '/connect', Page: ConnectPage },
@@ -73,6 +74,10 @@ function useConnected(): {
 export function App(): React.JSX.Element {
   const [path] = useLocation();
   const { connected, refresh } = useConnected();
+  const root = rootRedirect(path, connected);
+  if (root !== null) {
+    return <Redirect to={root.to} replace />;
+  }
   if (connected === false && path !== '/connect') {
     return <Redirect to="/connect" />;
   }
