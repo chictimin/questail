@@ -261,6 +261,7 @@ ownership_status: "owned"
     causeWish: '찜 목록을 받지 못했어요. 프로필에서 찜 목록 공개 범위를 확인한 뒤 다시 수집해 주세요.',
     causeInfoPart: '{n}개는 정보를 못 받았어요 — 별점은 그대로 매길 수 있어요.',
     causeTagsPart: '{n}개는 태그를 못 받았어요 — 나머지는 그대로 볼 수 있어요.',
+    causeAchievementsPart: '{n}개는 업적을 못 받았어요 — 나머지는 그대로 볼 수 있어요.',
     causeNetwork: 'Steam 연결이 잠깐 끊겨서 받지 못했어요. 잠시 뒤 이것만 다시 수집해 주세요.',
     causePayload: 'Steam이 보낸 값이 깨져서 반영하지 않았어요. 이것만 다시 수집하면 받아와요.',
     causeIdMismatch: '저장된 Steam ID와 달라서 받지 못했어요. 설정에서 Steam ID를 확인한 뒤 다시 수집해 주세요.',

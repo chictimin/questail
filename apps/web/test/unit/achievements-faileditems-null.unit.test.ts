@@ -11,7 +11,7 @@ import type { FetchLike } from '../../src/data/connection.js';
 
 /**
  * 반례 테스트 (R1-FIX-SRV D16-small ②).
- * achievements run 정상 종료 → sync_runs.failed_items NULL +
+ * achievements run 정상 종료 → sync_runs.failed_items 0 +
  * SyncStatusEntry.failedItems 키 없음. meta·steamspy는 그대로.
  * itemCount는 741행 식 그대로(total).
  */
@@ -44,7 +44,7 @@ async function settled(service: ReturnType<typeof createSyncService>): Promise<v
 }
 
 describe('반례: achievements failedItems NULL', () => {
-  it('업적 run 정상 종료 → failed_items NULL·entry 키 없음·itemCount=total', async () => {
+  it('업적 run 정상 종료 → failed_items 0·entry 키 있음·itemCount=total', async () => {
     const db = freshDb();
     const dir = mkdtempSync(join(tmpdir(), 'questail-zz-ach-'));
     try {
@@ -83,10 +83,10 @@ describe('반례: achievements failedItems NULL', () => {
         .get(runId) as { s: string; c: number; n: number | null };
       expect(row.s).toBe('ok');
       expect(row.c).toBe(1);
-      expect(row.n).toBeNull();
+      expect(row.n).toBe(0);
       const entry = service.getSyncStatus().find((r) => r.source === 'achievements');
       expect(entry?.state).toBe('ok');
-      expect('failedItems' in (entry as object)).toBe(false);
+      expect('failedItems' in (entry as object)).toBe(true);
     } finally {
       db.close();
       resetSyncLocksForTest();

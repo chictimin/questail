@@ -262,6 +262,7 @@ ownership_status: "owned"
     causeWish: 'Couldn’t fetch your wishlist. Check its visibility on your profile, then retry.',
     causeInfoPart: '{n} games didn’t get info — you can still rate them.',
     causeTagsPart: '{n} games didn’t get tags — the rest are still fine to browse.',
+    causeAchievementsPart: '{n} games didn’t get achievements — the rest are still fine to browse.',
     causeNetwork: 'The Steam connection dropped briefly, so this couldn’t be fetched. Retry this one in a moment.',
     causePayload: 'Steam sent a broken value, so nothing was applied. Retrying this one fetches it again.',
     causeIdMismatch: 'It didn’t match the saved Steam ID, so this couldn’t be fetched. Check the Steam ID in Settings, then retry.',

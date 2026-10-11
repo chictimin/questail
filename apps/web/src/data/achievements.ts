@@ -26,15 +26,15 @@ export interface SaveCollectedAchievementsOptions {
 /**
  * D-03 판정+정규화 → 저장 입력 순수 변환 (D-11).
  * skipGame은 empty 저장이다(리드 해석: 35행 empty=확인했는데 없음.
- * 저장 0이면 not_collected와 구별 불가). failSource는 변환 대상이 아니다.
+ * 저장 0이면 not_collected와 구별 불가). failSource·failGame은 변환 대상이 아니다.
  */
 export function toCollectedAchievements(
-  verdict: Exclude<AchievementVerdict, { kind: 'failSource' }>,
+  verdict: Exclude<AchievementVerdict, { kind: 'failSource' | 'failGame' }>,
   normalized: NormalizedAchievement[],
 ): CollectedAchievements {
   if (verdict.kind === 'skipGame') return { status: 'empty' };
   if (verdict.kind !== 'ok') {
-    throw new RangeError('failSource is not convertible (executor source failure)');
+    throw new RangeError('failSource·failGame is not convertible (executor handles them)');
   }
   if (normalized.length === 0) return { status: 'empty' };
   return {

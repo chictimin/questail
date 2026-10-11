@@ -417,6 +417,7 @@ export function normalizePlayerAchievements(payload: unknown): NormalizedAchieve
 export type AchievementVerdict =
   | { kind: 'ok' }
   | { kind: 'skipGame' }
+  | { kind: 'failGame'; params: { appid: number; status: number } }
   | { kind: 'failSource'; code: SyncErrorCode; params: IssueParams };
 
 /** 게임 단위 "통계 없음" 본문 판정(R12-2). 앞뒤 공백 제거·연속 공백 1칸·소문자 정규화 후 정확히 일치해야 한다. */
@@ -447,6 +448,9 @@ export function judgeAchievementsResponse(
       return { kind: 'skipGame' };
     }
     return { kind: 'failSource', code: 'NETWORK', params: { appid, status } };
+  }
+  if (status >= 500 && status <= 599) {
+    return { kind: 'failGame', params: { appid, status } };
   }
   if (status !== 200) {
     return { kind: 'failSource', code: 'NETWORK', params: { appid, status } };

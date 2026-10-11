@@ -25,7 +25,11 @@ import { ownershipSpans, syncRuns, wishlistSpans } from '../db/schema.js';
 import { applyOwnedDiff } from '../data/ownership.js';
 import { applyWishlistDiff } from '../data/wishlist.js';
 import { recordPlaytimeSnapshot } from '../data/playtime.js';
-import { saveCollectedAchievements, toCollectedAchievements } from '../data/achievements.js';
+import {
+  saveCollectedAchievements,
+  toCollectedAchievements,
+  type CollectedAchievements,
+} from '../data/achievements.js';
 import { saveCollectedMeta } from '../data/meta.js';
 import { saveCollectedTags } from '../data/tags.js';
 import { getAchievementSettings } from '../data/viewState.js';
@@ -205,8 +209,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
         itemCount: agg.total,
         isFinalized: true,
         issue: { code, params },
-        // achievements는 failedItems 미제공 → NULL(647·732·741행). meta·steamspy만 기록.
-        ...(job.source === 'achievements' ? {} : { failedItems: agg.failed }),
+        failedItems: agg.failed,
       });
       return;
     }
@@ -451,9 +454,9 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
           keyPath: ctx.keyPath,
           baseUrl: ctx.baseUrl,
           fetchFn: (url) => raceWithSignal(baseFetch(url), signal),
-          passStatus: [400],
+          passStatus: [400, ...Array.from({ length: 100 }, (_, i) => 500 + i)],
         });
-        let collected;
+        let collected: CollectedAchievements;
         try {
           const result = await raceWithSignal(
             authed.request((key, base) => buildPlayerAchievementsPath(key, steamId, appid, base)),
@@ -468,7 +471,11 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
             finishFailed(job, verdict.code, verdict.params);
             return;
           }
-          collected = toCollectedAchievements(verdict, normalizePlayerAchievements(result.body));
+          // failGame(5xx) — 그 게임만 failed 결과 행, 체크포인트 0, 다음 게임 계속.
+          collected =
+            verdict.kind === 'failGame'
+              ? { status: 'failed' }
+              : toCollectedAchievements(verdict, normalizePlayerAchievements(result.body));
         } catch (error) {
           if (signal.aborted) return; // stop — running 유지, recover가 잇는다
           if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -483,13 +490,15 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
             collected,
             { observedAt: Math.floor(now() / 1000), syncRunId: job.runId },
           );
-          writeCheckpoint(ctx.db, {
-            generation: job.generation,
-            source: job.source,
-            itemKey: itemKey('steam', appid, job.source),
-            syncRunId: job.runId,
-            doneAt: Math.floor(now() / 1000),
-          });
+          if (collected.status !== 'failed') {
+            writeCheckpoint(ctx.db, {
+              generation: job.generation,
+              source: job.source,
+              itemKey: itemKey('steam', appid, job.source),
+              syncRunId: job.runId,
+              doneAt: Math.floor(now() / 1000),
+            });
+          }
         });
         try {
           store();
@@ -520,6 +529,7 @@ export function createJobExecutor(ctx: ExecutorContext): JobExecutor {
       itemCount: achAgg.total,
       isFinalized: true,
       issue: null,
+      failedItems: achAgg.failed,
     });
   }
 

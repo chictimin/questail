@@ -160,7 +160,7 @@ describe('F1 refresh 집계 반례', () => {
           const row = db
             .prepare('SELECT item_count AS c, failed_items AS n FROM sync_runs WHERE id = ?')
             .get(runId) as { c: number; n: number | null };
-          expect(row).toEqual({ c: 3, n: source === "achievements" ? null : 0 });
+          expect(row).toEqual({ c: 3, n: 0 });
         });
       } finally {
         db.close();

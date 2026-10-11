@@ -2,7 +2,7 @@
  * U3b [2] sync 화면 매핑 — 순수 함수. DTO → 행 모델·상단 시각·검토 목록.
  * 우선순위: running(진행 표시) > 소스 failed/issue(원인 문장, 429 대기 시간 포함)
  * > 부분 실패(failedItems, state ok일 때만) > ok.
- * f(부분 실패): pill hold + causeInfoPart(info 외·{n})·causeTagsPart(태그·{n}) + 재수집 (U3b 결정, 보고 명시).
+ * f(부분 실패): pill hold + causeInfoPart(info 외·{n})·causeTagsPart(태그·{n})·causeAchievementsPart(업적·{n}) + 재수집 (U3b 결정, 보고 명시).
  * 소스가 원인 문장을 내면 부분 실패 수는 표시하지 않는다(중복 정보 금지 — "미표시").
  * 업적 OFF는 호출 측에서 덮어쓴다(행 모델 아님).
  */
@@ -13,6 +13,7 @@ import {
   rowDisplay,
   type CollectSource as UiSource,
   type RowBody,
+  type TextKey,
   type SyncPill,
 } from './statusMap.js';
 
@@ -32,6 +33,12 @@ const DATA_TO_UI_SOURCE: Record<DataSource, UiSource> = {
   meta: 'info',
   achievements: 'ach',
   steamspy: 'tags',
+};
+
+/** 부분 실패(failedItems) 문장 키 — 목록에 없는 소스는 게임 정보 문장. */
+const PARTIAL_CAUSE_KEY: Partial<Record<DataSource, TextKey>> = {
+  steamspy: 'sync.causeTagsPart',
+  achievements: 'sync.causeAchievementsPart',
 };
 
 /** 행 표시값. 시각은 epoch 초 그대로(표기는 호출 측 formatDateTime). */
@@ -61,10 +68,7 @@ export function rowViewFor(
           pill: 'hold',
           body: {
             kind: 'cause',
-            key:
-              entry.source === 'steamspy'
-                ? 'sync.causeTagsPart'
-                : 'sync.causeInfoPart',
+            key: PARTIAL_CAUSE_KEY[entry.source] ?? 'sync.causeInfoPart',
             params: { n: entry.failedItems },
           },
           retry: true,
