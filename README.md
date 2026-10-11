@@ -30,21 +30,21 @@ cd questail
 pnpm install && pnpm start
 ```
 
-After startup, open `http://127.0.0.1:4747` in a browser. The connect screen appears — enter the API key and a profile address or SteamID.
+After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` redirects to the library when a Steam account is already connected, and to the connect screen otherwise. On the connect screen, enter the API key and a profile address or SteamID.
 
 ## Collection Scope
 
-- Each collection fetches owned games, playtime, wishlist, game info, and SteamSpy tags. Achievements are fetched only when enabled in settings (a disabled row shows as off in collection status).
-- Game info is fetched in the display language only. Check the language in settings before the first collection.
+- Each collection fetches owned games, playtime, wishlist, game info, and SteamSpy tags. Achievements are fetched only when enabled (off by default; a disabled row shows as off in collection status). Decide with the checkbox on the connect screen before the first collection; it can be changed later in settings.
+- Game info is fetched in the display language only. Check the language in settings before the first collection. With Korean selected, Korean release-date text (`YYYY년 M월 D일`) and genre names are parsed; on update, a migration fills the release date of existing games from that text automatically (after an automatic backup).
 - The collection status screen shows per-source state with retry and collect-all. The header shows game info progress.
-- Game info requests go out every 2 seconds, so 1,000 games take about 35 minutes. Larger libraries take hours, longer if Steam rate-limits requests (429).
+- Game info requests go out every 2 seconds, so 1,000 games take about 33 minutes. Larger libraries take hours, longer if Steam rate-limits requests (429).
 - A daily snapshot runs at 04:00 in the operating system's local time zone, only while the server is on. A missed run fires once at the next startup.
 
 ## Data Directory
 
 - Default location is `data/<steamid64>/`. The account folder is created under `data/` in the repository root when Steam connection succeeds. Before connecting, there is no account folder.
 - Set the `QUESTAIL_DATA_DIR` environment variable and restart the app to use that path as is. No account subfolder is created in this case.
-- The legacy single folder `data/questail.db` from earlier versions is still used as is. However, the app does not start in two cases. If it exists together with an account folder, it shows "legacy data/questail.db and an account folder exist together — move one of them or set QUESTAIL_DATA_DIR"; move one of them, or set the folder to use with `QUESTAIL_DATA_DIR`. If it has no linked Steam ID but holds game records, it shows "legacy data/questail.db has game records that are not linked, so the app does not start — point QUESTAIL_DATA_DIR at that folder or move it manually".
+- The legacy single folder `data/questail.db` from earlier versions is still used as is. An empty legacy DB (no linked Steam ID and no game records) is ignored with a warning. However, the app does not start in two cases. If it exists together with an account folder, it shows "legacy data/questail.db and an account folder exist together — move one of them or set QUESTAIL_DATA_DIR"; move one of them, or set the folder to use with `QUESTAIL_DATA_DIR`. If it has no linked Steam ID but holds game records, it shows "legacy data/questail.db has game records that are not linked, so the app does not start — point QUESTAIL_DATA_DIR at that folder or move it manually".
 - If the legacy `data/questail.db` cannot be opened, the app also does not start. It shows "cannot read legacy data/questail.db; cannot start — check or move the file".
 - If `data/` holds more than one account folder, the app does not start. It shows "more than one account folder — set QUESTAIL_DATA_DIR"; set the one folder to use with `QUESTAIL_DATA_DIR`.
 - If the account ID in an account folder's DB differs from the folder name (or cannot be read), the app does not start. It shows "account ID in the account folder DB differs from the folder name — fix or move that folder"; fix or move that folder.
@@ -54,6 +54,7 @@ After startup, open `http://127.0.0.1:4747` in a browser. The connect screen app
 
 ## Backup
 
+- Automatic backup: before applying pending schema migrations to an existing database, and when connecting to an existing account folder, the app writes `questail-<UTC time>.db` into `backups/` directly under the data folder. There is no limit on the number of backups. No backup is made for a new, empty database. When the legacy `data/` is used, the folder is `data/backups/`.
 - Manual backup: quit the app, then copy the whole data folder (`data/<steamid64>/`, SQLite files).
 
 ## Port
@@ -73,6 +74,7 @@ node apps/web/dist/src/server/run.js
 
 ## Achievements
 
+- Collection is optional. The connect screen has a checkbox (off by default) to decide before the first collection, and settings can change it later.
 - Achievement records are collected only when "Game details" on the Steam profile is public. If it is private, those games are skipped. This is an account setting, not an app failure.
 - Unrecorded achievements may later affect the gamer type (TBTI) result and some titles, a feature planned for later.
 
@@ -81,6 +83,14 @@ node apps/web/dist/src/server/run.js
 - The API key is stored only in the `steam.key` file inside the account data folder (`data/<steamid64>/`). If `QUESTAIL_DATA_DIR` is set, it is stored in that folder.
 - Do not share the API key. If it leaks, revoke it on the key page, register a new one, and replace it in the app.
 - On Windows, key file permission checks (600) do not apply. The permission check is skipped.
+
+## Tests
+
+- `pnpm test` runs unit and browser E2E tests. No real Steam account or API key is needed. Install the E2E browser first (the same command CI uses):
+
+```bash
+pnpm --filter @questail/web exec playwright install --with-deps chromium
+```
 
 ## Notes
 
@@ -98,7 +108,7 @@ questail/
 │   └── web/                     # R1 app (Hono server + React UI + SQLite)
 │       ├── src/
 │       │   ├── server/          # HTTP routes, boot sequence
-│       │   ├── ui/              # React screens (connect, sync, library, settings)
+│       │   ├── ui/              # React screens (connect, sync, library, export, settings)
 │       │   ├── data/            # library, ratings, view state services
 │       │   └── db/              # schema, migrations, open/backup/migrate
 │       └── test/                # unit, e2e, performance harnesses
