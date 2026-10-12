@@ -59,6 +59,15 @@ function isSkipped(line) {
   );
 }
 
+/**
+ * Windows에서 pnpm은 pnpm.cmd라 shell 없는 spawn이 찾지 못한다(ENOENT).
+ * win32에서만 shell을 켠다. 인자는 고정 상수(['start'])라 인용·주입 문제가 없고,
+ * 다른 플랫폼은 기존 직접 spawn(자식 pid = 프로세스 그룹 리더)을 유지한다.
+ */
+export function pnpmSpawnShell(platform = process.platform) {
+  return platform === 'win32';
+}
+
 function runForeground(line, cwd) {
   console.log(`[readme-blocks] run: ${line}`);
   execFileSync(line, { cwd, stdio: 'inherit', shell: true });
@@ -135,6 +144,7 @@ async function runStartBackground(cwd, port, dataDir) {
       QUESTAIL_DATA_DIR: dataDir,
     },
     detached: true,
+    shell: pnpmSpawnShell(),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
