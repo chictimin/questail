@@ -12,6 +12,7 @@ import { SettingsPage } from './routes/settings.js';
 import { ExportPage } from './routes/export.js';
 import { Header, LogoHeader } from './shell/header.js';
 import { MobileHeader } from './shell/MobileHeader.js';
+import { ChromeProvider, chromeShifts } from './shell/chrome.js';
 import { SiteFooter } from './shell/footer.js';
 import { rootRedirect } from './rootRedirect.js';
 
@@ -91,22 +92,27 @@ export function App(): React.JSX.Element {
       <LogoHeader />
     );
   return (
-    <div
-      className={
-        connected === true ? 'qt-shell qt-shell--app' : 'qt-shell qt-shell--guest'
-      }
-    >
-      {header}
-      <Switch>
-        <Route path="/connect">
-          {() => <ConnectPage onConnected={refresh} />}
-        </Route>
-        <Route path="/sync" component={SyncPage} />
-        <Route path="/library" component={LibraryPage} />
-        <Route path="/settings" component={SettingsPage} />
-        <Route path="/export" component={ExportPage} />
-      </Switch>
-      <SiteFooter />
-    </div>
+    <ChromeProvider>
+      {(chrome) => (
+        <div
+          className={
+            connected === true ? 'qt-shell qt-shell--app' : 'qt-shell qt-shell--guest'
+          }
+          data-chrome-shift={chromeShifts(chrome)}
+        >
+          {header}
+          <Switch>
+            <Route path="/connect">
+              {() => <ConnectPage onConnected={refresh} />}
+            </Route>
+            <Route path="/sync" component={SyncPage} />
+            <Route path="/library" component={LibraryPage} />
+            <Route path="/settings" component={SettingsPage} />
+            <Route path="/export" component={ExportPage} />
+          </Switch>
+          <SiteFooter />
+        </div>
+      )}
+    </ChromeProvider>
   );
 }

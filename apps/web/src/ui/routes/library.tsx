@@ -3,7 +3,7 @@
  * 가상 스크롤 · 포커스 이동 · 토스트. 색·간격·레이아웃은 만지지 않는다.
  */
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { CircleDashed, EyeSlash, Star, StarHalf, WarningCircle } from '@phosphor-icons/react';
 import type { GameFacts } from '../../data/library.js';
@@ -14,7 +14,14 @@ import { filterGames, filterKeyOf, type FilterKey } from '../library/filter.js';
 import { GameRow, type RowGame } from '../library/GameRow.js';
 import '../library/library.css';
 import { LibraryToolbar } from '../library/LibraryToolbar.js';
-import { sortGames, type Direction, type SortKey, type SortSpec } from '../library/sort.js';
+import { sortGames, type Direction, type SortSpec } from '../library/sort.js';
+import {
+  clampScrollTop,
+  createLoadSequence,
+  createPrefsWriteGuard,
+  rememberedSort,
+} from '../library/sortState.js';
+import { noteIntentionalReset } from '../library/popoverLock.js';
 import { FirstSyncBanner } from '../library/FirstSyncBanner.js';
 import {
   firstSyncBannerFor,
@@ -39,37 +46,6 @@ interface Toast {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
-}
-
-function defaultSort(filterKey: FilterKey): SortSpec {
-  if (filterKey === 'byRating') {
-    return { sortKey: 'ratedAt', direction: 'desc' };
-  }
-  return { sortKey: 'playtime', direction: 'desc' };
-}
-
-function rememberedSort(prefs: Prefs | null, filterKey: FilterKey): SortSpec {
-  const entry = prefs?.sortPerFilter.find((row) => row.filterKey === filterKey);
-  if (
-    entry !== undefined &&
-    isSortKey(entry.sortKey) &&
-    (entry.direction === 'asc' || entry.direction === 'desc')
-  ) {
-    return { sortKey: entry.sortKey, direction: entry.direction };
-  }
-  return defaultSort(filterKey);
-}
-
-function isSortKey(value: string): value is SortKey {
-  return (
-    value === 'playtime' ||
-    value === 'lastPlayed' ||
-    value === 'rating' ||
-    value === 'ratedAt' ||
-    value === 'addedAt' ||
-    value === 'releaseDate' ||
-    value === 'name'
-  );
 }
 
 function focusSlider(container: HTMLElement | null, gameKey: string, step: 1 | -1): void {
@@ -102,16 +78,40 @@ export function LibraryPage(): React.JSX.Element {
   const [toast, setToast] = useState<Toast | null>(null);
   const { entries } = useSyncStatus();
   const listRef = useRef<HTMLDivElement>(null);
-  const generationRef = useRef(0);
+  const loadSeqRef = useRef(createLoadSequence());
+  // 스켈레톤 구간에 리스트가 언마운트되므로 진입 전 scrollTop을 보관했다가 데이터 교체 후 복원(null = 없음).
+  const savedScrollRef = useRef<number | null>(null);
+  // 빠진 게임 토글 뒤 첫 적용 응답에서 맨 위로 되돌릴 표식 — 겹친 재조회가 앞 요청을 대체해도 유지된다.
+  const resetScrollRef = useRef(false);
   const [reloadTick, setReloadTick] = useState(0);
+  // 빠진 게임 재조회 중 — 툴바·팝오버·리스트는 그대로 두고 관련 컨트롤만 잠근다.
+  const [refetching, setRefetching] = useState(false);
+  const prefsGuardRef = useRef(createPrefsWriteGuard());
+  const filterKeyRef = useRef<FilterKey>('all');
+  filterKeyRef.current = filterKey;
+  const previousShowEndedRef = useRef(showEnded);
+  const statusRef = useRef<LoadStatus>('loading');
+  statusRef.current = status;
   // 토스트 되돌리기가 생성 시점 prefs를 잡지 않게 최신값 미러.
   const prefsRef = useRef<Prefs | null>(null);
   prefsRef.current = prefs;
 
   useEffect(() => {
-    const generation = (generationRef.current += 1);
     const fallback = detectLocale(navigator.language);
-    setStatus('loading');
+    // 빠진 게임 토글이 부른 재조회만 제자리 교체(툴바·리스트 유지). 그 밖은 스켈레톤.
+    const showEndedChanged = previousShowEndedRef.current !== showEnded;
+    previousShowEndedRef.current = showEnded;
+    const inPlace = showEndedChanged && statusRef.current === 'ready';
+    const prefsToken = prefsGuardRef.current.begin();
+    const seq = loadSeqRef.current;
+    const generation = seq.begin(inPlace);
+    if (showEndedChanged) {
+      resetScrollRef.current = true;
+    } else if (!inPlace && statusRef.current === 'ready' && savedScrollRef.current === null) {
+      savedScrollRef.current = listRef.current?.scrollTop ?? null;
+    }
+    setRefetching(seq.isBusy());
+    if (!inPlace) setStatus('loading');
     async function load(): Promise<void> {
       try {
         const [gamesResponse, prefsResponse] = await Promise.all([
@@ -122,16 +122,33 @@ export function LibraryPage(): React.JSX.Element {
           readJson(gamesResponse),
           readJson(prefsResponse),
         ]);
-        if (generationRef.current !== generation) return;
+        if (!seq.isLatest(generation)) return;
         setGames(fetchedGames as RowGame[]);
-        const nextPrefs = fetchedPrefs as Prefs;
-        setPrefs(nextPrefs);
-        setHideShortPlaytime(nextPrefs.hideShortPlaytime === true);
-        setSortSpec(rememberedSort(nextPrefs, filterKey));
+        // load 시작 이후 사용자 PUT이 있었으면 이 응답의 prefs는 옛 값 — 적용하지 않는다.
+        if (!prefsGuardRef.current.isStale(prefsToken)) {
+          const nextPrefs = fetchedPrefs as Prefs;
+          setPrefs(nextPrefs);
+          setHideShortPlaytime(nextPrefs.hideShortPlaytime === true);
+          setSortSpec(rememberedSort(nextPrefs, filterKeyRef.current));
+        }
+        if (resetScrollRef.current) {
+          // 게임 집합이 바뀌었으므로 리스트는 맨 위부터.
+          resetScrollRef.current = false;
+          savedScrollRef.current = 0;
+          const list = listRef.current;
+          if (list !== null) list.scrollTop = 0;
+          noteIntentionalReset();
+        }
         setStatus('ready');
       } catch {
-        if (generationRef.current !== generation) return;
+        if (!seq.isLatest(generation)) return;
+        resetScrollRef.current = false;
+        savedScrollRef.current = null;
         setStatus('failed');
+      } finally {
+        // 최신 요청만 busy를 정리한다 — 오래된 요청은 건드리지 않는다.
+        seq.settle(generation);
+        if (seq.isLatest(generation)) setRefetching(false);
       }
     }
     void load();
@@ -143,11 +160,11 @@ export function LibraryPage(): React.JSX.Element {
     const previous = previousEntriesRef.current;
     previousEntriesRef.current = entries;
     if (!shouldRefetchOnSettle(previous, entries)) return;
-    const generation = generationRef.current;
+    const generation = loadSeqRef.current.current();
     fetch(`/api/library?includeEnded=${showEnded ? 'true' : 'false'}`)
       .then(readJson)
       .then((reloaded) => {
-        if (generationRef.current === generation) setGames(reloaded as RowGame[]);
+        if (loadSeqRef.current.isLatest(generation)) setGames(reloaded as RowGame[]);
       })
       .catch(() => undefined);
   }, [entries]);
@@ -256,6 +273,7 @@ export function LibraryPage(): React.JSX.Element {
       const [platform, externalId] = entry.split('/') as [string, string];
       return { platform, externalId };
     });
+    prefsGuardRef.current.noteWrite();
     try {
       const response = await fetch(
         `${'/api/prefs'}?fallback=${detectLocale(navigator.language)}`,
@@ -297,6 +315,7 @@ export function LibraryPage(): React.JSX.Element {
   }
 
   async function persistHideShortPlaytime(value: boolean): Promise<void> {
+    prefsGuardRef.current.noteWrite();
     try {
       const response = await fetch(
         `${'/api/prefs'}?fallback=${detectLocale(navigator.language)}`,
@@ -325,6 +344,7 @@ export function LibraryPage(): React.JSX.Element {
       sortKey: next.sortKey,
       direction: next.direction as Direction,
     };
+    prefsGuardRef.current.noteWrite();
     try {
       const response = await fetch(
         `${'/api/prefs'}?fallback=${detectLocale(navigator.language)}`,
@@ -364,6 +384,16 @@ export function LibraryPage(): React.JSX.Element {
   const shownCount = virtualizer.getVirtualItems().length;
   const banner = firstSyncBannerFor(entries, games);
   const ownedLoading = showOwnedSkeleton(entries, games.length);
+
+  // 스켈레톤 뒤 리스트가 다시 마운트·렌더된 직후 저장한 scrollTop 복원(행 수가 줄었으면 절삭).
+  useLayoutEffect(() => {
+    const saved = savedScrollRef.current;
+    if (saved === null || status !== 'ready' || ownedLoading) return;
+    savedScrollRef.current = null;
+    const list = listRef.current;
+    if (list === null) return;
+    list.scrollTop = clampScrollTop(saved, list.scrollHeight, list.clientHeight);
+  });
 
   return (
     <main data-route="library">
@@ -414,6 +444,7 @@ export function LibraryPage(): React.JSX.Element {
             sortSpec={sortSpec}
             showEnded={showEnded}
             hideShortPlaytime={hideShortPlaytime}
+            busy={refetching}
             onFilter={changeFilter}
             onScore={changeScore}
             onSort={(spec) => changeSort(spec).catch(() => undefined)}
@@ -451,6 +482,7 @@ export function LibraryPage(): React.JSX.Element {
           <div
             ref={listRef}
             className="library-list"
+            data-chrome-scroll
             onKeyDown={(event) => {
               if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
               const row = (event.target as HTMLElement).closest('[data-game-key]');

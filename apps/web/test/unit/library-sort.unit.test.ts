@@ -46,7 +46,7 @@ function ids(games: SortableGame[]): string[] {
 
 describe('SORT_OPTIONS', () => {
   it('11조합', () => {
-    expect(SORT_OPTIONS).toHaveLength(11);
+    expect(SORT_OPTIONS).toHaveLength(14);
   });
 });
 

@@ -18,6 +18,8 @@ export interface LibraryToolbarProps {
   sortSpec: SortSpec;
   showEnded: boolean;
   hideShortPlaytime: boolean;
+  /** 빠진 게임 재조회 중. */
+  busy: boolean;
   onFilter: (key: FilterKey) => void;
   onScore: (score: number | null) => void;
   onSort: (spec: SortSpec) => void;
@@ -34,6 +36,7 @@ export function LibraryToolbar({
   sortSpec,
   showEnded,
   hideShortPlaytime,
+  busy,
   onFilter,
   onScore,
   onSort,
@@ -59,6 +62,7 @@ export function LibraryToolbar({
           showEnded={showEnded}
           hideShortPlaytime={hideShortPlaytime}
           sortSpec={sortSpec}
+          busy={busy}
           onToggleEnded={onToggleEnded}
           onToggleHideShortPlaytime={onToggleHideShortPlaytime}
           onSort={onSort}

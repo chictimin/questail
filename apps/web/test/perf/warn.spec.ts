@@ -50,9 +50,9 @@ async function measureFilter(page: Page): Promise<number> {
 
 async function measureSort(page: Page): Promise<number> {
   await page.getByLabel('정렬·필터').click();
-  await expect(page.getByRole('radio', { name: '평가일 최근 순' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: '정렬' })).toBeVisible();
   const start = Date.now();
-  await page.getByRole('radio', { name: '평가일 최근 순' }).check();
+  await page.getByRole('combobox', { name: '정렬' }).selectOption('ratedAt');
   await settleRows(page);
   const resultLine = page.getByText('평가일 최근 순');
   await expect(resultLine.first()).toBeVisible();

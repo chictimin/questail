@@ -101,17 +101,29 @@ main[data-route='library'] .lib-popover {
   border-radius: var(--corner-12);
   background: #2c2c2c;
   box-shadow: inset 0 0 0 1px var(--qt-white-10);
+  /* max-height는 열릴 때 FilterButton이 위치에서 계산(viewport 안). 넘치면 내부 스크롤. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 토글 2개 — 한 줄(flex). 라벨은 칸 안에서 줄바꿈한다. */
+main[data-route='library'] .lib-popover-toggles {
+  display: flex;
+  gap: var(--space-4);
 }
 
 main[data-route='library'] .lib-popover-switch {
   display: flex;
+  flex: 1 1 0;
+  min-width: 0;
   align-items: center;
-  gap: var(--space-10);
-  height: 44px;
-  padding: 0 var(--space-10);
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: 4px var(--space-8);
   border-radius: var(--corner-8);
   color: var(--qt-white);
   font-size: var(--text-13);
+  line-height: 18px;
   cursor: pointer;
 }
 
@@ -165,44 +177,47 @@ main[data-route='library'] .lib-popover-heading {
   color: var(--text-secondary);
 }
 
-main[data-route='library'] .lib-popover-sorts {
+/* 정렬 — 기준 select + 방향 토글 버튼. */
+main[data-route='library'] .lib-popover-sortrow {
   display: flex;
-  flex-direction: column;
+  gap: var(--space-8);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
-main[data-route='library'] .lib-popover-sort {
-  display: flex;
-  align-items: center;
-  gap: var(--space-10);
+main[data-route='library'] .lib-sort-select {
+  flex: 1;
+  min-width: 0;
   height: 40px;
   padding: 0 var(--space-10);
+  border: none;
   border-radius: var(--corner-8);
+  background: var(--qt-white-8);
   color: var(--qt-white);
+  font: inherit;
   font-size: var(--text-13);
   cursor: pointer;
 }
 
-main[data-route='library'] .lib-popover-sort--on {
-  background: var(--qt-white-8);
-}
-
-main[data-route='library'] .lib-popover-sort-label {
-  flex: 1;
-}
-
-main[data-route='library'] .lib-popover-sort--on svg {
-  color: var(--qt-purple);
-}
-
-/* 네이티브 라디오 숨김 — 선택 표시는 Check 아이콘. */
-main[data-route='library'] .lib-radio {
-  appearance: none;
-  width: 0;
-  height: 0;
-  margin: 0;
+main[data-route='library'] .lib-sort-dir {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: none;
-  background: transparent;
+  border-radius: var(--corner-8);
+  background: var(--qt-white-8);
+  color: var(--qt-purple);
+  cursor: pointer;
+}
+
+main[data-route='library'] .lib-sort-select:disabled,
+main[data-route='library'] .lib-sort-dir:disabled,
+main[data-route='library'] .lib-switch:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* 결과 줄 — 12/16. 개수 흰색 600 + · 정렬명. */

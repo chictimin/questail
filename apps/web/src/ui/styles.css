@@ -337,6 +337,8 @@ main[data-route] {
   .site-header,
   .mobile-header,
   .mobile-header-top,
+  .qt-shell--app > main[data-route='library'],
+  .qt-shell--app > .site-footer,
   .qt-btn--primary {
     transition: none;
   }

@@ -25,7 +25,7 @@ export interface SortSpec {
   direction: Direction;
 }
 
-/** 11조합 (RATE-2). ratedAt·addedAt는 최근만, name은 오름만. */
+/** 14조합 — 서버 어휘와 같은 7키 × 2방향. 키별 첫 항목이 그 키의 기본 방향이다. */
 export const SORT_OPTIONS: SortSpec[] = [
   { sortKey: 'playtime', direction: 'desc' },
   { sortKey: 'playtime', direction: 'asc' },
@@ -34,11 +34,31 @@ export const SORT_OPTIONS: SortSpec[] = [
   { sortKey: 'rating', direction: 'desc' },
   { sortKey: 'rating', direction: 'asc' },
   { sortKey: 'ratedAt', direction: 'desc' },
+  { sortKey: 'ratedAt', direction: 'asc' },
   { sortKey: 'addedAt', direction: 'desc' },
+  { sortKey: 'addedAt', direction: 'asc' },
   { sortKey: 'releaseDate', direction: 'desc' },
   { sortKey: 'releaseDate', direction: 'asc' },
   { sortKey: 'name', direction: 'asc' },
+  { sortKey: 'name', direction: 'desc' },
 ];
+
+/** 정렬 기준 선택 표시 순서(SORT_OPTIONS 키 등장 순). */
+export const SORT_KEYS: SortKey[] = [
+  'playtime',
+  'lastPlayed',
+  'rating',
+  'ratedAt',
+  'addedAt',
+  'releaseDate',
+  'name',
+];
+
+/** 키 전환 시 방향 — SORT_OPTIONS에서 그 키의 첫 방향. */
+export function defaultDirectionOf(sortKey: SortKey): Direction {
+  const first = SORT_OPTIONS.find((option) => option.sortKey === sortKey);
+  return first === undefined ? 'desc' : first.direction;
+}
 
 /**
  * 표시 이름은 shared/displayName.ts 1곳에만 있다(서버→UI 의존 금지).

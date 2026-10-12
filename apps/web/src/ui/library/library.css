@@ -143,6 +143,8 @@ main[data-route='library'] .library-list {
   scrollbar-width: none;
   min-height: 280px;
   max-height: calc(100dvh - 360px);
+  /* 결과 줄 하단 → 리스트 상단 12 — 레퍼런스 ②-a: 페이지 컬럼 gap 24 + 결과 줄 margin-bottom -12. */
+  margin-top: var(--space-12);
   border-top: 1px solid var(--qt-white-8);
 }
 

@@ -137,7 +137,23 @@
   display: none;
 }
 
+/* 좁은 폭 헤더 숨김 이동 거리 — 헤더·본문이 같은 값·전환을 쓴다(단일 출처 chrome.tsx). */
+.qt-shell--app {
+  --chrome-shift: 76px;
+}
+
 @media (max-width: 639.98px) {
+  /* 헤더가 숨을 때 본문(제목·툴바·리스트·푸터)도 같은 거리·전환으로 올라간다 — 내부 스크롤이 숨긴 경우만. */
+  .qt-shell--app > main[data-route='library'],
+  .qt-shell--app > .site-footer {
+    transition: transform var(--dur-header) var(--ease-out-soft);
+  }
+
+  .qt-shell--app[data-chrome-shift='true'] > main[data-route='library'],
+  .qt-shell--app[data-chrome-shift='true'] > .site-footer {
+    transform: translateY(calc(-1 * var(--chrome-shift)));
+  }
+
   /* 연동 상태 헤더는 모바일 헤더로 교체. 미연동 게스트 헤더는 아래에서 쌓기 구조로. */
   .site-header--app {
     display: none;
@@ -202,7 +218,7 @@
 
   /* 아래로 스크롤(Δ>6, scrollTop>80): 심볼 줄만 화면 밖으로. */
   .mobile-header.is-hidden {
-    transform: translateY(-76px);
+    transform: translateY(calc(-1 * var(--chrome-shift)));
   }
 
   /* 위로 스크롤(Δ<-6): 원위치 + frost. */
@@ -216,7 +232,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    height: 76px;
+    height: var(--chrome-shift);
     transition: opacity 200ms;
   }
 
