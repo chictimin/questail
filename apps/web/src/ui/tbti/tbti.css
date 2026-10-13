@@ -219,6 +219,20 @@ h1.tbti-code {
   color: var(--accent);
 }
 
+button.tbti-ach-go {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.tbti-ach-go:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .tbti-metric {
   margin: 0 0 var(--space-8);
   font-size: var(--text-13);

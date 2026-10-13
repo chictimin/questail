@@ -13,6 +13,21 @@ import type {
   TbtiAxis,
   TbtiResult,
 } from '@questail/core';
+import {
+  TBTI_REASON_CL_ACH_READY,
+  TBTI_REASON_CL_HOURS_ONLY,
+  TBTI_REASON_IR_BOTH,
+  TBTI_REASON_IR_I_ONLY,
+  TBTI_REASON_IR_R_ONLY,
+  TBTI_REASON_NH_CONFIRMED_LASTPLAYED,
+  TBTI_REASON_NH_CONFIRMED_SNAPSHOT,
+  TBTI_REASON_NH_CONFIRMED_UNLOCK,
+  TBTI_REASON_NH_CONFIRMED_WISHLIST,
+  TBTI_REASON_NH_LATE,
+  TBTI_REASON_NH_NO_EVIDENCE,
+  TBTI_REASON_OA_GENRE,
+} from '@questail/core';
+import type { CollectSource } from '../../data/sync.js';
 import { TBTI_NAMES, type TbtiCode } from '../../data/tbtiNames.js';
 import { useLocale } from '../i18n/context.js';
 import type { Locale } from '../i18n/index.js';
@@ -65,6 +80,27 @@ const LEFT_LETTER: Record<TbtiAxis['axis'], AxisLetter> = {
  */
 const BASELINE_TEXT_KEYS: Record<string, TextKey> = {
   'tbti.baseline.imc2016': 'tbti.baselineImc2016',
+};
+
+/**
+ * core reasonKey(점이 3개인 판정 키, 예 tbti.reason.ir.i_only)는
+ * t()가 두 조각만 풀므로 사전 키로 옮긴다. 값 목록 출처 =
+ * packages/core/src/tbti/judge.ts TBTI_REASON_* 상수 12개(읽기 전용).
+ * 표에 없는 키는 원키 그대로 두어 i18n 감사 테스트가 잡는다.
+ */
+const REASON_TEXT_KEYS: Record<string, TextKey> = {
+  [TBTI_REASON_IR_I_ONLY]: 'tbti.reasonIrIOnly',
+  [TBTI_REASON_IR_R_ONLY]: 'tbti.reasonIrROnly',
+  [TBTI_REASON_IR_BOTH]: 'tbti.reasonIrBoth',
+  [TBTI_REASON_NH_CONFIRMED_SNAPSHOT]: 'tbti.reasonNhSnapshot',
+  [TBTI_REASON_NH_CONFIRMED_UNLOCK]: 'tbti.reasonNhUnlock',
+  [TBTI_REASON_NH_CONFIRMED_LASTPLAYED]: 'tbti.reasonNhLastPlayed',
+  [TBTI_REASON_NH_CONFIRMED_WISHLIST]: 'tbti.reasonNhWishlist',
+  [TBTI_REASON_NH_LATE]: 'tbti.reasonNhLate',
+  [TBTI_REASON_NH_NO_EVIDENCE]: 'tbti.reasonNhNoEvidence',
+  [TBTI_REASON_OA_GENRE]: 'tbti.reasonOaGenre',
+  [TBTI_REASON_CL_ACH_READY]: 'tbti.reasonClAchReady',
+  [TBTI_REASON_CL_HOURS_ONLY]: 'tbti.reasonClHoursOnly',
 };
 
 const CAVEAT_KEYS: Record<Caveat['code'], TextKey> = {  observation_days: 'recap.caveatObservationDays',
@@ -142,16 +178,22 @@ function FrontCard({ result }: { result: TbtiResult }): React.JSX.Element {
 function Chip({ kind }: { kind: TextKey | { part: { got: number; of: number } } }): React.JSX.Element {
   const { locale, text } = useLocale();
   if (typeof kind === 'object') {
+    const label = text('tbti.chipAchPart', {
+      got: formatInt(locale, kind.part.got),
+      of: formatInt(locale, kind.part.of),
+    });
     return (
-      <span className="tbti-chip">
-        {text('tbti.chipAchPart', {
-          got: formatInt(locale, kind.part.got),
-          of: formatInt(locale, kind.part.of),
-        })}
+      <span className="tbti-chip" aria-label={label}>
+        {label}
       </span>
     );
   }
-  return <span className="tbti-chip">{text(kind)}</span>;
+  const label = text(kind);
+  return (
+    <span className="tbti-chip" aria-label={label}>
+      {label}
+    </span>
+  );
 }
 
 function MetricText({ value, unit }: { value: number; unit: 'hours' | 'percent' | 'count' }): React.JSX.Element {
@@ -180,8 +222,36 @@ function MetricText({ value, unit }: { value: number; unit: 'hours' | 'percent' 
   );
 }
 
-function AchNotice({ axis }: { axis: TbtiAxis }): React.JSX.Element | null {
-  const { text } = useLocale();
+function AchNotice({
+  axis,
+  achEnabled,
+  achPrivSource,
+}: {
+  axis: TbtiAxis;
+  achEnabled: boolean;
+  achPrivSource: CollectSource | null;
+}): React.JSX.Element | null {
+  const { locale, text } = useLocale();
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  async function retryAchievements(): Promise<void> {
+    setSending(true);
+    setFailed(false);
+    try {
+      const response = await fetch(`/api/sync/${achPrivSource}/retry`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ locale }),
+      });
+      if (!response.ok) {
+        throw new Error(`[web] 재수집 실패: ${response.status}`);
+      }
+    } catch {
+      setFailed(true);
+    } finally {
+      setSending(false);
+    }
+  }
   if (axis.chips.includes('ach_partial') && axis.achReflected !== undefined) {
     const { got, of } = axis.achReflected;
     return (
@@ -194,6 +264,30 @@ function AchNotice({ axis }: { axis: TbtiAxis }): React.JSX.Element | null {
     );
   }
   if (axis.chips.includes('ach_not_reflected')) {
+    // priv = 업적 소스 실패 ACCESS_PRIVATE(수집 상태 출처) →
+    // 업적 소스만 재수집(R1 resyncSource 경로).
+    if (achEnabled && achPrivSource !== null) {
+      return (
+        <div className="tbti-ach">
+          <p className="tbti-ach-text">{text('tbti.achPriv')}</p>
+          <button
+            type="button"
+            className="tbti-ach-go"
+            disabled={sending}
+            onClick={() => void retryAchievements()}
+          >
+            {text('tbti.achPrivBtn')}
+          </button>
+          {failed ? (
+            <p className="tbti-ach-text" role="alert">
+              {text('library.loadFailed')}
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+    // off = 업적 수집 꺼짐(설정 토글 출처). 그 외 잔여(그 외 실패·미수집)는
+    // 기존 동작대로 off 처리한다.
     return (
       <div className="tbti-ach">
         <p className="tbti-ach-text">{text('tbti.achOff')}</p>
@@ -209,12 +303,21 @@ function AchNotice({ axis }: { axis: TbtiAxis }): React.JSX.Element | null {
 function AxisCard({
   axis,
   map,
+  achEnabled,
+  achPrivSource,
 }: {
   axis: TbtiAxis;
   map: GameNameMap;
+  achEnabled: boolean;
+  achPrivSource: CollectSource | null;
 }): React.JSX.Element {
   const { locale, text } = useLocale();
   const [open, setOpen] = useState(false);
+  const heldReason = text(
+    axis.heldReasonKey === 'interval_cross'
+      ? 'tbti.heldCross'
+      : 'tbti.heldShort',
+  );
   const left = LEFT_LETTER[axis.axis];
   const held = axis.held || axis.primary === '?';
   const leftPct =
@@ -275,7 +378,9 @@ function AxisCard({
         aria-valuenow={axis.primaryPct ?? 0}
       >
         {held ? (
-          <span className="tbti-meter-held">{text('tbti.axisQ')}</span>
+          <span className="tbti-meter-held" aria-label={heldReason}>
+            {text('tbti.axisQ')}
+          </span>
         ) : (
           <span className="tbti-meter-track">
             <span
@@ -298,13 +403,7 @@ function AxisCard({
           </span>
         )}
       </div>
-      {held ? (
-        <p className="tbti-held">
-          {axis.heldReasonKey === 'interval_cross'
-            ? text('tbti.heldCross')
-            : text('tbti.heldShort')}
-        </p>
-      ) : null}
+      {held ? <p className="tbti-held">{heldReason}</p> : null}
       {!held && axis.axis === 2 && axis.secondary !== null && axis.secondaryPct !== null ? (
         <p className="tbti-sub">
           {axis.primary === 'N'
@@ -330,7 +429,13 @@ function AxisCard({
       </button>
       {open ? (
         <div className="tbti-evidence">
-          {axis.axis === 4 ? <AchNotice axis={axis} /> : null}
+          {axis.axis === 4 ? (
+            <AchNotice
+              axis={axis}
+              achEnabled={achEnabled}
+              achPrivSource={achPrivSource}
+            />
+          ) : null}
           {axis.axis === 2 && axis.nInterval !== null ? (
             <p className="tbti-metric">
               N {axis.nInterval.min}~{axis.nInterval.max}
@@ -366,7 +471,10 @@ function AxisCard({
                   <span className="tbti-row-main">
                     <span className="tbti-row-name">{lookupName(map, row.key)}</span>
                     <span className="tbti-row-reason">
-                      {text(row.reasonKey as TextKey)}
+                      {text(
+                        REASON_TEXT_KEYS[row.reasonKey] ??
+                          (row.reasonKey as TextKey),
+                      )}
                     </span>
                   </span>
                   <span className="tbti-row-metric">
@@ -484,10 +592,16 @@ export function TbtiView({
   result,
   recap,
   map,
+  achEnabled = true,
+  achPrivSource = null,
 }: {
   result: TbtiResult;
   recap: LibraryRecap | null;
   map: GameNameMap;
+  /** 업적 수집 켜짐 여부 — GET /api/settings/achievements 출처(라우트 전달). */
+  achEnabled?: boolean;
+  /** 업적 소스 실패 ACCESS_PRIVATE — GET /api/sync/status 출처(라우트 전달). */
+  achPrivSource?: CollectSource | null;
 }): React.JSX.Element {
   const { text } = useLocale();
   const [shareOpen, setShareOpen] = useState(false);
@@ -518,7 +632,13 @@ export function TbtiView({
       <FrontCard result={result} />
       <div className="tbti-axes">
         {result.axes.map((axis) => (
-          <AxisCard key={axis.axis} axis={axis} map={map} />
+          <AxisCard
+            key={axis.axis}
+            axis={axis}
+            map={map}
+            achEnabled={achEnabled}
+            achPrivSource={achPrivSource}
+          />
         ))}
       </div>
       <BodyAccordion result={result} />
