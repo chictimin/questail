@@ -87,9 +87,9 @@ describe('정규화 파이프라인 순서 ①→②→③→④', () => {
   it('Part 4자리 숫자는 손대지 않는다', () => {
     expect(normalizeSeriesTitle('Game Part 2042').normalized).toBe('game part 2042');
   });
-  it('코어 구분자 — 콜론·콤마·하이픈·괄호·en dash', () => {
+  it('코어 구분자 — 콜론·하이픈·괄호·en dash (콤마는 구분자 아님)', () => {
     expect(normalizeSeriesTitle('The Witcher 3: Wild Hunt Complete Edition').core).toBe('the witcher 3');
-    expect(normalizeSeriesTitle('A, B').core).toBe('a');
+    expect(normalizeSeriesTitle('A, B').core).toBe('a, b');
     expect(normalizeSeriesTitle('A - B').core).toBe('a');
     expect(normalizeSeriesTitle('Game (2020)').core).toBe('game');
     expect(normalizeSeriesTitle('A – B').core).toBe('a');

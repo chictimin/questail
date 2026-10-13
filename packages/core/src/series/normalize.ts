@@ -49,10 +49,10 @@ export const SERIES_ROMAN_I_TO_X: readonly string[] = [
 
 /**
  * R15-6 「시리즈 코어 추출」(확정 N5) — 첫 번째 구분자 앞부분 전체(trim).
- * 구분자 `: ,  - ,  ( , –(en dash), 전후 공백 변형(R14)`.
+ * 구분자 `: ,  - ,  ( , –(en dash), 전후 공백 변형(R14)`(계약 236행 — 콤마 없음).
  * 하이픈은 단어 내 결합(Souls-like 등) 보호를 위해 양옆 공백 필수.
  */
-export const SERIES_CORE_SEPARATOR_PATTERN = /:|,|\s+-\s+|\(|–/;
+export const SERIES_CORE_SEPARATOR_PATTERN = /:|\s+-\s+|\(|–/;
 
 /**
  * R15-6 「개발사 보조」(확정 N5 — 보조만) — 개발사 정규화 시 단어 경계에서 제거하는 접미어.
