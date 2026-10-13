@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -117,6 +117,19 @@ describe('series-aliases 로더', () => {
       const wrongShape = loadSeriesAliases(dir);
       expect(wrongShape.status).toBe('broken');
       expect(wrongShape.aliases).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('읽기 오류(ENOENT 외) → 별칭 없이(null) + broken', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'questail-r15alias-'));
+    try {
+      // 같은 자리에 디렉터리를 두면 readFileSync가 EISDIR로 실패한다(읽기 오류 대표).
+      mkdirSync(join(dir, 'series-aliases.json'));
+      const result = loadSeriesAliases(dir);
+      expect(result.status).toBe('broken');
+      expect(result.aliases).toBeNull();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

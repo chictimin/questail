@@ -67,10 +67,21 @@
 }
 
 /* 메뉴 — 레퍼런스 실측: h36, radius 0 10px, gap 6, 좌우 패딩 12.
-   활성 = white 10% + 600, 비활성 = white 72%. */
+   활성 = white 10% + 600, 비활성 = white 72%.
+   Na 구분선: 1×20px, white 12%, 좌우 margin 6px(좁은 폭 4px). 보는 화면 | 관리 화면. */
 .site-menu {
   display: flex;
+  align-items: center;
   gap: var(--space-4);
+}
+
+.site-menu-sep,
+.mobile-menu-sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--space-6);
+  background: color-mix(in srgb, var(--qt-white) 12%, transparent);
 }
 
 .site-menu a,
@@ -253,10 +264,15 @@
 
   .mobile-menu {
     display: flex;
+    align-items: center;
     gap: var(--space-4);
     overflow-x: auto;
     scrollbar-width: none;
     padding-bottom: var(--space-8);
+  }
+
+  .mobile-menu-sep {
+    margin: 0 var(--space-4);
   }
 
   .mobile-menu::-webkit-scrollbar {

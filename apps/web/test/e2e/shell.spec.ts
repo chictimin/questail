@@ -13,7 +13,7 @@ import { connectKeyPath } from '../../src/server/routes/connect.js';
 import { uiDistDir } from '../../src/server/static.js';
 
 /**
- * U4-2 셸 — 1280/390 두 폭에서 메뉴 4개·심볼·좁은 폭 그리드 구조 단언.
+ * U4-2 셸 — 1280/390 두 폭에서 메뉴 7개·심볼·좁은 폭 그리드 구조 단언.
  * 높이 애니메이션 금지는 동작 관찰로 단언 불가라 제외 (한계).
  */
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -58,11 +58,11 @@ test.afterAll(async () => {
 
 test.describe('넓은 폭 1280', () => {
   test.use({ locale: 'ko-KR', viewport: { width: 1280, height: 800 } });
-  test('헤더 메뉴 4개·심볼, 모바일 숨김', async ({ page }) => {
+  test('헤더 메뉴 7개·심볼, 모바일 숨김', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${started.port}/library`);
     const header = page.locator('header.site-header');
     await expect(header).toBeVisible();
-    await expect(header.getByRole('link')).toHaveCount(4);
+    await expect(header.getByRole('link')).toHaveCount(7);
     await expect(header.locator('img.shell-symbol')).toBeVisible();
     await expect(page.locator('header.mobile-header')).toBeHidden();
   });
@@ -70,12 +70,12 @@ test.describe('넓은 폭 1280', () => {
 
 test.describe('좁은 폭 390', () => {
   test.use({ locale: 'ko-KR', viewport: { width: 390, height: 844 } });
-  test('모바일 3칸 그리드 + 메뉴 4개, 데스크톱 숨김', async ({ page }) => {
+  test('모바일 3칸 그리드 + 메뉴 7개, 데스크톱 숨김', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${started.port}/library`);
     const mobile = page.locator('header.mobile-header');
     await expect(mobile).toBeVisible();
     await expect(mobile.locator('.mobile-header-top > *')).toHaveCount(3);
-    await expect(mobile.locator('nav.mobile-menu a')).toHaveCount(4);
+    await expect(mobile.locator('nav.mobile-menu a')).toHaveCount(7);
     await expect(page.locator('header.site-header')).toBeHidden();
   });
 });

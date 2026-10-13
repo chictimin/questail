@@ -6,6 +6,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { ConnectPage } from './routes/connect.js';
+import { HomePage } from './routes/home.js';
+import { RecapPage } from './routes/recap.js';
+import { TbtiPage } from './routes/tbti.js';
 import { SyncPage } from './routes/sync.js';
 import { LibraryPage } from './routes/library.js';
 import { SettingsPage } from './routes/settings.js';
@@ -18,6 +21,9 @@ import { rootRedirect } from './rootRedirect.js';
 
 export const ROUTES = [
   { path: '/connect', Page: ConnectPage },
+  { path: '/home', Page: HomePage },
+  { path: '/recap', Page: RecapPage },
+  { path: '/tbti', Page: TbtiPage },
   { path: '/sync', Page: SyncPage },
   { path: '/library', Page: LibraryPage },
   { path: '/settings', Page: SettingsPage },
@@ -105,6 +111,9 @@ export function App(): React.JSX.Element {
             <Route path="/connect">
               {() => <ConnectPage onConnected={refresh} />}
             </Route>
+            <Route path="/home" component={HomePage} />
+            <Route path="/recap" component={RecapPage} />
+            <Route path="/tbti" component={TbtiPage} />
             <Route path="/sync" component={SyncPage} />
             <Route path="/library" component={LibraryPage} />
             <Route path="/settings" component={SettingsPage} />

@@ -46,11 +46,12 @@ export function loadSeriesAliases(dataDir: string): SeriesAliasInput {
   try {
     raw = readFileSync(join(dataDir, SERIES_ALIASES_FILE_NAME), 'utf8');
   } catch (error) {
-    // 없음(ENOENT 포함) — 읽을 수 없으면 내장 기본값으로 판정한다.
-    if ((error as { code?: unknown }).code === undefined) {
+    // ENOENT(파일 없음)만 내장 기본값 + missing. 그 외 읽기 오류(EACCES·EISDIR 등)는
+    // 계약 R15-6 취지 — 읽을 수 없는 파일은 없는 것과 다르게 취급한다.
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return { aliases: { ...BUILTIN_SERIES_ALIASES }, status: 'missing' };
     }
-    return { aliases: { ...BUILTIN_SERIES_ALIASES }, status: 'missing' };
+    return { aliases: null, status: 'broken' };
   }
   try {
     const parsed: unknown = JSON.parse(raw);

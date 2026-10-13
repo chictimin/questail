@@ -1,7 +1,8 @@
 /**
  * R15-9 데이터 서비스 포트 — `readTbti(): TbtiResult`.
  * 출력 타입은 core 실타입(`packages/core/src/tbti/types.ts`, T0)을 쓴다.
- * 목업 본문은 유지한다 — T2 판정 함수 도착 시 목업 반환문을 core 호출로 교체한다(교체 지점).
+ * T2 `judgeTbti` 도착 전까지 목업을 유지한다 — 도착 시 목업 반환문을 core 호출로
+ * 교체한다(교체 지점 T2). recap 집계(`recap.ts`)는 이 목업을 TBTI 입력으로 쓴다.
  * 규칙 준수: ②축 `similar` 없음 · R22 pending 규칙
  * (pending이면 code="????"·letters 4개 "?"·mini pct=null, 비보류면 pendingHours=null).
  */
@@ -35,7 +36,7 @@ function pendingAxis(axis: 1 | 2 | 3 | 4): TbtiAxis {
 
 /**
  * TBTI 읽기 포트. 현재 목업 = 전체 보류(총 5시간 미만) 형태.
- * 교체 지점(T2): T2 판정 함수 도착 시 목업 반환문을 core 호출로 바꾼다.
+ * 교체 지점(T2): T2 `judgeTbti` 도착 시 목업 반환문을 core 호출로 바꾼다.
  * db 인자는 포트 형태 유지용(현재 미사용) — core 입력 조립 시 쓴다.
  */
 export function readTbti(_db?: Database.Database): TbtiResult {

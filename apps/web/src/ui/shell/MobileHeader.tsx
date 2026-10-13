@@ -129,16 +129,24 @@ export function MobileHeader(): React.JSX.Element {
         <SummaryPill narrow />
       </div>
       <nav className="mobile-menu">
-        {SHELL_MENU.map(({ href, label, Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-current={path === href ? 'page' : undefined}
-          >
-            <Icon size={16} aria-hidden />
-            {text(label)}
-          </Link>
-        ))}
+        {SHELL_MENU.map((entry, index) =>
+          entry.sep === true ? (
+            <span
+              key={`sep-${index}`}
+              className="mobile-menu-sep"
+              aria-hidden="true"
+            />
+          ) : (
+            <Link
+              key={entry.href}
+              href={entry.href}
+              aria-current={path === entry.href ? 'page' : undefined}
+            >
+              <entry.Icon size={16} aria-hidden />
+              {text(entry.label)}
+            </Link>
+          ),
+        )}
       </nav>
     </header>
   );

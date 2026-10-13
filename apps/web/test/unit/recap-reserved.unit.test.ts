@@ -1,8 +1,11 @@
-import Database from 'better-sqlite3';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { migrateDatabase } from '../../src/db/migrate.js';
 import { createServerApp } from '../../src/server/app.js';
+import { productMigrationsFolder } from '../../src/server/deps.js';
 import { RECAP_RESERVED_PATHS } from '../../src/server/recapReserved.js';
 
 const FIXTURE = join(
@@ -22,8 +25,12 @@ describe('recap 예약 경로', () => {
   });
 
   // R15-9 S1 등록 — library는 200, 월간은 R2까지 404 유지.
+  // bare :memory에는 스키마가 없어 실집계가 500을 내므로, p12-attach 선례대로
+  // migrateDatabase로 스키마를 적용한 DB로 셋업한다(기대값 불변).
   it('R1.5 등록 — GET /api/recap/library → 200', async () => {
-    const db = new Database(':memory:');
+    const dir = mkdtempSync(join(tmpdir(), 'questail-recap-reserved-'));
+    const handle = await migrateDatabase(dir, productMigrationsFolder());
+    const db = handle.db;
     try {
       const response = await createServerApp({
         staticRoot: FIXTURE,
@@ -35,7 +42,8 @@ describe('recap 예약 경로', () => {
         expect(body).toHaveProperty(key);
       }
     } finally {
-      db.close();
+      await handle.close();
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

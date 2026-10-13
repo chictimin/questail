@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { rootRedirect } from '../../src/ui/rootRedirect.js';
 
 describe('rootRedirect', () => {
-  it('연동됨 "/" → /library, replace', () => {
-    expect(rootRedirect('/', true)).toEqual({ to: '/library', replace: true });
+  it('연동됨 "/" → /home, replace', () => {
+    expect(rootRedirect('/', true)).toEqual({ to: '/home', replace: true });
   });
   it('미연동 "/" → /connect, replace', () => {
     expect(rootRedirect('/', false)).toEqual({ to: '/connect', replace: true });

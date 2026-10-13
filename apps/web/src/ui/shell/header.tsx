@@ -32,16 +32,24 @@ export function Header(): React.JSX.Element {
     <header className="site-header site-header--app">
       <Wordmark />
       <nav className="site-menu">
-        {SHELL_MENU.map(({ href, label, Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-current={path === href ? 'page' : undefined}
-          >
-            <Icon size={16} aria-hidden />
-            {text(label)}
-          </Link>
-        ))}
+        {SHELL_MENU.map((entry, index) =>
+          entry.sep === true ? (
+            <span
+              key={`sep-${index}`}
+              className="site-menu-sep"
+              aria-hidden="true"
+            />
+          ) : (
+            <Link
+              key={entry.href}
+              href={entry.href}
+              aria-current={path === entry.href ? 'page' : undefined}
+            >
+              <entry.Icon size={16} aria-hidden />
+              {text(entry.label)}
+            </Link>
+          ),
+        )}
       </nav>
       <span className="site-header-spacer" aria-hidden="true" />
       <SummaryPill />

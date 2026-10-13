@@ -2,6 +2,12 @@
 export const en = {
   nav: {
     connect: 'Connect Steam',
+    home: 'Home',
+    recap: 'Recap',
+    tbti: 'TBTI',
+    homeGuide: 'Getting your play history ready to show.',
+    recapGuide: 'Getting your recap ready to show at a glance.',
+    tbtiGuide: 'Getting ready to read your TBTI from your records.',
     sync: 'Collection status',
     library: 'Library',
     settings: 'Settings',

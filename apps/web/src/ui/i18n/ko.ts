@@ -2,6 +2,12 @@
 export const ko = {
   nav: {
     connect: 'Steam을 연결해요',
+    home: '홈',
+    recap: '리캡',
+    tbti: 'TBTI',
+    homeGuide: '놀 기록을 모아 보여드릴 준비를 하고 있어요.',
+    recapGuide: '모은 기록을 한눈에 정리해 보여드릴 준비를 하고 있어요.',
+    tbtiGuide: '기록으로 TBTI를 가려낼 준비를 하고 있어요.',
     sync: '수집 상태',
     library: '라이브러리',
     settings: '설정',

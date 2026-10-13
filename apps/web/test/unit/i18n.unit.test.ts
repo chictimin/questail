@@ -525,6 +525,17 @@ describe('UI 하드코딩 문자열 0', () => {
     'qt-toggle', // CSS 클래스 식별자(화면 미노출)
     'game-ach', // CSS 클래스 식별자(화면 미노출)
     'game-ach game-ach--complete', // CSS 클래스 식별자(화면 미노출)
+    '/home', // 라우트 경로(URL) — 화면 미노출
+    '/recap', // 라우트 경로(URL) — 화면 미노출
+    '/tbti', // 라우트 경로(URL) — 화면 미노출
+    'home', // data-route 식별자 — 화면 미노출
+    'recap', // data-route 식별자 — 화면 미노출
+    'tbti', // data-route 식별자 — 화면 미노출
+    'stub-head', // 스텁 틀 CSS 클래스(화면 미노출) — U2 U4 구현 때 정리, 잔류 시 결함
+    'stub-title', // 스텁 틀 CSS 클래스(화면 미노출) — U2 U4 구현 때 정리, 잔류 시 결함
+    'stub-desc', // 스텁 틀 CSS 클래스(화면 미노출) — U2 U4 구현 때 정리, 잔류 시 결함
+    'mobile-menu-sep', // 메뉴 구분선 CSS 클래스(aria-hidden) — 화면 미노출
+    'site-menu-sep', // 메뉴 구분선 CSS 클래스(aria-hidden) — 화면 미노출
   ]);
 
   /** 소스 1건 스캔 → 위반 목록. 행 위치 무관, 태그 사이 텍스트(>…<)를 잡는다. */
