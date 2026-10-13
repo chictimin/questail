@@ -77,6 +77,25 @@ describe('readAccountCreatedAt 포트', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('행 없음은 null(미확인)을 낸다', () => {
+    const { dir, db } = freshDb();
+    try {
+      expect(readAccountCreatedAt(db)).toBeNull();
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('실제 읽기 오류(스키마 없음)는 throw한다', () => {
+    const db = new Database(':memory:');
+    try {
+      expect(() => readAccountCreatedAt(db)).toThrow();
+    } finally {
+      db.close();
+    }
+  });
 });
 
 describe('series-aliases 로더', () => {

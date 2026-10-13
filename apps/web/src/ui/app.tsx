@@ -15,6 +15,7 @@ import { SettingsPage } from './routes/settings.js';
 import { ExportPage } from './routes/export.js';
 import { Header, LogoHeader } from './shell/header.js';
 import { MobileHeader } from './shell/MobileHeader.js';
+import { Splash } from './splash/Splash.js';
 import { ChromeProvider, chromeShifts } from './shell/chrome.js';
 import { SiteFooter } from './shell/footer.js';
 import { rootRedirect } from './rootRedirect.js';
@@ -81,7 +82,12 @@ function useConnected(): {
 export function App(): React.JSX.Element {
   const [path] = useLocation();
   const { connected, refresh } = useConnected();
+  // R15-11 스플래시↔루트 — 기동당 1회 표시 후 홈 흐름으로. 이후 루트 진입은 홈 직행.
+  const [splashDone, setSplashDone] = useState(false);
   const root = rootRedirect(path, connected);
+  if (!splashDone) {
+    return <Splash onDone={() => setSplashDone(true)} />;
+  }
   if (root !== null) {
     return <Redirect to={root.to} replace />;
   }

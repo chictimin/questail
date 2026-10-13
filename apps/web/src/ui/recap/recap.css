@@ -1,0 +1,702 @@
+/**
+ * U3 리캡 7a — 본문 폭 800 가운데 정렬 · 집계 기준 띠(sticky) ·
+ * 섹션 카드(white 5% 면, radius 0 24px, padding 28) · 하단 고정 바(sticky bottom, frost).
+ * 토큰 변수만 사용.
+ */
+.recap-head {
+  margin-bottom: var(--space-16);
+}
+
+.recap-title {
+  margin: 0;
+  font: var(--type-title);
+}
+
+.recap-band {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-app);
+  padding: var(--space-8) 0;
+  margin-bottom: var(--space-16);
+}
+
+.recap-band-text,
+.recap-band-wide {
+  margin: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.recap-band-narrow {
+  display: none;
+}
+
+.recap-body {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+
+.recap-sec {
+  background: var(--surface-card);
+  border-radius: var(--corner-24);
+  padding: var(--space-28);
+}
+
+.recap-secnum {
+  margin: 0 0 var(--space-16);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-12);
+  color: var(--accent);
+}
+
+.recap-note {
+  margin: var(--space-12) 0 0;
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.recap-empty {
+  margin: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  color: var(--text-secondary);
+}
+
+.recap-go {
+  display: inline-block;
+  margin-top: var(--space-12);
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recap-source {
+  margin-top: var(--space-16);
+  border-top: 1px solid var(--qt-white-15);
+  padding-top: var(--space-12);
+}
+
+.recap-source-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.recap-caveats {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.recap-caveat {
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+  border: 1px solid var(--qt-white-15);
+  border-radius: var(--radius-full);
+  padding: var(--space-4) var(--space-12);
+}
+
+.recap-caveat-num {
+  font-family: var(--font-mono);
+  margin-left: var(--space-4);
+}
+
+/* 07 TBTI 카드 — pink 면, 2열 1fr|240px. */
+.recap-tbti {
+  background: var(--tbti-card);
+  color: var(--text-on-pastel);
+  border-radius: var(--corner-24);
+  padding: var(--space-28);
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: var(--space-24);
+  align-items: center;
+}
+
+.recap-tbti-name {
+  margin: 0 0 var(--space-4);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 800;
+}
+
+.recap-tbti-code {
+  margin: 0 0 var(--space-8);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.recap-tbti-def {
+  margin: 0 0 var(--space-12);
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--text-on-pastel-muted);
+}
+
+.recap-tbti-go {
+  display: inline-block;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-8);
+  background: var(--qt-black);
+  color: var(--qt-white);
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.recap-tbti-minis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.recap-tbti-mini {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-6);
+  background: var(--qt-black-12);
+  overflow: hidden;
+}
+
+.recap-tbti-minifill {
+  display: block;
+  height: 100%;
+  background: var(--text-on-pastel);
+}
+
+.recap-tbti-minifill--unknown {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--qt-black-20),
+    var(--qt-black-20) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* 01 상위 5 — 순위 | 이름 220 | 막대 | 시간 | 비중. */
+.recap-top {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.recap-top-row {
+  display: grid;
+  grid-template-columns: 24px 220px 1fr auto auto;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--text-14);
+  line-height: 22px;
+}
+
+.recap-top-rank {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.recap-top-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recap-top-track {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-15);
+  overflow: hidden;
+}
+
+.recap-top-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-6);
+  background: var(--accent);
+}
+
+.recap-top-hours,
+.recap-top-share {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+}
+
+/* 02 장르 가로 막대 + 미확인 줄무늬 줄. */
+.recap-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.recap-bar-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--text-14);
+  line-height: 22px;
+}
+
+.recap-bar-track {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-15);
+  overflow: hidden;
+}
+
+.recap-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.recap-bar-fill--unknown {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--qt-white-20),
+    var(--qt-white-20) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.recap-bar-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+}
+
+/* 03 큰 숫자 + 세로 막대 5개 + 2칸. */
+.recap-bignum {
+  margin: 0 0 var(--space-16);
+}
+
+.recap-bignum-num {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -2px;
+  text-shadow: var(--num-shadow);
+}
+
+.recap-cols {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-12);
+  height: 120px;
+  margin-bottom: var(--space-16);
+}
+
+.recap-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 0;
+}
+
+.recap-col-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--qt-white-15);
+  border-radius: var(--radius-6) var(--radius-6) 0 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.recap-col-fill {
+  width: 100%;
+  background: var(--qt-white-40);
+}
+
+.recap-col-fill--top {
+  background: var(--accent);
+}
+
+.recap-col-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  color: var(--text-secondary);
+}
+
+.recap-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-16);
+}
+
+.recap-panel {
+  border: 1px solid var(--qt-white-15);
+  border-radius: var(--radius-16);
+  padding: var(--space-16);
+}
+
+.recap-panel-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.recap-chips {
+  list-style: none;
+  margin: var(--space-12) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.recap-chip {
+  font-size: var(--text-12);
+  line-height: 18px;
+  border: 1px solid var(--qt-white-15);
+  border-radius: var(--radius-full);
+  padding: var(--space-4) var(--space-12);
+}
+
+.recap-missing {
+  margin: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  color: var(--success);
+}
+
+/* 04 편차작 2칸 + 분포 막대 10칸(별점색). */
+.recap-mean {
+  margin: 0 0 var(--space-16);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.recap-deviants {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-16);
+  margin-bottom: var(--space-16);
+}
+
+.recap-deviant-label {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-13);
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.recap-deviant-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.recap-deviant-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto auto;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+.recap-cover {
+  width: 72px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: var(--radius-6);
+}
+
+.recap-deviant-row .game-cover--empty {
+  width: 72px;
+  height: 34px;
+}
+
+.recap-deviant-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recap-deviant-score,
+.recap-deviant-dev {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  color: var(--text-secondary);
+}
+
+.recap-dist {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: var(--space-8);
+  height: 96px;
+}
+
+.recap-dist-col {
+  display: flex;
+  min-height: 0;
+}
+
+.recap-dist-track {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: var(--qt-white-15);
+  border-radius: var(--radius-6) var(--radius-6) 0 0;
+  overflow: hidden;
+}
+
+.recap-dist-fill {
+  width: 100%;
+  background: var(--rating);
+  opacity: 0.4;
+}
+
+.recap-dist-col:first-child .recap-dist-fill,
+.recap-dist-col:last-child .recap-dist-fill {
+  opacity: 1;
+}
+
+/* 05 쌓은 막대 1줄 + 구간명·개수. */
+.recap-stack {
+  display: flex;
+  height: 10px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-15);
+  overflow: hidden;
+  margin-bottom: var(--space-12);
+}
+
+.recap-stack-seg {
+  display: block;
+  height: 100%;
+  background: var(--qt-white-40);
+}
+
+.recap-stack-seg--new {
+  background: var(--accent);
+}
+
+.recap-eras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.recap-era {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: var(--space-12);
+  font-size: var(--text-14);
+  line-height: 22px;
+}
+
+.recap-era-range,
+.recap-era-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+}
+
+/* 06 연도별 세로 막대. */
+.recap-years {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-8);
+  height: 120px;
+}
+
+.recap-year {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 0;
+  min-width: 0;
+}
+
+.recap-year-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--qt-white-15);
+  border-radius: var(--radius-6) var(--radius-6) 0 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.recap-year-fill {
+  width: 100%;
+  background: var(--qt-white-40);
+}
+
+.recap-year-fill--peak {
+  background: var(--accent);
+}
+
+.recap-year-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+  color: var(--text-secondary);
+  min-height: 14px;
+}
+
+/* 하단 고정 바 — frost + blur 16. */
+.recap-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-top: var(--grid-gap);
+  padding: var(--space-16) var(--space-24);
+  border-radius: var(--corner-24);
+  background: var(--qt-black-80);
+  backdrop-filter: blur(16px);
+}
+
+.recap-bar-lead {
+  margin: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.recap-bar-actions {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.recap-bar-secondary,
+.recap-bar-primary {
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-8);
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recap-bar-secondary {
+  background: transparent;
+  border: 1px solid var(--qt-white-40);
+  color: var(--text-primary);
+}
+
+.recap-bar-primary {
+  background: var(--qt-white);
+  border: none;
+  color: var(--qt-black);
+}
+
+@media (max-width: 639.98px) {
+  .recap-body {
+    max-width: 100%;
+  }
+
+  .recap-band-wide {
+    display: none;
+  }
+
+  .recap-band-narrow {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    font-size: var(--text-12);
+    line-height: 18px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .recap-tbti {
+    grid-template-columns: 1fr;
+  }
+
+  .recap-top-row {
+    grid-template-columns: 20px 1fr auto;
+  }
+
+  .recap-top-row .recap-top-track,
+  .recap-top-row .recap-top-share {
+    grid-column: 1 / -1;
+  }
+
+  .recap-bar-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .recap-bar-row .recap-bar-track {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .recap-deviants,
+  .recap-split {
+    grid-template-columns: 1fr;
+  }
+
+  .recap-deviant-row {
+    grid-template-columns: 56px 1fr auto auto;
+  }
+
+  .recap-deviant-row .recap-cover,
+  .recap-deviant-row .game-cover--empty {
+    width: 56px;
+    height: 28px;
+  }
+
+  .recap-bar {
+    padding: var(--space-12) var(--space-16);
+  }
+
+  .recap-bar-secondary,
+  .recap-bar-primary {
+    padding: var(--space-8) var(--space-12);
+    font-size: var(--text-13);
+  }
+}

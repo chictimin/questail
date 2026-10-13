@@ -227,6 +227,7 @@ describe('③ MD 내보내기 산출 grep(POST /api/export 경유)', () => {
       setup.close();
     }
     const db = new Database(dbPath);
+    const dataDir = mkdtempSync(join(tmpdir(), 'key-audit-data-'));
     try {
       db.prepare(
         'INSERT INTO games (platform, external_id, name) VALUES (?, ?, ?)',
@@ -235,7 +236,10 @@ describe('③ MD 내보내기 산출 grep(POST /api/export 경유)', () => {
         'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
       ).run('steam', '990011', 'observed', 1700000000, 0, 0);
       const exportDir = join(dir, EXPORT_DIR_NAME);
-      const app = createServerApp({ exportDeps: { db, exportDir } });
+      const app = createServerApp({
+        exportDeps: { db, exportDir },
+        settingsDeps: { dataDir, version: '0.1.0-test' },
+      });
       const response = await app.request(EXPORT_PATH, {
         method: 'POST',
         headers: { ...HOST_HEADERS, 'content-type': 'application/json' },
@@ -254,6 +258,7 @@ describe('③ MD 내보내기 산출 grep(POST /api/export 경유)', () => {
     } finally {
       db.close();
       rmSync(dir, { recursive: true, force: true });
+      rmSync(dataDir, { recursive: true, force: true });
     }
   });
 });

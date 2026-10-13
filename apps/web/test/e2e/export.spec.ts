@@ -20,6 +20,7 @@ let started: StartedServer;
 let dir: string;
 let db: Database.Database;
 let exportDir: string;
+let dataDir: string;
 
 test.beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'questail-export-e2e-'));
@@ -42,8 +43,13 @@ test.beforeAll(async () => {
     'INSERT INTO ownership_spans (platform, external_id, origin, started_at, ended, is_baseline) VALUES (?, ?, ?, ?, ?, ?)',
   ).run('steam', '990011', 'observed', 1700000000, 0, 0);
   exportDir = join(dir, 'export');
+  dataDir = mkdtempSync(join(tmpdir(), 'questail-export-e2e-data-'));
   started = await startServer(
-    createServerApp({ staticRoot: uiDistDir(), exportDeps: { db, exportDir } }),
+    createServerApp({
+      staticRoot: uiDistDir(),
+      exportDeps: { db, exportDir },
+      settingsDeps: { dataDir, version: '0.0.0-test' },
+    }),
     0,
   );
 });
@@ -52,20 +58,21 @@ test.afterAll(async () => {
   await stopServer(started);
   db.close();
   rmSync(dir, { recursive: true, force: true });
+  rmSync(dataDir, { recursive: true, force: true });
 });
 
 test('내보내기 성공 → 완료 문구 + 파일 생성', async ({ page }) => {
   await page.goto(`http://127.0.0.1:${started.port}/export`);
-  await expect(page.getByText('현재 보유 1개 = 파일 1개')).toBeVisible();
+  await expect(page.getByText('현재 보유 1개 + 리캡 1개')).toBeVisible();
   await expect(page.getByText('키는 포함되지 않아요')).toBeVisible();
   await page.getByRole('button', { name: 'Markdown으로 내보내기' }).click();
   await expect(
-    page.getByText('1개 파일을 만들었어요. 같은 이름의 파일은 새 내용으로 덮어썼어요.'),
+    page.getByText('2개 파일을 만들었어요. 같은 이름의 파일은 새 내용으로 덮어썼어요.'),
   ).toBeVisible();
   expect(readdirSync(exportDir).length).toBeGreaterThan(0);
   expect(await page.content()).not.toMatch(/\{[a-zA-Z]+\}/);
   await page.getByRole('button', { name: '다시 내보내기' }).click();
   await expect(
-    page.getByText('1개 파일을 만들었어요. 같은 이름의 파일은 새 내용으로 덮어썼어요.'),
+    page.getByText('2개 파일을 만들었어요. 같은 이름의 파일은 새 내용으로 덮어썼어요.'),
   ).toBeVisible();
 });

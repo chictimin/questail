@@ -10,6 +10,7 @@ import {
   createServerApp,
 } from '../../src/server/app.js';
 import { EXPORT_DIR_NAME } from '../../src/server/export.js';
+import { RECAP_EXPORT_FILENAME } from '../../src/data/recapText.js';
 
 /** W9 POST /api/export 라우트 테스트. 합성 DB + 임시 출력 디렉터리로 확인한다. */
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -108,11 +109,13 @@ describe('POST /api/export', () => {
       seedGame(db, 'steam', '200', 0);
       seedGame(db, 'steam', '300', 1);
       const exportDir = join(track(mkdtempSync(join(tmpdir(), 'questail-w9out-'))), EXPORT_DIR_NAME);
-      const app = createApp({ db, exportDir });
+      const dataDir = track(mkdtempSync(join(tmpdir(), 'questail-w9data-')));
+      const app = createApp({ db, exportDir }, undefined, { dataDir, version: '0.1.0-test' });
       const response = await postExport(app, { locale: 'en' });
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ written: 2, dir: exportDir });
+      expect(await response.json()).toEqual({ written: 3, dir: exportDir });
       expect(readdirSync(exportDir).sort()).toEqual([
+        'recap.md',
         'steam-100.md',
         'steam-200.md',
       ]);
@@ -138,7 +141,8 @@ describe('POST /api/export', () => {
     try {
       seedGame(db, 'steam', '100', 0);
       const exportDir = join(tmpdir(), 'questail-no-such-parent', EXPORT_DIR_NAME);
-      const app = createApp({ db, exportDir });
+      const dataDir = track(mkdtempSync(join(tmpdir(), 'questail-w9data-')));
+      const app = createApp({ db, exportDir }, undefined, { dataDir, version: '0.1.0-test' });
       const response = await postExport(app, { locale: 'ko' });
       expect(response.status).toBe(500);
       expect(await response.json()).toEqual({
@@ -154,7 +158,8 @@ describe('POST /api/export', () => {
     const db = freshDb();
     db.close();
     const exportDir = join(track(mkdtempSync(join(tmpdir(), 'questail-w9out-'))), EXPORT_DIR_NAME);
-    const app = createServerApp({ exportDeps: { db, exportDir } });
+    const dataDir = track(mkdtempSync(join(tmpdir(), 'questail-w9data-')));
+    const app = createServerApp({ exportDeps: { db, exportDir }, settingsDeps: { dataDir, version: '0.1.0-test' } });
     const response = await postExport(app, { locale: 'ko' }, { host: 'localhost' });
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ code: 'INTERNAL', params: {} });
@@ -165,10 +170,15 @@ describe('POST /api/export', () => {
     try {
       seedGame(db, 'steam', '100', 0);
       const exportDir = join(track(mkdtempSync(join(tmpdir(), 'questail-w9out-'))), EXPORT_DIR_NAME);
-      const app = createServerApp({ exportDeps: { db, exportDir } });
+      const dataDir = track(mkdtempSync(join(tmpdir(), 'questail-w9data-')));
+      const app = createServerApp({ exportDeps: { db, exportDir }, settingsDeps: { dataDir, version: '0.1.0-test' } });
       const response = await postExport(app, { locale: 'ko' }, { host: 'localhost' });
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ written: 1, dir: exportDir });
+      expect(await response.json()).toEqual({ written: 2, dir: exportDir });
+      expect(readdirSync(exportDir).sort()).toEqual([
+        RECAP_EXPORT_FILENAME,
+        'steam-100.md',
+      ]);
     } finally {
       db.close();
     }

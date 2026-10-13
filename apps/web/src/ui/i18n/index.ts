@@ -18,9 +18,13 @@ export type DictKey =
   | keyof typeof ko.game
   | keyof typeof ko.shell
   | keyof typeof ko.settings
-  | keyof typeof ko.sync;
+  | keyof typeof ko.sync
+  | keyof typeof ko.recap
+  | keyof typeof ko.tbti
+  | keyof typeof ko.home
+  | keyof typeof ko.share;
 
-type Section = 'nav' | 'error' | 'export' | 'connect' | 'library' | 'game' | 'shell' | 'settings' | 'sync';
+type Section = 'nav' | 'error' | 'export' | 'connect' | 'library' | 'game' | 'shell' | 'settings' | 'sync' | 'recap' | 'tbti' | 'home' | 'share';
 
 /** 'nav.connect'·'error.AUTH_INVALID_KEY' 형태 키를 푼다. */
 export function t(
@@ -53,6 +57,10 @@ export function flatKeys(locale: Locale): string[] {
     ...Object.keys(dict.shell).map((k) => `shell.${k}`),
     ...Object.keys(dict.settings).map((k) => `settings.${k}`),
     ...Object.keys(dict.sync).map((k) => `sync.${k}`),
+    ...Object.keys(dict.recap).map((k) => `recap.${k}`),
+    ...Object.keys(dict.tbti).map((k) => `tbti.${k}`),
+    ...Object.keys(dict.home).map((k) => `home.${k}`),
+    ...Object.keys(dict.share).map((k) => `share.${k}`),
   ].sort();
 }
 

@@ -1,0 +1,278 @@
+/**
+ * U2 홈 6a — 섹션 카드(white 5% 면, radius 0 24px, padding 28) · 큰 숫자(Mono 800 64px) ·
+ * TBTI 카드(pink 면). 2열 1.5fr|1fr → 좁은 폭 1열(TBTI 카드가 숫자 카드 아래).
+ * 토큰 변수만 사용.
+ */
+.home-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-bottom: var(--space-24);
+}
+
+.home-title {
+  margin: 0;
+  font: var(--type-title);
+}
+
+.home-basis {
+  margin: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.home-cols {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--grid-gap);
+  margin-bottom: var(--grid-gap);
+}
+
+.home-play,
+.home-tbti,
+.home-cell {
+  background: var(--surface-card);
+  border-radius: var(--corner-24);
+  padding: var(--space-28);
+}
+
+.home-play-lead {
+  margin: 0 0 var(--space-8);
+  font: var(--type-heading);
+}
+
+.home-bignum {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.home-bignum-num {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: var(--text-64);
+  line-height: 1;
+  letter-spacing: -2px;
+  text-shadow: var(--num-shadow);
+}
+
+.home-bignum-unit {
+  font-size: var(--text-24);
+  line-height: 32px;
+  font-weight: 600;
+}
+
+.home-play-sub {
+  margin: var(--space-8) 0 var(--space-16);
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.home-top {
+  list-style: none;
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.home-top-row {
+  display: grid;
+  grid-template-columns: 24px 220px 1fr auto;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--text-14);
+  line-height: 22px;
+}
+
+.home-top-rank {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.home-top-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-top-track {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-15);
+  overflow: hidden;
+}
+
+.home-top-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-6);
+  background: var(--accent);
+}
+
+.home-top-hours {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+}
+
+.home-more {
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.home-tbti {
+  background: var(--tbti-card);
+  color: var(--text-on-pastel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  align-items: flex-start;
+}
+
+.home-tbti--pending {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--tbti-chip-border);
+}
+
+.home-tbti-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  justify-content: space-between;
+}
+
+.home-tbti-lead {
+  margin: 0;
+  font: var(--type-heading);
+}
+
+.home-tbti-code {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: var(--text-14);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-full);
+  background: var(--qt-black-12);
+}
+
+.home-tbti-symbol {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.home-tbti-name {
+  margin: 0;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 800;
+}
+
+.home-tbti-def {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--text-on-pastel-muted);
+}
+
+.home-tbti--pending .home-tbti-def {
+  color: var(--text-secondary);
+}
+
+.home-tbti-pend {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.home-tbti-prog {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+}
+
+.home-tbti-track {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-6);
+  background: var(--qt-black-12);
+  overflow: hidden;
+}
+
+.home-tbti--pending .home-tbti-track {
+  background: var(--qt-white-15);
+}
+
+.home-tbti-fill {
+  display: block;
+  height: 100%;
+  background: var(--text-on-pastel);
+}
+
+.home-tbti--pending .home-tbti-fill {
+  background: var(--tbti-card);
+}
+
+.home-tbti-go {
+  margin-top: var(--space-4);
+  display: inline-block;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-8);
+  background: var(--qt-black);
+  color: var(--qt-white);
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.home-trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--grid-gap);
+}
+
+.home-cell-label {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.home-cell-num {
+  margin: 0;
+  font-size: var(--text-24);
+  line-height: 32px;
+  font-weight: 600;
+}
+
+@media (max-width: 639.98px) {
+  .home-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .home-trio {
+    grid-template-columns: 1fr;
+  }
+
+  .home-top-row {
+    grid-template-columns: 20px 1fr auto;
+  }
+
+  .home-top-row .home-top-track {
+    grid-column: 1 / -1;
+  }
+}

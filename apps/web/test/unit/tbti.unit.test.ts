@@ -29,7 +29,11 @@ describe('S2 GET /api/tbti', () => {
   it('200 + TbtiResult 형태, R22 pending 규칙과 ②축 similar 없음을 지킨다', async () => {
     const { dir, db } = freshDb();
     try {
-      const app = createApp({ db, exportDir: join(tmpdir(), 'questail-r15s2-unused') });
+      const app = createApp(
+        { db, exportDir: join(tmpdir(), 'questail-r15s2-unused') },
+        undefined,
+        { dataDir: dir, version: '0.0.0-test' },
+      );
       const response = await app.request(TBTI_PATH);
       expect(response.status).toBe(200);
       const body = (await response.json()) as {

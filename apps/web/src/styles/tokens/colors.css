@@ -60,4 +60,11 @@
   --chart-3: var(--qt-mint);
   --chart-4: var(--qt-indigo);
   --chart-rest: var(--qt-white-15);
+
+  /* R1.5 — TBTI 유형 색(핸드오프 「공통」). 앞면 면 + 검은 글씨, 다크 위에서는 글자·테두리·막대 강조로만. */
+  --qt-pink: #F2B8CF;
+  --tbti-card: var(--qt-pink);
+  --tbti-chip-border: rgba(242,184,207,0.5);
+  --tbti-bar-off: rgba(255,255,255,0.28);
+  --num-shadow: 3px 3px 0 #4F5196; /* 큰 숫자(홈 64px·리캡 72/56px). 축 글자는 2px로 덮어쓴다. */
 }

@@ -11,6 +11,9 @@ import { readExportGames } from '../data/export.js';
 import { listLibrary } from '../data/library.js';
 import { readLibraryRecap } from '../data/recap.js';
 import { readTbti } from '../data/tbti.js';
+import { listGameFacts } from '../data/archiveRead.js';
+import { recapNameTables, renderRecapExportFile, renderRecapText } from '../data/recapText.js';
+import { renderTbtiShare } from '../data/tbtiShare.js';
 import { RECAP_RESERVED_PATHS } from './recapReserved.js';
 import { setRating, type ScoreValue } from '../data/ratings.js';
 import { getAchievementSettings, getPrefs, setAchievementSettings, setPrefs } from '../data/viewState.js';
@@ -45,6 +48,10 @@ export const HEALTH_PATH = '/api/health';
 export const EXPORT_PATH = '/api/export';
 export const LIBRARY_PATH = '/api/library';
 export const TBTI_PATH = '/api/tbti';
+/** 계약 v1.0.3 통로 — 리캡 복사 텍스트. */
+export const RECAP_TEXT_PATH = '/api/recap/library/text';
+/** 계약 v1.0.3 통로 — TBTI 공유 텍스트. */
+export const TBTI_SHARE_TEXT_PATH = '/api/tbti/share-text';
 export const PREFS_PATH = '/api/prefs';
 export const ACHIEVEMENTS_PATH = '/api/settings/achievements';
 export const SYNC_PATH = '/api/sync';
@@ -468,10 +475,11 @@ function registerRoutes(
     // D16-2 — 요청 시작 시 holder 1회 읽기.
     const layer = holder?.get();
     const db = layer?.db ?? exportDeps?.db;
-    if (db === undefined) {
+    const dataDir = layer?.dataDir ?? settingsDeps?.dataDir;
+    if (db === undefined || dataDir === undefined) {
       return internalError(c);
     }
-    return c.json(readLibraryRecap(db));
+    return c.json(readLibraryRecap(db, dataDir));
   });
   // R15-9 S2 — GET /api/tbti (신규).
   app.get(TBTI_PATH, (c) => {
@@ -481,10 +489,43 @@ function registerRoutes(
     // D16-2 — 요청 시작 시 holder 1회 읽기.
     const layer = holder?.get();
     const db = layer?.db ?? exportDeps?.db;
-    if (db === undefined) {
+    const dataDir = layer?.dataDir ?? settingsDeps?.dataDir;
+    if (db === undefined || dataDir === undefined) {
       return internalError(c);
     }
-    return c.json(readTbti(db));
+    return c.json(readTbti(db, dataDir));
+  });
+  // 계약 v1.0.3 통로 — GET /api/recap/library/text. locale은 현재 Prefs.locale.
+  app.get(RECAP_TEXT_PATH, (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const db = layer?.db ?? exportDeps?.db;
+    const dataDir = layer?.dataDir ?? settingsDeps?.dataDir;
+    if (db === undefined || dataDir === undefined) {
+      return internalError(c);
+    }
+    const locale = getPrefs(db, 'ko').locale;
+    const recap = readLibraryRecap(db, dataDir);
+    const { names, genreNames } = recapNameTables(listGameFacts(db), locale);
+    return c.json({ text: renderRecapText(recap, locale, names, genreNames) });
+  });
+  // 계약 v1.0.3 통로 — GET /api/tbti/share-text. locale은 현재 Prefs.locale.
+  app.get(TBTI_SHARE_TEXT_PATH, (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const db = layer?.db ?? exportDeps?.db;
+    const dataDir = layer?.dataDir ?? settingsDeps?.dataDir;
+    if (db === undefined || dataDir === undefined) {
+      return internalError(c);
+    }
+    const locale = getPrefs(db, 'ko').locale;
+    return c.json({ text: renderTbtiShare(readTbti(db, dataDir), locale) });
   });
   app.put('/api/ratings/:platform/:externalId', async (c) => {
     if (isUnattached(holder)) {
@@ -624,7 +665,8 @@ function registerRoutes(
     const layer = holder?.get();
     const db = layer?.db ?? exportDeps?.db;
     const exportDir = layer !== undefined ? layer.exportDir : exportDeps?.exportDir;
-    if (db === undefined || exportDir === undefined) {
+    const dataDir = layer?.dataDir ?? settingsDeps?.dataDir;
+    if (db === undefined || exportDir === undefined || dataDir === undefined) {
       const body: ExportDeniedBody = {
         code: 'EXPORT_FAILED',
         params: { reason: 'not_configured' },
@@ -636,6 +678,13 @@ function registerRoutes(
         readExportGames(db),
         parsed.value.locale,
       );
+      // recap.md 1종 무조건 편입(PM #110047) — 테스트 전용 분기 없음.
+      const recap = readLibraryRecap(db, dataDir);
+      const { names, genreNames } = recapNameTables(
+        listGameFacts(db),
+        parsed.value.locale,
+      );
+      files.push(renderRecapExportFile(recap, parsed.value.locale, names, genreNames));
       const { written } = writeExportFiles(exportDir, files);
       return c.json({ written, dir: exportDir });
     } catch (error) {

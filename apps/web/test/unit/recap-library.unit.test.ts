@@ -34,7 +34,11 @@ describe('S1 GET /api/recap/library', () => {
   it('예약 상수 경로로 200 + LibraryRecap 형태를 낸다', async () => {
     const { dir, db } = freshDb();
     try {
-      const app = createApp({ db, exportDir: join(tmpdir(), 'questail-r15s1-unused') });
+      const app = createApp(
+        { db, exportDir: join(tmpdir(), 'questail-r15s1-unused') },
+        undefined,
+        { dataDir: dir, version: '0.0.0-test' },
+      );
       const response = await app.request(RECAP_RESERVED_PATHS.library);
       expect(response.status).toBe(200);
       const body = (await response.json()) as Record<string, unknown>;
@@ -42,7 +46,7 @@ describe('S1 GET /api/recap/library', () => {
       for (const key of ['basis', 's01', 's02', 's03', 's04', 's05', 's06', 'tbti']) {
         expect(body).toHaveProperty(key);
       }
-      // R22 pending 규칙 — 목업은 보류 형태
+      // R22 pending 규칙 — 빈 DB 실판정은 보류 형태
       const tbti = body['tbti'] as { code: string; pending: boolean; letters: string[] };
       expect(tbti.code).toBe('????');
       expect(tbti.pending).toBe(true);

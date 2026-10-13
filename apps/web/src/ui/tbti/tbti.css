@@ -1,0 +1,486 @@
+/**
+ * U4 TBTI 8a — 카드 앞면(pink) · 축 막대 · 칩 · 근거 · 8c 보류 카드 · 아코디언.
+ * 좁은 폭 1열. 토큰 변수만 사용.
+ */
+.tbti-front {
+  background: var(--tbti-card);
+  color: var(--text-on-pastel);
+  border-radius: var(--corner-24);
+  padding: var(--space-28);
+  margin-bottom: var(--grid-gap);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.tbti-code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: var(--text-24);
+  letter-spacing: 2px;
+}
+
+h1.tbti-code {
+  font-size: var(--text-32);
+}
+
+.tbti-axisline {
+  margin: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-on-pastel-muted);
+}
+
+.tbti-symbol {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  align-self: center;
+  margin: var(--space-4) 0;
+}
+
+.tbti-name {
+  margin: 0;
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 800;
+  text-wrap: balance;
+}
+
+.tbti-def {
+  margin: 0;
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--text-on-pastel-muted);
+}
+
+.tbti-note {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-on-pastel-muted);
+}
+
+.tbti-axes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  margin-bottom: var(--grid-gap);
+}
+
+.tbti-axis {
+  background: var(--surface-card);
+  border-radius: var(--corner-24);
+  padding: var(--space-28);
+}
+
+.tbti-axis-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-12);
+}
+
+.tbti-axis-name {
+  margin: 0;
+  font: var(--type-heading);
+}
+
+.tbti-axis-score {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.tbti-chips {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.tbti-chip {
+  font-size: var(--text-11);
+  line-height: 22px;
+  font-weight: 600;
+  height: 22px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--tbti-chip-border);
+  color: var(--qt-pink);
+}
+
+.tbti-meter {
+  display: block;
+  margin-bottom: var(--space-8);
+}
+
+.tbti-meter-track {
+  position: relative;
+  display: flex;
+  height: 10px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-15);
+  overflow: hidden;
+}
+
+.tbti-meter-left,
+.tbti-meter-right {
+  display: block;
+  height: 100%;
+  background: var(--tbti-bar-off);
+}
+
+.tbti-meter-left--strong,
+.tbti-meter-right--strong {
+  background: var(--qt-pink);
+}
+
+.tbti-meter-mid {
+  flex: none;
+  width: 1px;
+  background: var(--qt-white-20);
+}
+
+.tbti-meter-held {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 1px solid var(--tbti-chip-border);
+  color: var(--qt-pink);
+  font-family: var(--font-mono);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--qt-white-15),
+    var(--qt-white-15) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.tbti-held {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.tbti-sub {
+  margin: 0 0 var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  color: var(--text-secondary);
+}
+
+.tbti-why {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tbti-evidence {
+  margin-top: var(--space-12);
+  border-top: 1px solid var(--qt-white-15);
+  padding-top: var(--space-12);
+}
+
+.tbti-ach {
+  margin: 0 0 var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--qt-white-15);
+  border-radius: var(--radius-16);
+}
+
+.tbti-ach-text {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-13);
+  line-height: 20px;
+}
+
+.tbti-ach-go {
+  display: inline-block;
+  font-size: var(--text-13);
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.tbti-metric {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.tbti-baseline {
+  margin: 0 0 var(--space-12);
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.tbti-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.tbti-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.tbti-cover {
+  width: 72px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: var(--radius-6);
+}
+
+.tbti-row .game-cover--empty {
+  width: 72px;
+  height: 34px;
+}
+
+.tbti-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tbti-row-name {
+  font-size: var(--text-14);
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tbti-row-reason {
+  font-size: var(--text-13);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.tbti-row-metric {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  color: var(--qt-pink);
+}
+
+.tbti-excluded {
+  margin: var(--space-8) 0 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.tbti-caveats {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.tbti-caveat {
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+  border: 1px solid var(--qt-white-15);
+  border-radius: var(--radius-full);
+  padding: var(--space-4) var(--space-12);
+}
+
+.tbti-caveat-num {
+  font-family: var(--font-mono);
+  margin-left: var(--space-4);
+}
+
+.tbti-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.tbti-acc {
+  border: 1px solid var(--qt-white-15);
+  border-radius: var(--radius-16);
+}
+
+.tbti-acc-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: var(--space-16);
+  text-align: left;
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tbti-acc-text {
+  margin: 0;
+  padding: 0 var(--space-16) var(--space-16);
+  font-size: var(--text-14);
+  line-height: 22px;
+  color: var(--text-secondary);
+}
+
+.tbti-foot {
+  margin-bottom: var(--space-16);
+}
+
+.tbti-share-btn {
+  padding: var(--space-8) var(--space-24);
+  border-radius: var(--radius-8);
+  border: none;
+  background: var(--qt-white);
+  color: var(--qt-black);
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tbti-source {
+  margin-top: var(--space-8);
+  border-top: 1px solid var(--qt-white-15);
+  padding-top: var(--space-12);
+}
+
+.tbti-source-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-12);
+  line-height: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* 8c 보류 카드 — white 5% 면 + pink 30% 테두리. */
+.tbti-pending {
+  background: var(--surface-card);
+  border: 1px solid var(--tbti-chip-border);
+  border-radius: var(--corner-24);
+  padding: var(--space-28);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.tbti-pending-symbol {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  opacity: 0.5;
+  align-self: center;
+}
+
+.tbti-pending-code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: var(--text-32);
+  letter-spacing: 2px;
+  align-self: center;
+}
+
+.tbti-pending-lead {
+  margin: 0;
+  font-size: 16px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+.tbti-pending-sub {
+  margin: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  color: var(--text-secondary);
+}
+
+.tbti-pending-prog {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+}
+
+.tbti-pending-track {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-6);
+  background: var(--qt-white-15);
+  overflow: hidden;
+}
+
+.tbti-pending-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.tbti-pending-go {
+  display: inline-block;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-8);
+  border: 1px solid var(--qt-white-40);
+  color: var(--text-primary);
+  font-size: var(--text-14);
+  line-height: 22px;
+  font-weight: 600;
+}
+
+@media (max-width: 639.98px) {
+  .tbti-name {
+    font-size: 32px;
+    line-height: 40px;
+  }
+
+  .tbti-symbol,
+  .tbti-pending-symbol {
+    width: 96px;
+    height: 96px;
+  }
+
+  .tbti-axis-score {
+    font-size: 32px;
+  }
+
+  .tbti-row {
+    grid-template-columns: 56px 1fr auto;
+  }
+
+  .tbti-row .tbti-cover,
+  .tbti-row .game-cover--empty {
+    width: 56px;
+    height: 28px;
+  }
+}

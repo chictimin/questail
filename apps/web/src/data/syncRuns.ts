@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { syncRuns } from '../db/schema.js';
 
@@ -82,4 +82,18 @@ export function latestFinalizedRun(
     .orderBy(desc(syncRuns.id))
     .get();
   return row ?? null;
+}
+
+/**
+ * owned 소스 ok run의 observedDay 목록 — recap `basis.observedDays`와
+ * TBTI `observation_days` caveat의 직접 입력(R20·계약 v1.0.2).
+ * 웹이 sync_runs에서 조립한다(스키마 변경 없음).
+ */
+export function readOwnedObservedDays(db: Database.Database): string[] {
+  const rows = drizzle(db)
+    .selectDistinct({ observedDay: syncRuns.observedDay })
+    .from(syncRuns)
+    .where(and(eq(syncRuns.source, 'owned'), eq(syncRuns.status, 'ok')))
+    .all();
+  return rows.map((row) => row.observedDay);
 }

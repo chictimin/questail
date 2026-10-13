@@ -35,6 +35,7 @@ describe('recap 예약 경로', () => {
       const response = await createServerApp({
         staticRoot: FIXTURE,
         exportDeps: { db, exportDir: FIXTURE },
+        settingsDeps: { dataDir: dir, version: '0.0.0-test' },
       }).request('/api/recap/library', { headers: HOST });
       expect(response.status).toBe(200);
       const body = (await response.json()) as Record<string, unknown>;
