@@ -11,7 +11,7 @@
 
 > A local web app that archives your Steam library on your own computer and lets you rate the games.
 
-**Current phase: R1** — local server (Hono + React + SQLite, single process) with library ratings, hidden games, and Markdown export.
+**Current phase: R1.5** — home, recap, and TBTI (gamer type) screens on top of the R1 library archive (ratings, hidden games, Markdown export).
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ cd questail
 pnpm install && pnpm start
 ```
 
-After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` redirects to the library when a Steam account is already connected, and to the connect screen otherwise. On the connect screen, enter the API key and a profile address or SteamID.
+After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` redirects home when a Steam account is already connected, and to the connect screen otherwise. On the connect screen, enter the API key and a profile address or SteamID.
 
 ## Collection Scope
 
@@ -39,6 +39,27 @@ After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` r
 - The collection status screen shows per-source state with retry and collect-all. The header shows game info progress.
 - Game info requests go out every 2 seconds, so 1,000 games take about 33 minutes. Larger libraries take hours, longer if Steam rate-limits requests (429).
 - A daily snapshot runs at 04:00 in the operating system's local time zone, only while the server is on. A missed run fires once at the next startup.
+
+## R1.5: Home, Recap, TBTI
+
+- Home shows total playtime (played of owned), the top 5 games, the top genre, the mean rating, and the TBTI card with a link to details.
+- Recap summarizes the whole library: an observation-days band (the first collection is the baseline), the top 5 share, genre bars, the rating mean and distribution with high/low deviants, playtime buckets, release eras (new/recent/classic), unplayed and missing games, and the TBTI card on top.
+- All times follow Steam server records. The screens state their blind spots instead of hiding them: observation days, hidden-game exclusion, missing off-Steam history, unconfirmed genres or release dates, and unreflected achievements.
+- TBTI judges four axes from your own history, one line each:
+  - Axis 1 Play drive — Immersion (I) vs Run (R), from user tags.
+  - Axis 2 Taste source — New (N) vs Home (H), from when you played relative to release.
+  - Axis 3 Genre range — One-trick (O) vs All-rounder (A), from genre spread.
+  - Axis 4 Depth — Completionist (C) vs Light taster (L), from hours and achievements.
+- Each axis shows why: the top contributing games with reason and metric, plus a public reference where one exists. Under 5 hours of total playtime, TBTI stays undecided (`????`) with a progress bar; an undecided axis shows `?` with a one-line reason (too little history, or straddling the boundary).
+- Wishlist toggle (settings, on by default): pre-release wishlist entries count as new-game evidence on axis 2. Turning it off drops that evidence and marks the screen accordingly.
+- Series aliases live in `series-aliases.json` directly under the data folder. Keys are normalized game names: lowercase, edition tails (`Remastered`, `Definitive Edition`, and the like) removed, Roman numerals I–X as Arabic numerals (e.g. `Dark Souls III` → `dark souls 3`). A full normalized-name match wins first; otherwise games group by the part before the first separator (`:`, ` - `, and the like).
+
+  ```
+  { "aliases": { "monster hunter": "monster-hunter" } }
+  ```
+
+  A missing file falls back to built-in defaults; a broken file (bad JSON or wrong shape) means no aliases.
+- Recap and TBTI can be taken as text: copy buttons on screen, the TBTI share sheet (optionally with recap, no account info included), and Markdown export to `recap.md`.
 
 ## Data Directory
 
@@ -76,7 +97,7 @@ node apps/web/dist/src/server/run.js
 
 - Collection is optional. The connect screen has a checkbox (off by default) to decide before the first collection, and settings can change it later.
 - Achievement records are collected only when "Game details" on the Steam profile is public. If it is private, those games are skipped. This is an account setting, not an app failure.
-- Unrecorded achievements may later affect the gamer type (TBTI) result and some titles, a feature planned for later.
+- Unrecorded achievements leave the TBTI depth axis playtime-only; the screen shows an achievements-unreflected notice with a fix action.
 
 ## Key Handling
 
@@ -108,7 +129,7 @@ questail/
 │   └── web/                     # R1 app (Hono server + React UI + SQLite)
 │       ├── src/
 │       │   ├── server/          # HTTP routes, boot sequence
-│       │   ├── ui/              # React screens (connect, sync, library, export, settings)
+│       │   ├── ui/              # React screens (connect, home, recap, tbti, sync, library, export, settings)
 │       │   ├── data/            # library, ratings, view state services
 │       │   └── db/              # schema, migrations, open/backup/migrate
 │       └── test/                # unit, e2e, performance harnesses
