@@ -9,6 +9,9 @@ import type { Context } from 'hono';
 import { createLogger } from './logging.js';
 import { readExportGames } from '../data/export.js';
 import { listLibrary } from '../data/library.js';
+import { readLibraryRecap } from '../data/recap.js';
+import { readTbti } from '../data/tbti.js';
+import { RECAP_RESERVED_PATHS } from './recapReserved.js';
 import { setRating, type ScoreValue } from '../data/ratings.js';
 import { getAchievementSettings, getPrefs, setAchievementSettings, setPrefs } from '../data/viewState.js';
 import type { Locale } from '../ui/i18n/index.js';
@@ -41,6 +44,7 @@ import { registerSettingsBackupsRoutes } from './routes/settings-backups.js';
 export const HEALTH_PATH = '/api/health';
 export const EXPORT_PATH = '/api/export';
 export const LIBRARY_PATH = '/api/library';
+export const TBTI_PATH = '/api/tbti';
 export const PREFS_PATH = '/api/prefs';
 export const ACHIEVEMENTS_PATH = '/api/settings/achievements';
 export const SYNC_PATH = '/api/sync';
@@ -236,6 +240,7 @@ type PrefsPatch = {
   hidden?: { platform: string; externalId: string }[];
   sortPerFilter?: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
   hideShortPlaytime?: boolean;
+  tbtiWishlist?: boolean;
 };
 
 function isGameKey(value: unknown): value is { platform: string; externalId: string } {
@@ -286,6 +291,9 @@ const prefsBodyGuard: BodyGuard<PrefsPatch> = (unknownBody) => {
   if (body['hideShortPlaytime'] !== undefined && typeof body['hideShortPlaytime'] !== 'boolean') {
     return { ok: false, params: { reason: 'hideShortPlaytime' } };
   }
+  if (body['tbtiWishlist'] !== undefined && typeof body['tbtiWishlist'] !== 'boolean') {
+    return { ok: false, params: { reason: 'tbtiWishlist' } };
+  }
   return {
     ok: true,
     value: {
@@ -301,6 +309,9 @@ const prefsBodyGuard: BodyGuard<PrefsPatch> = (unknownBody) => {
       ...(body['hideShortPlaytime'] === undefined
         ? {}
         : { hideShortPlaytime: body['hideShortPlaytime'] as boolean }),
+      ...(body['tbtiWishlist'] === undefined
+        ? {}
+        : { tbtiWishlist: body['tbtiWishlist'] as boolean }),
     },
   };
 };
@@ -448,6 +459,32 @@ function registerRoutes(
     return c.json(
       listLibrary(db, { includeEnded: raw === 'true' }),
     );
+  });
+  // R15-9 S1 — GET /api/recap/library. 예약 상수(RECAP_RESERVED_PATHS.library)를 단일 출처로 쓴다.
+  app.get(RECAP_RESERVED_PATHS.library, (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const db = layer?.db ?? exportDeps?.db;
+    if (db === undefined) {
+      return internalError(c);
+    }
+    return c.json(readLibraryRecap(db));
+  });
+  // R15-9 S2 — GET /api/tbti (신규).
+  app.get(TBTI_PATH, (c) => {
+    if (isUnattached(holder)) {
+      return notConnected(c);
+    }
+    // D16-2 — 요청 시작 시 holder 1회 읽기.
+    const layer = holder?.get();
+    const db = layer?.db ?? exportDeps?.db;
+    if (db === undefined) {
+      return internalError(c);
+    }
+    return c.json(readTbti(db));
   });
   app.put('/api/ratings/:platform/:externalId', async (c) => {
     if (isUnattached(holder)) {

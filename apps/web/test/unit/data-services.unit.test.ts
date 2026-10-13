@@ -104,6 +104,7 @@ describe('data services', () => {
         hidden: [{ platform: 'steam', externalId: '1' }],
         sortPerFilter: [],
         hideShortPlaytime: false,
+        tbtiWishlist: true,
       });
       setPrefs(db, {
         sortPerFilter: [{ filterKey: 'all', sortKey: 'name', direction: 'asc' }],

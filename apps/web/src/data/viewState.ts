@@ -3,12 +3,13 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { hiddenGames, preferences, viewSortState } from '../db/schema.js';
 
-/** 화면 상태. C-4 Prefs와 같은 모양이다. */
+/** 화면 상태. C-4 Prefs와 같은 모양이다. R15-7 찜 토글(tbtiWishlist) 포함 — 행 없음 = on. */
 export interface Prefs {
   locale: 'ko' | 'en';
   hidden: { platform: string; externalId: string }[];
   sortPerFilter: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
   hideShortPlaytime: boolean;
+  tbtiWishlist: boolean;
 }
 
 /** 로케일 기본값 제안. 브라우저 판정은 호출 측(B)이 fallback으로 넘긴다. */
@@ -63,6 +64,8 @@ export function getPrefs(db: Database.Database, fallback: LocaleFallback): Prefs
     hidden,
     sortPerFilter,
     hideShortPlaytime: readPref(db, 'hide_short_playtime') === '1',
+    // R15-7 찜 토글 — 저장 키 tbti_wishlist, 행 없음 = on.
+    tbtiWishlist: readPref(db, 'tbti_wishlist') !== '0',
   };
 }
 
@@ -77,6 +80,7 @@ export function setPrefs(
     hidden: { platform: string; externalId: string }[];
     sortPerFilter: { filterKey: string; sortKey: string; direction: 'asc' | 'desc' }[];
     hideShortPlaytime: boolean;
+    tbtiWishlist: boolean;
   }>,
 ): void {
   if (patch.locale !== undefined) {
@@ -84,6 +88,9 @@ export function setPrefs(
   }
   if (patch.hideShortPlaytime !== undefined) {
     writePref(db, 'hide_short_playtime', patch.hideShortPlaytime ? '1' : '0');
+  }
+  if (patch.tbtiWishlist !== undefined) {
+    writePref(db, 'tbti_wishlist', patch.tbtiWishlist ? '1' : '0');
   }
   if (patch.hidden !== undefined) {
     const orm = drizzle(db);

@@ -102,6 +102,7 @@ type SortEntry = { filterKey: string; sortKey: string; direction: 'asc' | 'desc'
 export type PendingValues = {
   locale?: 'ko' | 'en';
   hideShortPlaytime?: boolean;
+  tbtiWishlist?: boolean;
   sortPerFilter: Map<string, SortEntry>;
   achievementsEnabled?: boolean;
 };
@@ -112,6 +113,8 @@ export function readPendingPrefs(pending: PendingValues, fallback: 'ko' | 'en'):
     hidden: [],
     sortPerFilter: [...pending.sortPerFilter.values()],
     hideShortPlaytime: pending.hideShortPlaytime ?? false,
+    // R15-7 찜 토글 — 행 없음 = on이므로 대기값 없음도 on.
+    tbtiWishlist: pending.tbtiWishlist ?? true,
   };
 }
 
@@ -120,6 +123,7 @@ export function writePendingPrefs(
   patch: {
     locale?: 'ko' | 'en';
     hideShortPlaytime?: boolean;
+    tbtiWishlist?: boolean;
     sortPerFilter?: SortEntry[];
   },
 ): void {
@@ -128,6 +132,9 @@ export function writePendingPrefs(
   }
   if (patch.hideShortPlaytime !== undefined) {
     pending.hideShortPlaytime = patch.hideShortPlaytime;
+  }
+  if (patch.tbtiWishlist !== undefined) {
+    pending.tbtiWishlist = patch.tbtiWishlist;
   }
   for (const entry of patch.sortPerFilter ?? []) {
     pending.sortPerFilter.set(entry.filterKey, { ...entry });
@@ -144,6 +151,7 @@ function pendingExtraWrites(
   const hasAny =
     pending.locale !== undefined ||
     pending.hideShortPlaytime !== undefined ||
+    pending.tbtiWishlist !== undefined ||
     pending.sortPerFilter.size > 0;
   if (!hasAny) {
     return undefined;
@@ -153,6 +161,9 @@ function pendingExtraWrites(
     ...(pending.hideShortPlaytime === undefined
       ? {}
       : { hideShortPlaytime: pending.hideShortPlaytime }),
+    ...(pending.tbtiWishlist === undefined
+      ? {}
+      : { tbtiWishlist: pending.tbtiWishlist }),
     ...(pending.sortPerFilter.size === 0
       ? {}
       : { sortPerFilter: [...pending.sortPerFilter.values()] }),
@@ -162,13 +173,13 @@ function pendingExtraWrites(
     const prevPrefs = orm
       .select()
       .from(preferences)
-      .where(inArray(preferences.key, ['locale', 'hide_short_playtime']))
+      .where(inArray(preferences.key, ['locale', 'hide_short_playtime', 'tbti_wishlist']))
       .all();
     const prevSort = orm.select().from(viewSortState).all();
     setPrefs(db, patch);
     return () => {
       const undo = drizzle(db);
-      undo.delete(preferences).where(inArray(preferences.key, ['locale', 'hide_short_playtime'])).run();
+      undo.delete(preferences).where(inArray(preferences.key, ['locale', 'hide_short_playtime', 'tbti_wishlist'])).run();
       for (const row of prevPrefs) {
         undo.insert(preferences).values(row).run();
       }

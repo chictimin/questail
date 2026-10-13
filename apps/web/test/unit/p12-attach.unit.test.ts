@@ -293,6 +293,7 @@ describe('P-12 연동 전 API', () => {
       hidden: [],
       sortPerFilter: [],
       hideShortPlaytime: false,
+      tbtiWishlist: true,
     });
     const put = await h.request('PUT', '/api/prefs?fallback=ko', {
       locale: 'en',
@@ -304,6 +305,7 @@ describe('P-12 연동 전 API', () => {
       hidden: [],
       sortPerFilter: [{ filterKey: 'all', sortKey: 'name', direction: 'desc' }],
       hideShortPlaytime: true,
+      tbtiWishlist: true,
     });
     const bad = await h.request('PUT', '/api/prefs?fallback=ko', {
       hidden: [{ platform: 'steam', externalId: '1' }],
