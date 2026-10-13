@@ -6,4 +6,5 @@ export * from './types.js';
 export * from './archive/index.js';
 export * from './tbti/index.js';
 export * from './recap/index.js';
+export * from './series/index.js';
 export * from './titles/index.js';
