@@ -671,7 +671,7 @@ function judgeAxis4(
  * H 분자 = size≥2 묶음 귀속 게임 시간 합. items key→bundleId 매핑 사용.
  */
 export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
-  const { games, wishlistEnabled, now, seriesAliases } = input;
+  const { games, wishlistEnabled, now, seriesAliases, ownedObservedDays } = input;
   const hiddenExcluded = games.filter((game) => game.hidden).length;
   const visible = games.filter((game) => !game.hidden);
   const totalMinutes = visible.reduce((sum, game) => sum + game.confirmedMinutes, 0);
@@ -720,7 +720,7 @@ export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
       axes: pendingAxes,
       pending: true,
       pendingHours: { have: totalMinutes, need: TBTI_PENDING_NEED_MINUTES },
-      caveats: resultCaveats(visible, hiddenExcluded),
+      caveats: resultCaveats(hiddenExcluded, ownedObservedDays),
     };
   }
 
@@ -730,26 +730,21 @@ export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
     pending: false,
     // 비보류면 pendingHours null(R22).
     pendingHours: null,
-    caveats: resultCaveats(visible, hiddenExcluded),
+    caveats: resultCaveats(hiddenExcluded, ownedObservedDays),
   };
 }
 
 /**
- * TbtiResult.caveats 구성(R20).
+ * TbtiResult.caveats 구성(R20 + 계약 v1.0.2 델타, PM 결정 #109684).
  * 공통 4종(observation_days·hidden_excluded·outside_steam_missing·server_record_basis).
- * observation_days counts = 숨김 제외 게임 스냅샷의 observedDay distinct 수
- * (TBTI 입력에 recap의 ownedObservedDays가 없으므로 스냅샷에서 직접 센다 — 리뷰 M2 통과).
- * 섹션(01~06) 코드 합성은 리캡 조립(T1) 몫이라 여기서는 싣지 않는다(리뷰 M2 통과).
+ * observation_days count = ownedObservedDays.length
+ * (RecapInput.ownedObservedDays와 동일 출처·의미 — owned 소스 ok run의 observedDay distinct.
+ * 스냅샷 distinct 계산은 제거).
+ * 섹션(01~06) 코드 합성은 리캡 조립(T1) 몫이라 여기서는 싣지 않는다.
  */
-function resultCaveats(visible: GameFacts[], hiddenExcluded: number): Caveat[] {
-  const days = new Set<string>();
-  for (const game of visible) {
-    for (const snapshot of game.snapshots) {
-      days.add(snapshot.observedDay);
-    }
-  }
+function resultCaveats(hiddenExcluded: number, ownedObservedDays: string[]): Caveat[] {
   return [
-    { code: 'observation_days', count: days.size },
+    { code: 'observation_days', count: ownedObservedDays.length },
     { code: 'hidden_excluded', count: hiddenExcluded },
     { code: 'outside_steam_missing', count: null },
     { code: 'server_record_basis', count: null },

@@ -52,7 +52,7 @@ function makeFacts(id: string, over: Partial<GameFacts> = {}): GameFacts {
 }
 
 function inputOf(games: GameFacts[], over: Partial<TbtiJudgeInput> = {}): TbtiJudgeInput {
-  return { games, wishlistEnabled: true, now: NOW, seriesAliases: BROKEN, ...over };
+  return { games, wishlistEnabled: true, now: NOW, seriesAliases: BROKEN, ownedObservedDays: [], ...over };
 }
 
 const tagGame = (id: string, tags: string[]): GameFacts =>
@@ -634,6 +634,29 @@ describe('r15-core-tbti: 합성·결정성', () => {
     }
     expect(result.caveats).toContainEqual({ code: 'hidden_excluded', count: 1 });
     expect(result.caveats).toContainEqual({ code: 'observation_days', count: 0 });
+  });
+
+  it('observation_days count = ownedObservedDays.length · 스냅샷 distinct 무시(v1.0.2 델타)', () => {
+    // 스냅샷 observedDay 2종이 있어도 ownedObservedDays(3종) 길이를 쓴다.
+    const withSnapshots = makeFacts('s', {
+      snapshots: [
+        { observedAt: NOW, observedDay: '2026-10-01', totalMinutes: 600, deltaMinutes: null, elapsedSeconds: null, isReview: false },
+        { observedAt: NOW, observedDay: '2026-10-02', totalMinutes: 600, deltaMinutes: null, elapsedSeconds: null, isReview: false },
+      ],
+    });
+    const result = judgeTbti(
+      inputOf([withSnapshots, makeFacts('a'), makeFacts('b')], {
+        ownedObservedDays: ['2026-10-01', '2026-10-02', '2026-10-03'],
+      }),
+    );
+    expect(result.caveats).toContainEqual({ code: 'observation_days', count: 3 });
+    // 공통 4종만 — 리캡 섹션 01~06 코드 없음.
+    expect(result.caveats.map((caveat) => caveat.code)).toEqual([
+      'observation_days',
+      'hidden_excluded',
+      'outside_steam_missing',
+      'server_record_basis',
+    ]);
   });
 
   it('code는 4축 primary 연결', () => {

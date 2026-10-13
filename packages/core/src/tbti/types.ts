@@ -68,6 +68,8 @@ export interface TbtiJudgeInput {
   wishlistEnabled: boolean;
   now: number;
   seriesAliases: SeriesAliasInput;
+  /** owned 소스 ok run의 observedDay distinct — RecapInput.ownedObservedDays와 동일 출처·의미. TbtiResult.caveats observation_days count의 직접 입력(계약 v1.0.2 델타, PM 결정 #109684). */
+  ownedObservedDays: string[];
 }
 
 /** 시리즈 별칭 주입 (PM 지정 — 웹 로더 반환 형태 그대로). */
