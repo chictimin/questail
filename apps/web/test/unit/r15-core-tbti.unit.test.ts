@@ -425,6 +425,85 @@ describe('r15-core-tbti: ② N/H', () => {
     );
   });
 
+  it('확정 경로별 reasonKey 4키: snapshot·unlock·lastplayed·wishlist (신뢰도 순서)', () => {
+    const release = dayOf(2024);
+    const cutoff = cutoffOf(release);
+    const preWish = [
+      {
+        dateAdded: release - 10 * DAY,
+        firstObservedAt: release - 10 * DAY,
+        priority: null,
+        observedAt: null,
+        ended: false,
+        syncRunId: null,
+      },
+    ];
+    const snapshotGame = makeFacts('s-snap', {
+      releaseDate: release,
+      confirmedMinutes: 600,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: null,
+      wishlist: [],
+      coverage: { firstObservedAt: release + DAY, lastObservedAt: release + 2 * DAY, gapDays: [], isBaseline: true },
+      snapshots: [
+        {
+          observedAt: release + DAY,
+          observedDay: '2024-01-02',
+          totalMinutes: 400,
+          deltaMinutes: null,
+          elapsedSeconds: null,
+          isReview: false,
+        },
+      ],
+      deltas: [{ observedAt: cutoff - DAY, deltaMinutes: 200, elapsedSeconds: 12000 }],
+    });
+    // unlock + lastPlayed + 찜이 겹쳐도 신뢰도 1순위 unlock을 기록한다.
+    const unlockGame = makeFacts('u-unlock', {
+      releaseDate: release,
+      achievements: [{ apiname: 'a', achieved: true, unlockedAt: release + 3600 }],
+      lastPlayed: release + 7200,
+      wishlist: preWish,
+    });
+    // lastPlayed + 찜이 겹쳐도 lastplayed를 기록한다.
+    const lastGame = makeFacts('l-last', {
+      releaseDate: release,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: release + 7200,
+      wishlist: preWish,
+    });
+    const wishGame = makeFacts('w-wish', {
+      releaseDate: release,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: null,
+      wishlist: preWish,
+    });
+    const axis = judgeTbti(inputOf([snapshotGame, unlockGame, lastGame, wishGame])).axes[1];
+    const byId = (id: string): string | undefined =>
+      axis.evidence.find((row) => row.key.externalId === id)?.reasonKey;
+    expect(byId('s-snap')).toBe('tbti.reason.nh.confirmed_snapshot');
+    expect(byId('u-unlock')).toBe('tbti.reason.nh.confirmed_unlock');
+    expect(byId('l-last')).toBe('tbti.reason.nh.confirmed_lastplayed');
+    expect(byId('w-wish')).toBe('tbti.reason.nh.confirmed_wishlist');
+  });
+
+  it('late·no_evidence reasonKey는 그대로', () => {
+    const release = dayOf(2024);
+    const axis = judgeTbti(
+      inputOf([lateGame('late1', release), noEvidenceGame('none1', release), makeFacts('c')]),
+    ).axes[1];
+    const byId = (id: string): string | undefined =>
+      axis.evidence.find((row) => row.key.externalId === id)?.reasonKey;
+    expect(byId('late1')).toBe('tbti.reason.nh.late');
+    expect(byId('none1')).toBe('tbti.reason.nh.no_evidence');
+    expect(byId('c')).toBe('tbti.reason.nh.confirmed_unlock');
+  });
+
   it('출시일 미확인 게임 수 = excludedCount · caveat release_unknown', () => {
     const games = [
       makeFacts('a'),

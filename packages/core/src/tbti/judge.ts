@@ -86,6 +86,7 @@ interface NhClass {
   late: number;
   none: number;
   bucket: NhBucket;
+  confirmedVia: 'snapshot' | 'unlock' | 'lastplayed' | 'wishlist' | null;
 }
 
 /**
@@ -102,7 +103,7 @@ function classifyNh(
   const total = game.confirmedMinutes;
   // 출시일 미확인 → 전액 증거 없음(계약 R15-5 ② "출시일 미확인 포함").
   if (cutoff === null || game.releaseDate === null) {
-    return { confirmed: 0, late: 0, none: total, bucket: 'no_evidence' };
+    return { confirmed: 0, late: 0, none: total, bucket: 'no_evidence', confirmedVia: null };
   }
   // 증거 ① 확정 시간(확정): 기준선 total 전액 + deltas 중 observedAt ≤ 출시+W인 증감 합.
   // 기준선 = coverage.isBaseline인 게임의 첫 스냅샷 total. W 이후분은 분모에만 남는다.
@@ -139,34 +140,42 @@ function classifyNh(
   }
 
   if (rest <= 0) {
-    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed' };
+    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'snapshot' };
   }
   if (earliestUnlock !== null && earliestUnlock <= cutoff) {
-    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed' };
+    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'unlock' };
   }
   // 증거 ③: lastPlayed ≤ 출시+W. lastPlayed NULL이면 증거 없음(R15).
   // lastPlayed > W 단독은 늦음 근거가 아니다(C13).
   if (game.lastPlayed !== null && game.lastPlayed <= cutoff) {
-    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed' };
+    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'lastplayed' };
   }
   // 보조는 증거 없음→확정 재분류 용도로만. N 확정 시간 가산 없음(R15-7).
   if (preReleaseWish) {
-    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed' };
+    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'wishlist' };
   }
   // 늦음 = min unlocked_at > 출시+W인 게임의 시간(늦게 시작 추정, SPEC-tbti 79행).
   if (earliestUnlock !== null && earliestUnlock > cutoff) {
-    return { confirmed: snapshotConfirmed, late: rest, none: 0, bucket: 'late' };
+    return { confirmed: snapshotConfirmed, late: rest, none: 0, bucket: 'late', confirmedVia: null };
   }
   // 증거 없음 = 그 외 비확정(증거 경로 전부 없음 — 첫 관측이 W 이후 시작 포함 · 출시일 미확인 포함).
-  return { confirmed: snapshotConfirmed, late: 0, none: rest, bucket: 'no_evidence' };
+  return { confirmed: snapshotConfirmed, late: 0, none: rest, bucket: 'no_evidence', confirmedVia: null };
 }
 
-function nhReasonKey(bucket: NhBucket, snapshotOnly: boolean): string {
+function nhReasonKey(bucket: NhBucket, confirmedVia: NhClass['confirmedVia']): string {
   if (bucket === 'late') return TBTI_REASON_NH_LATE;
   if (bucket === 'no_evidence') return TBTI_REASON_NH_NO_EVIDENCE;
-  return snapshotOnly
-    ? TBTI_REASON_NH_CONFIRMED_SNAPSHOT
-    : TBTI_REASON_NH_CONFIRMED_UNLOCK;
+  switch (confirmedVia) {
+    case 'snapshot':
+      return TBTI_REASON_NH_CONFIRMED_SNAPSHOT;
+    case 'lastplayed':
+      return TBTI_REASON_NH_CONFIRMED_LASTPLAYED;
+    case 'wishlist':
+      return TBTI_REASON_NH_CONFIRMED_WISHLIST;
+    case 'unlock':
+    default:
+      return TBTI_REASON_NH_CONFIRMED_UNLOCK;
+  }
 }
 
 /** ①축. 최소 표본: 판정 게임 3편(집중3). */
@@ -317,20 +326,7 @@ function judgeAxis2(
     .filter((game) => game.confirmedMinutes > 0)
     .map((game) => {
       const cls = classes.get(gameKeyOf(game)) as NhClass;
-      const snapshotOnly =
-        cls.bucket === 'confirmed' &&
-        game.achievements.every((ach) => !ach.achieved || ach.unlockedAt === null) &&
-        (game.lastPlayed === null ||
-          (game.releaseDate !== null &&
-            game.lastPlayed > game.releaseDate + TBTI_NEW_WINDOW_SECONDS)) &&
-        !(
-          wishlistEnabled &&
-          game.releaseDate !== null &&
-          game.wishlist.some(
-            (span) => (span.dateAdded ?? span.firstObservedAt) < (game.releaseDate as number),
-          )
-        );
-      return { game, cls, snapshotOnly };
+      return { game, cls };
     })
     .sort(
       (a, b) =>
@@ -341,7 +337,7 @@ function judgeAxis2(
     .map((row) => ({
       key: row.game.key,
       metric: { value: row.game.confirmedMinutes / 60, unit: 'hours' as const },
-      reasonKey: nhReasonKey(row.cls.bucket, row.snapshotOnly),
+      reasonKey: nhReasonKey(row.cls.bucket, row.cls.confirmedVia),
     }));
   const base = {
     axis: 2 as const,
