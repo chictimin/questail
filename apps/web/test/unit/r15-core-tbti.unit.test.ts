@@ -687,6 +687,37 @@ describe('r15-core-tbti: ② N/H', () => {
     const axis = judgeTbti(inputOf(games, { seriesAliases: MISSING })).axes[1];
     expect(axis.caveats).toContainEqual({ code: 'h_alias_file', count: 1 });
   });
+
+  it('bundles representativeKey — 묶음 안 confirmedMinutes 최대 게임', () => {
+    const games = [
+      makeFacts('h1', { name: 'Hollow Knight', confirmedMinutes: 600 }),
+      makeFacts('h2', { name: 'Hollow Knight: Silksong', confirmedMinutes: 1800 }),
+      makeFacts('a', { confirmedMinutes: 600 }),
+    ];
+    const axis = judgeTbti(inputOf(games)).axes[1];
+    if (axis.metrics === null || axis.metrics.kind !== 'nh') throw new Error('② metrics 없음');
+    expect(axis.metrics.bundles).toHaveLength(1);
+    expect(axis.metrics.bundles[0]).toEqual({
+      id: 'core:hollow knight',
+      games: 2,
+      minutes: 2400,
+      representativeKey: { platform: 'steam', externalId: 'h2' },
+    });
+  });
+
+  it('bundles representativeKey 동률 — key 오름차순', () => {
+    const games = [
+      makeFacts('h2', { name: 'Hollow Knight: Silksong', confirmedMinutes: 600 }),
+      makeFacts('h1', { name: 'Hollow Knight', confirmedMinutes: 600 }),
+      makeFacts('a', { confirmedMinutes: 600 }),
+    ];
+    const axis = judgeTbti(inputOf(games)).axes[1];
+    if (axis.metrics === null || axis.metrics.kind !== 'nh') throw new Error('② metrics 없음');
+    expect(axis.metrics.bundles[0]?.representativeKey).toEqual({
+      platform: 'steam',
+      externalId: 'h1',
+    });
+  });
 });
 
 describe('r15-core-tbti: ③ O/A', () => {
@@ -941,7 +972,7 @@ describe('r15-core-tbti: 합성·결정성', () => {
     expect(a1.metrics).toEqual({ kind: 'ir', iGames: 4, rGames: 0, judgedGames: 4 });
     expect(a2.metrics).toEqual({
       kind: 'nh',
-      bundles: [{ id: 'core:hollow knight', games: 2, minutes: 1200 }],
+      bundles: [{ id: 'core:hollow knight', games: 2, minutes: 1200, representativeKey: { platform: 'steam', externalId: 'h1' } }],
       nMin: 100,
       nMax: 100,
     });

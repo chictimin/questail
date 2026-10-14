@@ -57,7 +57,7 @@ export type ReasonKey =
 /** 축별 지표 원값(확정 — 캡틴 결정 2. 화면 렌더는 i18n 템플릿). */
 export type AxisMetrics =
   | { kind: 'ir'; iGames: number; rGames: number; judgedGames: number }
-  | { kind: 'nh'; bundles: { id: string; games: number; minutes: number }[]; nMin: number; nMax: number }
+  | { kind: 'nh'; bundles: { id: string; games: number; minutes: number; representativeKey: GameKey }[]; nMin: number; nMax: number }
   | { kind: 'oa'; hhi: number; g: number }
   | { kind: 'cl'; medianHours: number; achMean: number | null; quitCount: number; quitDenom: number };
 // bundles = 시리즈 묶음별 상위 3묶음(시간 내림차순, 동률 bundleId 오름차순 — 확정 M1, v1.1.1). achMean null = 업적 미반영(2재료 판정)

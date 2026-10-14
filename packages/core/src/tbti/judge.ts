@@ -313,6 +313,7 @@ interface NhBundleStat {
   id: string;
   games: number;
   minutes: number;
+  representativeKey: GameKey;
 }
 
 /** ②축. 최소 표본: 출시일 확인 게임 3편(시기3). ②축 similar 없음(절대 금지). */
@@ -802,14 +803,31 @@ export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
     .map((bundle) => {
       let bundleGames = 0;
       let bundleMinutes = 0;
+      let representativeKey: GameKey | null = null;
+      let representativeMinutes = -1;
+      // H 분자와 같은 소스(bundle.keys → visible) 사용.
+      // 대표 = 묶음 안 confirmedMinutes 최대 게임, 동률 key 오름차순.
       for (const key of bundle.keys) {
         const game = visibleByKey.get(itemKeyOf(key));
         if (game !== undefined) {
           bundleGames += 1;
           bundleMinutes += game.confirmedMinutes;
+          if (
+            representativeKey === null ||
+            game.confirmedMinutes > representativeMinutes ||
+            (game.confirmedMinutes === representativeMinutes &&
+              compareGameKey(game.key, representativeKey) < 0)
+          ) {
+            representativeKey = game.key;
+            representativeMinutes = game.confirmedMinutes;
+          }
         }
       }
-      return { id: bundle.bundleId, games: bundleGames, minutes: bundleMinutes };
+      // 귀속 visible 0건이면 결정성 fallback: bundle.keys 중 key 오름차순 첫째.
+      if (representativeKey === null) {
+        representativeKey = [...bundle.keys].sort(compareGameKey)[0] as GameKey;
+      }
+      return { id: bundle.bundleId, games: bundleGames, minutes: bundleMinutes, representativeKey };
     })
     .sort((a, b) => b.minutes - a.minutes || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     .slice(0, 3);
