@@ -238,7 +238,6 @@ describe('renderTbtiShare 픽스처 대조', () => {
     expect(renderTbtiShare(RESULT, 'ko')).toBe(
       [
         '내 TBTI는 INAC — 끈질긴 대식가',
-        '',
         '몰입 83% · 신작 60%(본진 비중 34%) · 잡식 85% · 파먹기 78%',
         '파먹기 축은 플레이 시간만으로 정했어요.',
         '관측 2일분, 첫 수집 기준 · questail',

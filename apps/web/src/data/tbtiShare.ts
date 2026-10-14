@@ -71,14 +71,17 @@ export function renderTbtiShare(result: TbtiResult, locale: Locale): string {
     ].join('\n');
   }
   const axes = [...result.axes].sort((a, b) => a.axis - b.axis);
-  // ko 정의 줄은 이름 데이터 실값(현재 예시값 자리) — en에는 줄 자체를 두지 않는다(PM #109421).
+  // ko 정의 줄은 이름 데이터 실값 — 비어 있으면 줄 자체를 두지 않는다(빈 줄 금지).
   const lines = [
     locale === 'ko' && isTbtiCode(result.code)
       ? t(locale, 'tbti.shareTitle', { code: result.code, title: TBTI_NAMES[result.code].ko.title })
       : t(locale, 'tbti.shareTitle', { code: result.code }),
   ];
   if (locale === 'ko') {
-    lines.push(isTbtiCode(result.code) ? TBTI_NAMES[result.code].ko.body.definition : '');
+    const definition = isTbtiCode(result.code) ? TBTI_NAMES[result.code].ko.body.definition : '';
+    if (definition !== '') {
+      lines.push(definition);
+    }
   }
   lines.push(axes.map((axis) => axisSegment(locale, axis)).join(' · '));
   const fourth = axes.find((axis) => axis.axis === 4);
