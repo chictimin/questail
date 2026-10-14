@@ -627,6 +627,7 @@ export function TbtiView({
             ],
           }}
           compact={false}
+          link={false}
           pendingHours={result.pendingHours}
         />
         <ResultCaveats result={result} />

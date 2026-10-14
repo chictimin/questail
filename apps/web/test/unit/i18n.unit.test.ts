@@ -769,6 +769,84 @@ describe('UI 하드코딩 문자열 0', () => {
     'recap-bar-error', // CSS 클래스 식별자(화면 미노출)
     '/api/recap/library/text', // API 경로 — 화면 미노출
     '/api/tbti/share-text', // API 경로 — 화면 미노출
+    'month', // Intl.DateTimeFormat part type 식별자 — W6 셸 수집 칩
+    'home-top-fill home-top-fill--top', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'home-tbti-gap', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'home-empty', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'home-cell-sub', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'home-star', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'home-cell-num home-cell-num--text', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'tbti-pending tbti-pending--compact', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'tbti-pending-id', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'tbti-pending-num', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
+    'A', // TBTI 축 글자(코드 문자, 번역 대상 아님)
+    'L', // TBTI 축 글자(코드 문자, 번역 대상 아님)
+    'R', // TBTI 축 글자(코드 문자, 번역 대상 아님)
+    'UTC', // Intl timeZone 식별자
+    'classic', // 계약 R15-3 Recap05 band code
+    'recap-03', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-03-chart', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-03-left', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-bad', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-bar-inner', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-bar-lead recap-bar-error', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-bar-long', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-bar-row recap-bar-row--unknown', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-bar-short', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-big', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-big recap-big--56', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-big-num', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-big-unit', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-caret', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-chip-more', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-col-labels', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-cover recap-cover--empty', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-deviant-dev recap-bad', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-deviant-dev recap-ok', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-deviant-main', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-deviant-none', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-dist-cols', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-dist-fill recap-dist-fill--top', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-dist-labels', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-fill', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-fill recap-fill--top', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-fill recap-fill--unknown', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-info', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-lead', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-lead recap-lead--strong', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-a', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-a recap-mini--on', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-b', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-b recap-mini--on', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-l', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-l recap-mini--weak', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-r', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-r recap-mini--weak', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-track', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-mini-track recap-mini-track--unknown', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-num', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-num recap-num--dim', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-ok', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-panel recap-panel--row', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-panel-sub', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-panel-title', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-sec-aside', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-sec-head', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-sec-title', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-source-label', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-stack-labels', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-star', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-sub', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-tbti-code recap-tbti-code--solo', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-tbti-id', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-tbti-kicker', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-tbti-names', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-tbti-symbol', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-track', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-track recap-track--bare', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-year-count', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
+    'recap-year-labels', // CSS 클래스 식별자(화면 미노출) — W5 리캡 7a
     'tbti.baseline.imc2016', // 서버 계약 키→i18n 키 매핑(화면 노출은 번역 문구)
   ]);
 

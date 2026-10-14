@@ -397,89 +397,13 @@ button.tbti-ach-go:disabled {
   cursor: pointer;
 }
 
-/* 8c 보류 카드 — white 5% 면 + pink 30% 테두리. */
-.tbti-pending {
-  background: var(--surface-card);
-  border: 1px solid var(--tbti-chip-border);
-  border-radius: var(--corner-24);
-  padding: var(--space-28);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-12);
-}
-
-.tbti-pending-symbol {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-  opacity: 0.5;
-  align-self: center;
-}
-
-.tbti-pending-code {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: var(--text-32);
-  letter-spacing: 2px;
-  align-self: center;
-}
-
-.tbti-pending-lead {
-  margin: 0;
-  font-size: 16px;
-  line-height: 26px;
-  font-weight: 600;
-}
-
-.tbti-pending-sub {
-  margin: 0;
-  font-size: var(--text-14);
-  line-height: 22px;
-  color: var(--text-secondary);
-}
-
-.tbti-pending-prog {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-13);
-}
-
-.tbti-pending-track {
-  display: block;
-  width: 100%;
-  height: 8px;
-  border-radius: var(--radius-6);
-  background: var(--qt-white-15);
-  overflow: hidden;
-}
-
-.tbti-pending-fill {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-}
-
-.tbti-pending-go {
-  display: inline-block;
-  padding: var(--space-8) var(--space-16);
-  border-radius: var(--radius-8);
-  border: 1px solid var(--qt-white-40);
-  color: var(--text-primary);
-  font-size: var(--text-14);
-  line-height: 22px;
-  font-weight: 600;
-}
-
 @media (max-width: 639.98px) {
   .tbti-name {
     font-size: 32px;
     line-height: 40px;
   }
 
-  .tbti-symbol,
-  .tbti-pending-symbol {
+  .tbti-symbol {
     width: 96px;
     height: 96px;
   }

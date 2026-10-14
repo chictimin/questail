@@ -1,0 +1,102 @@
+/**
+ * 8c 보류 카드 — 디자인 #8c 실측: padding 32 · gap 16 · white 5% 면 + inset 1px pink 30% ·
+ * 심볼 72 opacity .5 · ???? Mono 24/800 자간 4 white 40% · 안내 22/30 700 · 진행 막대 6 pink.
+ */
+.tbti-pending {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-32);
+  border-radius: var(--corner-24);
+  background: var(--surface-card);
+  box-shadow: inset 0 0 0 1px rgba(242, 184, 207, 0.3);
+  min-width: 0;
+}
+
+.tbti-pending--compact {
+  padding: var(--space-28);
+}
+
+.tbti-pending-id {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.tbti-pending-symbol {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  opacity: 0.5;
+}
+
+.tbti-pending-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-24);
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--qt-white-40);
+}
+
+.tbti-pending-lead {
+  margin: 0;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.tbti-pending--compact .tbti-pending-lead {
+  font-size: var(--text-18);
+  line-height: 26px;
+}
+
+.tbti-pending-sub {
+  margin: 0;
+  font-size: var(--text-14);
+  line-height: 22px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.tbti-pending-prog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tbti-pending-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--qt-white-8);
+  overflow: hidden;
+}
+
+.tbti-pending-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--tbti-card);
+}
+
+.tbti-pending-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+}
+
+.tbti-pending-go {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 40px;
+  padding: 0 var(--space-16);
+  border-radius: var(--corner-12);
+  background: var(--qt-white-10);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: var(--text-14);
+  font-weight: 600;
+}

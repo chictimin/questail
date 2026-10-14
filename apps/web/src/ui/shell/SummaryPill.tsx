@@ -1,7 +1,8 @@
 /**
  * U4-P 셸 수집 요약 pill — 게임 정보(info) 소스 progress만 본다(디자인 원문).
- * running: 문구+숫자 · done: 문구+숫자 + check · keyfail(어느 소스든 AUTH_INVALID_KEY):
- * 멈춤 문구 + x · 그 외·total null·run 없음: 숨김. 좁은 폭은 숫자만.
+ * running: 문구+숫자 · keyfail(어느 소스든 AUTH_INVALID_KEY): 멈춤 문구 + x ·
+ * 완료(running·fail 아님)이고 마지막 수집 시각이 있으면: check-circle mint + 날짜 수집(R1.5 셸 Na, F-37 —
+ * 좁은 폭은 날짜 숫자만) · 그 외(run 없음): 숨김.
  */
 import { CheckCircle, CircleNotch, XCircle } from '@phosphor-icons/react';
 import type { SyncErrorCode } from '@questail/core';
@@ -43,6 +44,14 @@ export function summaryModelFor(entries: SyncStatusEntry[] | null): SummaryModel
   return null;
 }
 
+/** 마지막 수집 시각 — 소스들 lastFinishedAt 최댓값. 없으면 null. */
+export function lastCollectedAt(entries: SyncStatusEntry[] | null): number | null {
+  const times = (entries ?? [])
+    .map((entry) => entry.lastFinishedAt)
+    .filter((value): value is number => value !== null);
+  return times.length === 0 ? null : Math.max(...times);
+}
+
 export function SummaryPill({
   narrow,
 }: {
@@ -51,6 +60,27 @@ export function SummaryPill({
   const { locale, text } = useLocale();
   const { entries } = useSyncStatus();
   const model = summaryModelFor(entries);
+  const lastAt = lastCollectedAt(entries);
+  if ((model === null || model.kind === 'done') && lastAt !== null) {
+    const date = new Date(lastAt * 1000);
+    const wide = new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }).format(date);
+    const short = new Intl.DateTimeFormat(locale, { month: 'numeric', day: 'numeric' })
+      .formatToParts(date)
+      .filter((part) => part.type === 'month' || part.type === 'day')
+      .map((part) => part.value)
+      .join('.');
+    const label = text('shell.summaryAt', { date: wide });
+    return narrow === true ? (
+      <Link className="sync-summary sync-summary--narrow" href="/sync" aria-label={label}>
+        <span aria-hidden>{short}</span>
+      </Link>
+    ) : (
+      <Link className="sync-summary" href="/sync">
+        <CheckCircle size={14} color="var(--qt-mint)" aria-hidden />
+        {label}
+      </Link>
+    );
+  }
   if (model === null) {
     return <span className="sync-summary" />;
   }
