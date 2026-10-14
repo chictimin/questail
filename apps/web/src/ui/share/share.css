@@ -13,7 +13,19 @@
   padding: var(--space-16);
 }
 
+.share-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.share-error {
+  margin: 0 0 var(--space-12);
+  font: var(--type-caption);
+  color: var(--qt-red);
+}
+
 .share-sheet {
+  position: relative;
   width: 560px;
   max-width: 100%;
   max-height: 90vh;

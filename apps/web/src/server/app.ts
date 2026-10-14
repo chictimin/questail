@@ -57,6 +57,11 @@ export const ACHIEVEMENTS_PATH = '/api/settings/achievements';
 export const SYNC_PATH = '/api/sync';
 export const SYNC_STATUS_PATH = '/api/sync/status';
 
+/** 텍스트 라우트 `?locale=` — ko·en만 받고 그 밖(없음 포함)은 null(Prefs로 대체). */
+function localeQuery(raw: string | undefined): Locale | null {
+  return raw === 'ko' || raw === 'en' ? raw : null;
+}
+
 /** 내보내기 의존 — boot가 마이그레이션 후 가진 핸들과 데이터 디렉터리에서 준다. */
 export type ExportDeps = {
   db: Database.Database;
@@ -495,7 +500,9 @@ function registerRoutes(
     }
     return c.json(readTbti(db, dataDir));
   });
-  // 계약 v1.0.3 통로 — GET /api/recap/library/text. locale은 현재 Prefs.locale.
+  // 계약 v1.1.2 R15-9 — GET /api/recap/library/text. locale = 쿼리 `?locale=`(화면 locale), 없으면 Prefs.locale.
+  // `?format=markdown`이면 Markdown 내보내기 파일 1종(recap.md, frontmatter 포함)을 { text, filename }으로 준다 —
+  // 화면 "Markdown으로 내보내기"·공유 시트 "리캡과 함께 내보내기"도 서버 렌더 하나를 쓴다(F-12).
   app.get(RECAP_TEXT_PATH, (c) => {
     if (isUnattached(holder)) {
       return notConnected(c);
@@ -507,12 +514,16 @@ function registerRoutes(
     if (db === undefined || dataDir === undefined) {
       return internalError(c);
     }
-    const locale = getPrefs(db, 'ko').locale;
+    const locale = localeQuery(c.req.query('locale')) ?? getPrefs(db, 'ko').locale;
     const recap = readLibraryRecap(db, dataDir);
     const { names, genreNames } = recapNameTables(listGameFacts(db), locale);
+    if (c.req.query('format') === 'markdown') {
+      const file = renderRecapExportFile(recap, locale, names, genreNames);
+      return c.json({ text: file.content, filename: file.filename });
+    }
     return c.json({ text: renderRecapText(recap, locale, names, genreNames) });
   });
-  // 계약 v1.0.3 통로 — GET /api/tbti/share-text. locale은 현재 Prefs.locale.
+  // 계약 v1.1.2 R15-9 — GET /api/tbti/share-text. locale = 쿼리 `?locale=`(화면 locale), 없으면 Prefs.locale.
   app.get(TBTI_SHARE_TEXT_PATH, (c) => {
     if (isUnattached(holder)) {
       return notConnected(c);
@@ -524,7 +535,7 @@ function registerRoutes(
     if (db === undefined || dataDir === undefined) {
       return internalError(c);
     }
-    const locale = getPrefs(db, 'ko').locale;
+    const locale = localeQuery(c.req.query('locale')) ?? getPrefs(db, 'ko').locale;
     return c.json({ text: renderTbtiShare(readTbti(db, dataDir), locale) });
   });
   app.put('/api/ratings/:platform/:externalId', async (c) => {

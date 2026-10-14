@@ -99,13 +99,13 @@ function TbtiCard({
       </section>
     );
   }
-  if (!isTbtiCode(summary.code)) {
-    return null;
-  }
-  const entry = TBTI_NAMES[summary.code];
-  const nickname = locale === 'ko' ? entry.ko.title : entry.en.title;
+  // 부분 `?` 코드(예 ?NAC)는 보류가 아니다 — 카드는 그대로, 별명·정의 자리만 비운다(R15-11, F-04).
+  const entry = isTbtiCode(summary.code) ? TBTI_NAMES[summary.code] : null;
+  const nickname = entry === null ? '' : locale === 'ko' ? entry.ko.title : entry.en.title;
   const definition =
-    locale === 'ko' ? entry.ko.body.definition : entry.en.body.definition;
+    entry === null
+      ? ''
+      : locale === 'ko' ? entry.ko.body.definition : entry.en.body.definition;
   return (
     <section className="home-tbti" aria-label={text('tbti.myTbti')}>
       <div className="home-tbti-top">

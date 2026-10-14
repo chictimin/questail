@@ -3,11 +3,10 @@
  * 순서(R15-11): 07 TBTI 카드 맨 위 → 01 → 02 → 03 → 04 → 05 → 06, 번호 유지.
  * 숨긴 게임 제외 등 집계 규칙은 core 출력에 들어 있다. 새로 계산하지 않는다.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import type { Caveat, LibraryRecap, TbtiCardSummary } from '@questail/core';
 import { TBTI_NAMES, type TbtiCode } from '../../data/tbtiNames.js';
-import { renderRecapExportFile, renderRecapText } from '../../data/recapText.js';
 import { useLocale } from '../i18n/context.js';
 import type { Locale } from '../i18n/index.js';
 import {
@@ -22,6 +21,7 @@ import {
 import { lookupCover, lookupName } from '../r15/names.js';
 import type { GameNameMap } from '../r15/names.js';
 import { MARKDOWN_MIME, downloadTextFile } from '../r15/download.js';
+import { fetchRecapMarkdown, fetchRecapText } from '../r15/text.js';
 import { TbtiPendingCard } from '../tbti/pending.js';
 import type { PendingHours } from '../tbti/pending.js';
 import './recap.css';
@@ -125,13 +125,13 @@ function Card07({
   if (summary.pending) {
     return <TbtiPendingCard summary={summary} pendingHours={pendingHours} compact={false} />;
   }
-  if (!isTbtiCode(summary.code)) {
-    return <TbtiPendingCard summary={summary} pendingHours={pendingHours} compact={false} />;
-  }
-  const entry = TBTI_NAMES[summary.code];
-  const nickname = locale === 'ko' ? entry.ko.title : entry.en.title;
+  // 부분 `?` 코드는 보류가 아니다 — 분기는 pending 플래그로만, 별명·정의 자리만 비운다(R15-11, F-04).
+  const entry = isTbtiCode(summary.code) ? TBTI_NAMES[summary.code] : null;
+  const nickname = entry === null ? '' : locale === 'ko' ? entry.ko.title : entry.en.title;
   const definition =
-    locale === 'ko' ? entry.ko.body.definition : entry.en.body.definition;
+    entry === null
+      ? ''
+      : locale === 'ko' ? entry.ko.body.definition : entry.en.body.definition;
   return (
     <section className="recap-tbti" aria-label={text('tbti.myTbti')}>
       <div className="recap-tbti-main">
@@ -532,45 +532,70 @@ function Years06({ recap }: { recap: LibraryRecap }): React.JSX.Element {
   );
 }
 
-function BottomBar({
-  recap,
-  map,
-}: {
-  recap: LibraryRecap;
-  map: GameNameMap;
-}): React.JSX.Element {
+/**
+ * 하단 고정 바 — 복사·Markdown 모두 서버 렌더(R15-9, F-12). 복사 텍스트는 미리 받아 두어
+ * 클릭 제스처 안에서 바로 클립보드에 쓴다(받기 전·실패 시엔 클릭 때 받는다).
+ */
+function BottomBar({ recap }: { recap: LibraryRecap }): React.JSX.Element {
   const { locale, text } = useLocale();
   const [copied, setCopied] = useState(false);
-  const names = new Map<string, string>();
-  for (const [key, entry] of map) {
-    if (entry.name !== null) {
-      names.set(key, entry.name);
-    }
-  }
+  const [failed, setFailed] = useState(false);
+  const [prefetched, setPrefetched] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setPrefetched(null);
+    fetchRecapText(locale)
+      .then((value) => {
+        if (!cancelled) {
+          setPrefetched(value);
+        }
+      })
+      .catch(() => {
+        // 클릭 때 다시 받는다.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, recap]);
   const copy = async (): Promise<void> => {
+    setFailed(false);
     try {
-      await navigator.clipboard.writeText(renderRecapText(recap, locale, names));
+      await navigator.clipboard.writeText(prefetched ?? (await fetchRecapText(locale)));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      // 클립보드 거부 — 조용히 둔다(다음 눌림에 다시 시도).
+      setFailed(true);
     }
   };
-  const download = (): void => {
-    const file = renderRecapExportFile(recap, locale, names);
-    downloadTextFile(file.filename, file.content, MARKDOWN_MIME);
+  const download = async (): Promise<void> => {
+    setFailed(false);
+    try {
+      const file = await fetchRecapMarkdown(locale);
+      downloadTextFile(file.filename, file.text, MARKDOWN_MIME);
+    } catch {
+      setFailed(true);
+    }
   };
   return (
     <div className="recap-bar">
       <p className="recap-bar-lead">{text('recap.barLead')}</p>
       <div className="recap-bar-actions">
-        <button type="button" className="recap-bar-secondary" onClick={download}>
+        <button
+          type="button"
+          className="recap-bar-secondary"
+          onClick={() => void download()}
+        >
           {text('recap.exportMd')}
         </button>
-        <button type="button" className="recap-bar-primary" onClick={copy}>
+        <button type="button" className="recap-bar-primary" onClick={() => void copy()}>
           {copied ? text('recap.copied') : text('recap.copyText')}
         </button>
       </div>
+      {failed ? (
+        <p className="recap-bar-error" role="alert">
+          {text('recap.textFailed')}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -644,7 +669,7 @@ export function RecapView({
           <Years06 recap={recap} />
         </Section>
       </div>
-      <BottomBar recap={recap} map={map} />
+      <BottomBar recap={recap} />
     </main>
   );
 }

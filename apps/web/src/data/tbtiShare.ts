@@ -36,9 +36,27 @@ function pctText(pct: number | null): string {
   return pct === null ? '?' : formatPct(pct);
 }
 
-/** 축 1개 수치 조각. ②축만 secondary 병기를 단다(가정). */
+const AXIS_TITLE_KEYS = {
+  1: 'tbti.axisName1',
+  2: 'tbti.axisName2',
+  3: 'tbti.axisName3',
+  4: 'tbti.axisName4',
+} as const;
+
+/**
+ * 축 1개 수치 조각. ②축만 secondary 병기를 단다(가정).
+ * `?`축은 축 이름 + `?`(예 "취향 출처 ?") — 글자·수치가 없어 "? ?%"가 되지 않게(F-07).
+ */
 function axisSegment(locale: Locale, axis: TbtiAxis): string {
+  if (axis.primary === '?' || axis.primaryPct === null) {
+    return `${t(locale, AXIS_TITLE_KEYS[axis.axis])} ?`;
+  }
   const head = `${axisName(locale, axis.primary)} ${pctText(axis.primaryPct)}%`;
+  if (axis.axis === 2 && axis.primary === 'H' && axis.secondaryPct !== null) {
+    // H주(계약 ② D1): 큰 숫자 = 신작 아닌 비중, 병기 = "시리즈 반복 {H_pct}%"(F-13 — "본진"에 두 수치 금지).
+    const replay = t(locale, 'tbti.seriesReplay', { pct: formatPct(axis.secondaryPct) });
+    return locale === 'ko' ? `${head}(${replay})` : `${head} (${replay})`;
+  }
   if (axis.axis === 2 && axis.secondary !== null && axis.secondaryPct !== null) {
     const tail =
       locale === 'ko'
@@ -73,10 +91,11 @@ export function renderTbtiShare(result: TbtiResult, locale: Locale): string {
   }
   const axes = [...result.axes].sort((a, b) => a.axis - b.axis);
   // ko 정의 줄은 이름 데이터 실값 — 비어 있으면 줄 자체를 두지 않는다(빈 줄 금지).
+  // 16유형 전체 코드일 때만 ` — {호칭}`. 부분 `?` 코드는 호칭 없이 코드만(R15-9, F-04·F-07).
   const lines = [
     locale === 'ko' && isTbtiCode(result.code)
       ? t(locale, 'tbti.shareTitle', { code: result.code, title: TBTI_NAMES[result.code].ko.title })
-      : t(locale, 'tbti.shareTitle', { code: result.code }),
+      : t(locale, 'tbti.shareTitleCode', { code: result.code }),
   ];
   if (locale === 'ko') {
     const definition = isTbtiCode(result.code) ? TBTI_NAMES[result.code].ko.body.definition : '';

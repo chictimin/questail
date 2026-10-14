@@ -307,6 +307,7 @@ ownership_status: "owned"
     ratingNone: '- 별점: 0개',
     tbtiTail: '- TBTI: {title} ({code})',
     tbtiPending: '- TBTI: ????',
+    tbtiCode: '- TBTI: {code}',
     footing: '시간은 Steam 서버 기록 기준이에요.',
     pageTitle: '리캡',
     band: '관측 {days}일분 ({range}) · 첫 수집을 기준선으로 삼았어요 · 시간은 Steam 서버 기록 기준이에요',
@@ -332,6 +333,7 @@ ownership_status: "owned"
     exportMd: 'Markdown으로 내보내기',
     copyText: '텍스트 복사',
     copied: '복사했어요',
+    textFailed: '텍스트를 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.',
     loadFailed: '리캡을 불러오지 못했어요. 데이터 폴더에 접근할 수 있는지 확인한 뒤 다시 시도해 주세요.',
     caveatObservationDays: '관측일분',
     caveatHiddenExcluded: '숨김 제외',
@@ -353,6 +355,7 @@ ownership_status: "owned"
   },
   tbti: {
     shareTitle: '내 TBTI는 {code} — {title}',
+    shareTitleCode: '내 TBTI는 {code}',
     sharePendingTitle: '내 TBTI는 ????',
     sharePendingNote: '아직 TBTI를 정하기엔 기록이 적어요. 총 5시간만 놀면 판정해 드릴게요.',
     axisI: '몰입',
@@ -436,6 +439,7 @@ ownership_status: "owned"
     withRecap: '리캡과 함께 내보내기',
     copy: '텍스트 복사',
     copied: '복사했어요',
+    loadFailed: '공유 텍스트를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.',
     basisLine: '관측 {days}일분, 첫 수집 기준 · questail',
   },
 } as const;

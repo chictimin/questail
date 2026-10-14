@@ -17,6 +17,7 @@ import type { GameFacts, LibraryRecap } from '@questail/core';
 import type { ExportFile } from '../server/export.js';
 import { displayNameOf } from '../shared/displayName.js';
 import { formatHours, formatStarAvg } from '../shared/format.js';
+import { josaIGa } from '../shared/josa.js';
 import {
   genreDisplayNames,
   hasEnglishGenreName,
@@ -101,7 +102,7 @@ export function renderRecapText(
   const topGenres = genreDisplayNames(displayable, locale);
   if (topGenres.length > 0) {
     const list = topGenres.join(' · ');
-    lines.push(t(locale, 'recap.genres', { list, josa: subjectJosa(list) }));
+    lines.push(t(locale, 'recap.genres', { list, josa: josaIGa(list) }));
   }
   lines.push(
     recap.s04.ratedCount > 0 && recap.s04.mean !== null
@@ -111,33 +112,22 @@ export function renderRecapText(
         })
       : t(locale, 'recap.ratingNone'),
   );
-  if (locale === 'ko') {
-    const entry =
-      !recap.tbti.pending && isTbtiCode(recap.tbti.code)
-        ? TBTI_NAMES[recap.tbti.code].ko.title
-        : null;
+  // 분기는 pending 플래그로만(R15-11 부분 `?`, F-04·F-07). 코드에 `?`가 있어도 보류가 아니다 —
+  // 16유형 전체 코드일 때만 호칭을 붙이고, 그 밖은 코드만 쓴다.
+  if (recap.tbti.pending) {
+    lines.push(t(locale, 'recap.tbtiPending'));
+  } else if (locale === 'ko' && isTbtiCode(recap.tbti.code)) {
     lines.push(
-      entry !== null
-        ? t(locale, 'recap.tbtiTail', { title: entry, code: recap.tbti.code })
-        : t(locale, 'recap.tbtiPending'),
+      t(locale, 'recap.tbtiTail', {
+        title: TBTI_NAMES[recap.tbti.code].ko.title,
+        code: recap.tbti.code,
+      }),
     );
   } else {
-    lines.push(t(locale, 'recap.tbtiTail', { code: recap.tbti.code }));
+    lines.push(t(locale, 'recap.tbtiCode', { code: recap.tbti.code }));
   }
   lines.push(t(locale, 'recap.footing'));
   return lines.join('\n');
-}
-
-/**
- * 주격 조사 — 끝 글자가 받침 있는 한글이면 '이', 그 밖(받침 없음·영문 등)은 '가'(F-34).
- * ko 템플릿만 {josa}를 쓰고 en 템플릿은 무시한다.
- */
-function subjectJosa(word: string): string {
-  const last = word.charCodeAt(word.length - 1);
-  if (last >= 0xac00 && last <= 0xd7a3) {
-    return (last - 0xac00) % 28 === 0 ? '가' : '이';
-  }
-  return '가';
 }
 
 function isTbtiCode(code: string): code is TbtiCode {

@@ -307,6 +307,7 @@ ownership_status: "owned"
     ratingNone: '- Ratings: 0',
     tbtiTail: '- TBTI: {code}',
     tbtiPending: '- TBTI: ????',
+    tbtiCode: '- TBTI: {code}',
     footing: 'Times are based on Steam server records.',
     pageTitle: 'Recap',
     band: '{days} days observed ({range}) · first collection is the baseline · times follow Steam server records',
@@ -332,6 +333,7 @@ ownership_status: "owned"
     exportMd: 'Export as Markdown',
     copyText: 'Copy text',
     copied: 'Copied',
+    textFailed: 'Couldn’t build the text. Please try again in a moment.',
     loadFailed: 'Could not load your recap. Check that the data folder is accessible, then try again.',
     caveatObservationDays: 'Days observed',
     caveatHiddenExcluded: 'Hidden excluded',
@@ -353,6 +355,7 @@ ownership_status: "owned"
   },
   tbti: {
     shareTitle: 'My TBTI is {code}',
+    shareTitleCode: 'My TBTI is {code}',
     sharePendingTitle: 'My TBTI is ????',
     sharePendingNote: 'Not enough play history yet — play 5 hours in total to get your TBTI.',
     axisI: 'Immersion',
@@ -436,6 +439,7 @@ ownership_status: "owned"
     withRecap: 'Export with recap',
     copy: 'Copy text',
     copied: 'Copied',
+    loadFailed: 'Couldn’t load the share text. Please reopen this in a moment.',
     basisLine: 'Observed {days} days, first-collection baseline · questail',
   },
 } as const;

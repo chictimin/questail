@@ -659,12 +659,7 @@ export function TbtiView({
       </div>
       <ResultCaveats result={result} />
       {shareOpen ? (
-        <ShareSheet
-          result={result}
-          recap={recap}
-          map={map}
-          onClose={() => setShareOpen(false)}
-        />
+        <ShareSheet hasRecap={recap !== null} onClose={() => setShareOpen(false)} />
       ) : null}
     </main>
   );

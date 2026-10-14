@@ -764,6 +764,11 @@ describe('UI 하드코딩 문자열 0', () => {
     'share-actions', // CSS 클래스 식별자(화면 미노출)
     'share-secondary', // CSS 클래스 식별자(화면 미노출)
     'share-primary', // CSS 클래스 식별자(화면 미노출)
+    'share-backdrop', // CSS 클래스 식별자(화면 미노출)
+    'share-error', // CSS 클래스 식별자(화면 미노출)
+    'recap-bar-error', // CSS 클래스 식별자(화면 미노출)
+    '/api/recap/library/text', // API 경로 — 화면 미노출
+    '/api/tbti/share-text', // API 경로 — 화면 미노출
     'tbti.baseline.imc2016', // 서버 계약 키→i18n 키 매핑(화면 노출은 번역 문구)
   ]);
 
