@@ -16,7 +16,7 @@ import type { GameNameMap } from '../r15/names.js';
 type Status = 'loading' | 'ready' | 'failed';
 
 export function TbtiPage(): React.JSX.Element {
-  const { text } = useLocale();
+  const { locale, text } = useLocale();
   const { entries } = useSyncStatus();
   const [status, setStatus] = useState<Status>('loading');
   const [result, setResult] = useState<TbtiResult | null>(null);
@@ -61,7 +61,7 @@ export function TbtiPage(): React.JSX.Element {
         }
         setResult(resultJson as TbtiResult);
         setRecap(recapJson as LibraryRecap);
-        setMap(buildGameMap(factsJson as GameFacts[]));
+        setMap(buildGameMap(factsJson as GameFacts[], locale));
         setStatus('ready');
       } catch {
         if (!cancelled) {
@@ -73,7 +73,7 @@ export function TbtiPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [tick]);
+  }, [locale, tick]);
 
   if (status === 'failed' || (status === 'ready' && result === null)) {
     return (

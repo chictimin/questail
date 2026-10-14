@@ -5,6 +5,7 @@
  */
 import type { GameFacts } from '../../data/library.js';
 import type { GameKey } from '@questail/core';
+import { displayNameOf } from '../../shared/displayName.js';
 import { genreDisplayName } from '../../shared/genres.js';
 import type { Locale } from '../i18n/index.js';
 
@@ -20,11 +21,12 @@ export function gameMapKey(key: Pick<GameKey, 'platform' | 'externalId'>): strin
 
 export type GameNameMap = Map<string, GameNameEntry>;
 
-export function buildGameMap(facts: GameFacts[]): GameNameMap {
+/** 표시명 = R1 공용 displayNameOf(ko titleKo ?? name, en name ?? titleKo) — 라이브러리와 같은 이름(F-09). */
+export function buildGameMap(facts: GameFacts[], locale: Locale): GameNameMap {
   const map: GameNameMap = new Map();
   for (const factsRow of facts) {
     map.set(gameMapKey(factsRow.key), {
-      name: factsRow.name ?? factsRow.titleKo,
+      name: displayNameOf(factsRow, locale),
       coverUrl: factsRow.coverUrl,
     });
   }

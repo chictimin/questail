@@ -25,8 +25,12 @@ describe('genreDisplayName', () => {
     expect(genreDisplayName(both, 'en')).toBe('Action');
   });
 
-  it('en·nameEn 없음 → nameKo', () => {
-    expect(genreDisplayName(koOnly, 'en')).toBe('액션');
+  it('en·nameEn 없음·genreId 없음 → Other genre(한국어 0, F-09)', () => {
+    expect(genreDisplayName(koOnly, 'en')).toBe('Other genre');
+  });
+
+  it('en·nameEn 없음·고정표 적중 → 고정표 영문', () => {
+    expect(genreDisplayName({ ...koOnly, genreId: '1' }, 'en')).toBe('Action');
   });
 
   it('둘 다 없음 → null', () => {

@@ -57,7 +57,7 @@ describe('이름표', () => {
   ] as Parameters<typeof buildGameMap>[0];
 
   it('표에 없으면 externalId로 둔다', () => {
-    const map = buildGameMap([]);
+    const map = buildGameMap([], 'ko');
     expect(
       lookupName(map, { platform: 'steam', externalId: 'wilds-2025' }),
     ).toBe('wilds-2025');

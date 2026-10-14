@@ -38,7 +38,7 @@ export function RecapPage(): React.JSX.Element {
         const facts = factsJson as GameFacts[];
         setRecap(recapJson as LibraryRecap);
         setPendingHours((tbtiJson as TbtiResult).pendingHours);
-        setMap(buildGameMap(facts));
+        setMap(buildGameMap(facts, locale));
         setGenres(buildGenreMap(facts, locale));
         setStatus('ready');
       } catch {

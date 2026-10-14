@@ -4,7 +4,7 @@
  * 게임명·장르명은 호출 측이 GameFacts 실값에서 묶어 넘긴다(게임 이름 인자와 같은 방식).
  * 장르 표시 선택은 R1 공용 `genreDisplayNames`를 그대로 호출한다(자체 대체 규칙 없음).
  * 이름표에 없는 장르는 줄에서 뺀다 — 장르 ID가 사용자 텍스트에 나오면 결함이다.
- * en에는 한국어가 나오지 않게 nameEn 없는 항목을 입력에서 뺀다.
+ * en에는 영문 이름(nameEn 또는 Steam ID 고정표)이 없는 항목을 입력에서 뺀다.
  *
  * 가정(리뷰에서 확정):
  * - 수치 표시는 shared/format.ts(C15-5): 시간 정수 반올림 + 천 단위 쉼표, 별점 평균 0.5 단위.
@@ -17,7 +17,11 @@ import type { GameFacts, LibraryRecap } from '@questail/core';
 import type { ExportFile } from '../server/export.js';
 import { displayNameOf } from '../shared/displayName.js';
 import { formatHours, formatStarAvg } from '../shared/format.js';
-import { genreDisplayNames, type GenreName } from '../shared/genres.js';
+import {
+  genreDisplayNames,
+  hasEnglishGenreName,
+  type GenreName,
+} from '../shared/genres.js';
 import { t, type Locale } from '../ui/i18n/index.js';
 import { TBTI_NAMES, type TbtiCode } from './tbtiNames.js';
 
@@ -49,7 +53,11 @@ export function recapNameTables(
     }
     for (const genre of game.genres) {
       if (!genreNames.has(genre.genreId)) {
-        genreNames.set(genre.genreId, { nameKo: genre.nameKo, nameEn: genre.nameEn });
+        genreNames.set(genre.genreId, {
+          genreId: genre.genreId,
+          nameKo: genre.nameKo,
+          nameEn: genre.nameEn,
+        });
       }
     }
   }
@@ -86,12 +94,14 @@ export function renderRecapText(
     .slice(0, 3)
     .map((bar) => genreNames?.get(bar.genreId))
     .filter((entry): entry is GenreName => entry !== undefined);
-  // en에는 한국어가 나오지 않게 nameEn 없는 항목을 입력에서 뺀다.
+  // en에는 영문 이름(nameEn 또는 Steam ID 고정표)이 있는 항목만 싣는다 —
+  // 한국어도, 뜻 없는 "Other genre" 나열도 나오지 않게.
   const displayable =
-    locale === 'en' ? genreEntries.filter((entry) => entry.nameEn !== null) : genreEntries;
+    locale === 'en' ? genreEntries.filter(hasEnglishGenreName) : genreEntries;
   const topGenres = genreDisplayNames(displayable, locale);
   if (topGenres.length > 0) {
-    lines.push(t(locale, 'recap.genres', { list: topGenres.join(' · ') }));
+    const list = topGenres.join(' · ');
+    lines.push(t(locale, 'recap.genres', { list, josa: subjectJosa(list) }));
   }
   lines.push(
     recap.s04.ratedCount > 0 && recap.s04.mean !== null
@@ -116,6 +126,18 @@ export function renderRecapText(
   }
   lines.push(t(locale, 'recap.footing'));
   return lines.join('\n');
+}
+
+/**
+ * 주격 조사 — 끝 글자가 받침 있는 한글이면 '이', 그 밖(받침 없음·영문 등)은 '가'(F-34).
+ * ko 템플릿만 {josa}를 쓰고 en 템플릿은 무시한다.
+ */
+function subjectJosa(word: string): string {
+  const last = word.charCodeAt(word.length - 1);
+  if (last >= 0xac00 && last <= 0xd7a3) {
+    return (last - 0xac00) % 28 === 0 ? '가' : '이';
+  }
+  return '가';
 }
 
 function isTbtiCode(code: string): code is TbtiCode {

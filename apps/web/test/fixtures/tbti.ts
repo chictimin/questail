@@ -145,8 +145,8 @@ function axis4Full(): TbtiAxis {
     heldReasonKey: null,
     nInterval: null,
     caveats: [],
-    baselineKey: 'imc2016',
-    baselineTextKey: 'tbti.baseline.imc2016',
+    baselineKey: 'tbti.baseline.imc2016',
+    baselineTextKey: 'tbti.baseline.imc2016.text',
     metrics: null,
   };
 }

@@ -39,6 +39,9 @@ function formatDay(locale: Locale, epochSeconds: number): string {
 
 type TextKey = Parameters<ReturnType<typeof useLocale>['text']>[0];
 
+/** core 리캡 02 미확인 줄 ID(계약 R15-3 Recap02). */
+const UNKNOWN_GENRE = '__unknown';
+
 const CAVEAT_KEYS: Record<Caveat['code'], TextKey> = {
   observation_days: 'recap.caveatObservationDays',
   hidden_excluded: 'recap.caveatHiddenExcluded',
@@ -218,8 +221,11 @@ function Bars02({
   genres: Map<string, string>;
 }): React.JSX.Element {
   const { locale, text } = useLocale();
-  const bars = recap.s02.bars.slice(0, 8);
-  const unknown = recap.s02.bars.find((bar) => bar.genreId === '__unknown');
+  // 미확인(`__unknown`)은 상위 8줄에 섞지 않고 끝 줄무늬 줄로만 둔다(F-11).
+  const bars = recap.s02.bars
+    .filter((bar) => bar.genreId !== UNKNOWN_GENRE)
+    .slice(0, 8);
+  const unknown = recap.s02.bars.find((bar) => bar.genreId === UNKNOWN_GENRE);
   const max = Math.max(1, ...recap.s02.bars.map((bar) => bar.games));
   if (bars.length === 0 && unknown === undefined) {
     return <p className="recap-empty">{text('recap.emptyNote')}</p>;
@@ -230,7 +236,7 @@ function Bars02({
         {bars.map((bar) => (
           <li key={bar.genreId} className="recap-bar-row">
             <span className="recap-bar-name">
-              {genres.get(bar.genreId) ?? bar.genreId}
+              {genres.get(bar.genreId) ?? text('library.genreOther')}
             </span>
             <span className="recap-bar-track" aria-hidden="true">
               <span

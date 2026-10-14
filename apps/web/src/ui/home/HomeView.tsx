@@ -143,7 +143,8 @@ export function HomeView({
     recap.s03.owned > 0
       ? `${Math.round((recap.s03.played / recap.s03.owned) * 100)}%`
       : null;
-  const topGenre = recap.s02.bars[0];
+  // 미확인(`__unknown`)은 "가장 많은 장르"가 될 수 없다(F-11).
+  const topGenre = recap.s02.bars.find((bar) => bar.genreId !== '__unknown');
   return (
     <main data-route="home">
       <div className="home-head">
@@ -189,7 +190,7 @@ export function HomeView({
           <p className="home-cell-label">{text('home.topGenre')}</p>
           <p className="home-cell-num">
             {topGenre !== undefined
-              ? (genres.get(topGenre.genreId) ?? topGenre.genreId)
+              ? (genres.get(topGenre.genreId) ?? text('library.genreOther'))
               : text('recap.emptyNote')}
           </p>
         </section>

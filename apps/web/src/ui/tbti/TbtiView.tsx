@@ -26,6 +26,7 @@ import {
   TBTI_REASON_NH_LATE,
   TBTI_REASON_NH_NO_EVIDENCE,
   TBTI_REASON_OA_GENRE,
+  TBTI_BASELINE_IMC2016_TEXT_KEY,
 } from '@questail/core';
 import type { CollectSource } from '../../data/sync.js';
 import { TBTI_NAMES, type TbtiCode } from '../../data/tbtiNames.js';
@@ -75,11 +76,12 @@ const LEFT_LETTER: Record<TbtiAxis['axis'], AxisLetter> = {
 };
 
 /**
- * 서버가 보내는 baselineTextKey(점이 2개인 계약 키, 예 tbti.baseline.imc2016)는
- * t()가 한 번만 나누므로 그대로 풀지 못한다. 아는 키만 사전 키로 옮긴다.
+ * core baselineTextKey(계약 키, 실값 tbti.baseline.imc2016.text — core constants.ts)는
+ * t()가 한 번만 나누므로 그대로 풀지 못한다. 아는 키만 사전 키로 옮기고,
+ * 표에 없는 키는 줄을 그리지 않는다(원키 노출 0, F-06).
  */
 const BASELINE_TEXT_KEYS: Record<string, TextKey> = {
-  'tbti.baseline.imc2016': 'tbti.baselineImc2016',
+  [TBTI_BASELINE_IMC2016_TEXT_KEY]: 'tbti.baselineImc2016',
 };
 
 /**
@@ -446,16 +448,11 @@ function AxisCard({
               {text('tbti.unitPercent')}
             </p>
           ) : null}
-          {axis.baselineTextKey !== null || axis.baselineKey !== null ? (
+          {axis.baselineTextKey !== null &&
+          BASELINE_TEXT_KEYS[axis.baselineTextKey] !== undefined ? (
             <p className="tbti-baseline">
               {text('tbti.baselineRef', {
-                t:
-                  axis.baselineTextKey !== null
-                    ? text(
-                        BASELINE_TEXT_KEYS[axis.baselineTextKey] ??
-                          (axis.baselineTextKey as TextKey),
-                      )
-                    : (axis.baselineKey ?? ''),
+                t: text(BASELINE_TEXT_KEYS[axis.baselineTextKey]),
               })}
             </p>
           ) : null}
@@ -500,7 +497,12 @@ function AxisCard({
               {axis.caveats.map((caveat) => (
                 <li key={caveat.code} className="tbti-caveat">
                   {text(CAVEAT_KEYS[caveat.code])}
-                  {caveat.count !== null ? (
+                  {caveat.code === 'ach_partial' && axis.achReflected !== undefined ? (
+                    // 부분 반영은 got/of 둘 다(F-30, 계약 R15-4).
+                    <span className="tbti-caveat-num">
+                      {formatInt(axis.achReflected.got)}/{formatInt(axis.achReflected.of)}
+                    </span>
+                  ) : caveat.count !== null ? (
                     <span className="tbti-caveat-num">
                       {formatCaveatCount(caveat.code, caveat.count)}
                     </span>
