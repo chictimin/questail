@@ -223,7 +223,7 @@ ownership_status: "owned"
     achDesc: 'Collects your achievement history for each game.',
     achPublic: 'Achievements are only available when "Game details" on your Steam profile is public. After you change it, it takes a few minutes to apply.',
     achFail: 'Game details are private, so achievements could not be fetched. Change your profile privacy, then collect again from Collection status.',
-    tbtiNote: 'If achievements are not recorded, your gamer type (TBTI) result and some titles will be affected later.',
+    tbtiNote: 'If achievements are not recorded, the TBTI Depth axis (Completionist · Light taster) is judged from playtime only.',
     on: 'On',
     off: 'Off',
     langRow: 'Display language',
