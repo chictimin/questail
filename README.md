@@ -11,7 +11,7 @@
 
 > A local web app that archives your Steam library on your own computer and lets you rate the games.
 
-**Current phase: R1.5** — home, recap, and TBTI (gamer type) screens on top of the R1 library archive (ratings, hidden games, Markdown export).
+**Current phase: R1.5** (`v0.5.0-r1.5`, prerelease) — home, recap, and TBTI (gamer type) screens on top of the R1 library archive (ratings, hidden games, Markdown export).
 
 ## Prerequisites
 
@@ -36,30 +36,32 @@ After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` r
 
 - Each collection fetches owned games, playtime, wishlist, game info, and SteamSpy tags. Achievements are fetched only when enabled (off by default; a disabled row shows as off in collection status). Decide with the checkbox on the connect screen before the first collection; it can be changed later in settings.
 - Game info is fetched in the display language only. Check the language in settings before the first collection. With Korean selected, Korean release-date text (`YYYY년 M월 D일`) and genre names are parsed; on update, a migration fills the release date of existing games from that text automatically (after an automatic backup).
-- The collection status screen shows per-source state with retry and collect-all. The header shows game info progress.
+- The collection status screen shows per-source state with retry and collect-all. The header shows game info progress while collecting and the last collection date afterward.
 - Game info requests go out every 2 seconds, so 1,000 games take about 33 minutes. Larger libraries take hours, longer if Steam rate-limits requests (429).
 - A daily snapshot runs at 04:00 in the operating system's local time zone, only while the server is on. A missed run fires once at the next startup.
 
 ## R1.5: Home, Recap, TBTI
 
-- Home shows total playtime (played of owned), the top 5 games, the top genre, the mean rating, and the TBTI card with a link to details.
-- Recap summarizes the whole library: an observation-days band (the first collection is the baseline), the top 5 share, genre bars, the rating mean and distribution with high/low deviants, playtime buckets, release eras (new/recent/classic), unplayed and missing games, and the TBTI card on top.
+- Home shows total playtime with a one-line reading (nonstop days, played of owned), the top 5 games, the played share of owned games with the median hours per game, the mean rating, the top two genres, and the TBTI card with a link to details.
+- Recap summarizes the whole library in 7 sections, each with a title and a one-line reading: the TBTI card on top, then playtime with the top 5 share, genre bars with shares, played of owned with playtime buckets (`<2h`, `2–10`, `10–30`, `30–100`, `100+`), the median, unplayed games and games that left the library, the rating mean and distribution with high/low deviants, release eras (new/recent/classic), and a release-year timeline with its peaks. An observation band on top shows the observed days and date range (the first collection is the baseline; on the first collection day it says so instead).
 - All times follow Steam server records. The screens state their blind spots instead of hiding them: observation days, hidden-game exclusion, missing off-Steam history, unconfirmed genres or release dates, and unreflected achievements.
 - TBTI judges four axes from your own history, one line each:
   - Axis 1 Play drive — Immersion (I) vs Run (R), from user tags.
   - Axis 2 Taste source — New (N) vs Home (H), from when you played relative to release.
   - Axis 3 Genre range — One-trick (O) vs All-rounder (A), from genre spread.
-  - Axis 4 Depth — Completionist (C) vs Light taster (L), from hours and achievements.
-- Each axis shows why: the top contributing games with reason and metric, plus a public reference where one exists. Under 5 hours of total playtime, TBTI stays undecided (`????`) with a progress bar; an undecided axis shows `?` with a one-line reason (too little history, or straddling the boundary).
+  - Axis 4 Depth — Completionist (C) vs Light taster (L), from hours and achievements. When only some games have achievements, the axis shows how many were reflected (`n/m`).
+- Each axis shows a two-ended bar, a one-line reading, and why: a metric line, the top contributing games with reason, metric, and axis tags, plus a public reference where one exists. Under 5 hours of total playtime, TBTI stays undecided (`????`) with a progress bar; an undecided axis shows `?` with a one-line reason (too few games, or confirmed time that cannot yet tell New from Home).
 - Wishlist toggle (settings, on by default): pre-release wishlist entries count as new-game evidence on axis 2. Turning it off drops that evidence and marks the screen accordingly.
-- Series aliases live in `series-aliases.json` directly under the data folder. Keys are normalized game names: lowercase, edition tails (`Remastered`, `Definitive Edition`, and the like) removed, Roman numerals I–X as Arabic numerals (e.g. `Dark Souls III` → `dark souls 3`). A full normalized-name match wins first; otherwise games group by the part before the first separator (`:`, ` - `, and the like).
+- Series aliases live in `series-aliases.json` directly under the data folder. Keys are normalized game names: lowercase, edition tails (`Remastered`, `Definitive Edition`, and the like) removed, multi-letter Roman numerals up to X as Arabic numerals (e.g. `Dark Souls III` → `dark souls 3`, `Dark Souls: Remastered` → `dark souls`; single letters such as `X` stay). Each game is looked up by its full normalized name first, then by its core — the part before the first separator (`:`, ` - `, and the like; e.g. `monster hunter: world` → `monster hunter`). Both are exact matches. Games without an alias group by their core.
 
   ```
-  { "aliases": { "monster hunter": "monster-hunter" } }
+  { "aliases": { "monster hunter": "monster-hunter", "monster hunter wilds": "monster-hunter" } }
   ```
 
-  A missing file falls back to built-in defaults; a broken file (bad JSON or wrong shape) means no aliases.
-- Recap and TBTI can be taken as text: copy buttons on screen, the TBTI share sheet (optionally with recap, no account info included), and Markdown export to `recap.md`.
+  A missing file falls back to built-in defaults; a broken file (bad JSON or wrong shape) means no aliases, and the TBTI screen says so.
+- Recap and TBTI can be taken as text: copy buttons on screen, the TBTI share sheet (optionally with recap, no account info included), and Markdown export to `recap.md`. The text follows the language shown on screen.
+- Numbers on screen and in text are whole numbers (hours, percentages, counts). Star ratings keep half steps (★3, ★3.5); averages and deviations are rounded to the nearest half star. Judgments use the unrounded values.
+- In English, TBTI codes, axes, metrics, and readings are shown in English; the card text (nickname, definition, body) exists in Korean only, so the card body is hidden with a one-line notice. Genre names collected only in Korean are shown in English for common Steam genres, and as "Other genre" otherwise.
 
 ## Data Directory
 
@@ -97,7 +99,7 @@ node apps/web/dist/src/server/run.js
 
 - Collection is optional. The connect screen has a checkbox (off by default) to decide before the first collection, and settings can change it later.
 - Achievement records are collected only when "Game details" on the Steam profile is public. If it is private, those games are skipped. This is an account setting, not an app failure.
-- Unrecorded achievements leave the TBTI depth axis playtime-only; the screen shows an achievements-unreflected notice with a fix action.
+- Unrecorded achievements leave the TBTI depth axis playtime-only. The screen says so with the matching action: turn collection on when it is off, fetch achievements only when the profile is private, and no action while collection is still incomplete.
 
 ## Key Handling
 
