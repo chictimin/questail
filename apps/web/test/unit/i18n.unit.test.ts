@@ -769,6 +769,52 @@ describe('UI 하드코딩 문자열 0', () => {
     'recap-bar-error', // CSS 클래스 식별자(화면 미노출)
     '/api/recap/library/text', // API 경로 — 화면 미노출
     '/api/tbti/share-text', // API 경로 — 화면 미노출
+    'broken', // 계약 R15-3 TbtiResult.aliasStatus 값
+    'cl', // 계약 R15-3 AxisMetrics kind
+    'ir', // 계약 R15-3 AxisMetrics kind
+    'nh', // 계약 R15-3 AxisMetrics kind
+    'oa', // 계약 R15-3 AxisMetrics kind
+    'tbti-acc-icon', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-acc-list', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-axis-score tbti-axis-score--held', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-axis-subline', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-axis-text', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-body-note', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-caret', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-closing', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-cover tbti-cover--empty', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-end', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-end tbti-end--r', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-end tbti-end--r tbti-end--weak', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-end tbti-end--weak', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-end-letter', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-end-word', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-fill-a', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-fill-a tbti-fill--on', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-fill-b', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-fill-b tbti-fill--on', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-foot-share', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-front-code', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-front-codeline', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-front-text', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-front-words', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-frontnote', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-frontnote-basis', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-mid', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-name tbti-name--code', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-notice', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-notice-btn', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-notice-sub', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-notice-text', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-page', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-q', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-row-stat', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-row-tag', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-row-why', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-track', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-track tbti-track--held', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-why-btn', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
+    'tbti-why-icon', // CSS 클래스 식별자(화면 미노출) — W7 TBTI 8a
     'month', // Intl.DateTimeFormat part type 식별자 — W6 셸 수집 칩
     'home-top-fill home-top-fill--top', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
     'home-tbti-gap', // CSS 클래스 식별자(화면 미노출) — W6 홈 6a·8c
