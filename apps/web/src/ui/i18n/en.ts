@@ -251,6 +251,7 @@ ownership_status: "owned"
     manualBackup: 'To back up manually, quit the app and copy the whole data folder.',
     backupEmpty: 'No automatic backups yet',
     sizeUnit: 'MB',
+    sizeUnderOne: '<1',
   },
   sync: {
     sub: 'Last collected {t}',

@@ -8,7 +8,12 @@ import { Link } from 'wouter';
 import type { LibraryRecap } from '@questail/core';
 import { TBTI_NAMES, type TbtiCode } from '../../data/tbtiNames.js';
 import { useLocale } from '../i18n/context.js';
-import type { Locale } from '../i18n/index.js';
+import {
+  formatHours,
+  formatInt,
+  formatPendingHours,
+  formatStarAvg,
+} from '../../shared/format.js';
 import { lookupName } from '../r15/names.js';
 import type { GameNameMap } from '../r15/names.js';
 import type { PendingHours } from '../tbti/pending.js';
@@ -17,10 +22,6 @@ import './home.css';
 
 function isTbtiCode(code: string): code is TbtiCode {
   return code in TBTI_NAMES;
-}
-
-function formatInt(locale: Locale, value: number): string {
-  return new Intl.NumberFormat(locale).format(value);
 }
 
 function TopRows({
@@ -36,7 +37,7 @@ function TopRows({
     <ol className="home-top">
       {recap.s01.top5.map((row, index) => (
         <li key={`${row.key.platform}/${row.key.externalId}`} className="home-top-row">
-          <span className="home-top-rank">{formatInt(locale, index + 1)}</span>
+          <span className="home-top-rank">{formatInt(index + 1)}</span>
           <span className="home-top-name">{lookupName(map, row.key)}</span>
           <span
             className="home-top-track"
@@ -48,7 +49,7 @@ function TopRows({
             />
           </span>
           <span className="home-top-hours">
-            {(row.minutes / 60).toFixed(1)}
+            {formatHours(row.minutes)}
             {text('library.unitHours')}
           </span>
         </li>
@@ -68,7 +69,7 @@ function TbtiCard({
   const summary = recap.tbti;
   if (summary.pending) {
     const haveHours =
-      pendingHours !== null ? (pendingHours.have / 60).toFixed(1) : null;
+      pendingHours !== null ? formatPendingHours(pendingHours.have) : null;
     return (
       <section className="home-tbti home-tbti--pending" aria-label={text('tbti.myTbti')}>
         <p className="home-tbti-lead">{text('tbti.myTbti')}</p>
@@ -153,13 +154,13 @@ export function HomeView({
         <section className="home-play" aria-label={text('home.playedLead')}>
           <p className="home-play-lead">{text('home.playedLead')}</p>
           <p className="home-bignum">
-            <span className="home-bignum-num">{formatInt(locale, hours)}</span>
+            <span className="home-bignum-num">{formatInt(hours)}</span>
             <span className="home-bignum-unit">{text('library.unitHours')}</span>
           </p>
           <p className="home-play-sub">
             {text('home.playedSub', {
-              owned: formatInt(locale, recap.s03.owned),
-              played: formatInt(locale, recap.s03.played),
+              owned: formatInt(recap.s03.owned),
+              played: formatInt(recap.s03.played),
             })}
           </p>
           <TopRows recap={recap} map={map} />
@@ -178,7 +179,7 @@ export function HomeView({
           <p className="home-cell-label">{text('home.meanStars')}</p>
           <p className="home-cell-num">
             {recap.s04.mean !== null ? (
-              <span>★{recap.s04.mean.toFixed(1)}</span>
+              <span>★{formatStarAvg(recap.s04.mean)}</span>
             ) : (
               text('home.noRating')
             )}

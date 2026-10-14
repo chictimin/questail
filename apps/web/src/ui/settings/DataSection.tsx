@@ -6,12 +6,19 @@ import { useEffect, useRef, useState } from 'react';
 import { Archive, Copy } from '@phosphor-icons/react';
 import { useLocale } from '../i18n/context.js';
 import { formatDateTime } from '../../shared/datetime.js';
+import { formatInt } from '../../shared/format.js';
 import './settings.css';
 
 type Backup = { name: string; size: number; mtime: number };
 
-function formatSize(bytes: number, unit: string): string {
-  return `${(bytes / 1048576).toFixed(1)} ${unit}`;
+/**
+ * 백업 크기 — 정수 MB(C15-5). 비어 있지 않은데 반올림이 0이면 underOne(사전 "<1")으로 둔다
+ * (빈 파일처럼 읽히지 않게).
+ */
+function formatSize(bytes: number, unit: string, underOne: string): string {
+  const mb = bytes / 1048576;
+  const value = bytes !== 0 && Math.round(mb) === 0 ? underOne : formatInt(mb);
+  return `${value} ${unit}`;
 }
 
 export function DataSection(): React.JSX.Element {
@@ -128,7 +135,11 @@ export function DataSection(): React.JSX.Element {
                   <Archive size={15} aria-hidden />{' '}
                   <span className="settings-backup-date">{dateTime(backup.mtime)}</span>{' '}
                   <span>
-                    {formatSize(backup.size, text('settings.sizeUnit'))}
+                    {formatSize(
+                      backup.size,
+                      text('settings.sizeUnit'),
+                      text('settings.sizeUnderOne'),
+                    )}
                   </span>
                 </li>
               ))}

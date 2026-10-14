@@ -2,6 +2,7 @@
  * W7 행 표시 문자열 — 순수 함수. 날짜·숫자는 UI Intl(L-4).
  * 연도는 epoch(UTC) → 없으면 원문 → 없으면 null이다.
  */
+import { formatHours, formatStar } from '../../shared/format.js';
 import { t, type Locale } from '../i18n/index.js';
 
 interface ReleaseDateSource {
@@ -16,13 +17,9 @@ export function formatYear(facts: ReleaseDateSource): string | null {
   return facts.releaseDateText;
 }
 
-/** 확인 누적 분 → 시간 단위 문자열. */
+/** 확인 누적 분 → 시간 단위 문자열(정수 반올림, C15-5). */
 export function formatPlaytime(minutes: number, locale: Locale): string {
-  const hours = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(minutes / 60);
-  return `${hours}${t(locale, 'library.unitHours')}`;
+  return `${formatHours(minutes)}${t(locale, 'library.unitHours')}`;
 }
 
 /** epoch 초 → 로케일 날짜. */
@@ -57,9 +54,5 @@ export function starsOf(score: number | null): number | null {
 /** aria-valuetext. */
 export function starsValueText(score: number | null, locale: Locale): string {
   if (score === null) return t(locale, 'library.starsUnrated');
-  const stars = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(score / 2);
-  return t(locale, 'library.starsValue', { v: stars });
+  return t(locale, 'library.starsValue', { v: formatStar(score / 2) });
 }

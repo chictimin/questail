@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Star } from '@phosphor-icons/react';
 import { t, type Locale } from '../i18n/index.js';
+import { formatStar } from '../../shared/format.js';
 import { starsValueText } from './format.js';
 import { starsTransition, previewAttrs, type StarsKeyInput } from './stars-state.js';
 
@@ -120,7 +121,7 @@ export function Stars({ value, disabled, locale, onCommit, showValue }: StarsPro
       </span>
       {showValue === true ? (
         <span className="stars-num">
-          {displayed === null ? '–' : displayed.toFixed(1)}
+          {displayed === null ? '–' : formatStar(displayed)}
         </span>
       ) : null}
     </div>

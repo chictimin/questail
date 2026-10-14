@@ -250,7 +250,9 @@ ownership_status: "owned"
     backupTitle: '자동 백업',
     manualBackup: '직접 백업하려면 앱을 끈 뒤 데이터 폴더를 통째로 복사해 두면 돼요.',
     backupEmpty: '아직 자동 백업이 없어요',
-    sizeUnit: 'MB',  },
+    sizeUnit: 'MB',
+    sizeUnderOne: '<1',
+  },
   sync: {
     sub: '마지막 수집 {t}',
     localeNote: '게임 정보는 현재 표시 언어로만 받아요.',

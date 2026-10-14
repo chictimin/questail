@@ -7,15 +7,16 @@
  * en에는 한국어가 나오지 않게 nameEn 없는 항목을 입력에서 뺀다.
  *
  * 가정(리뷰에서 확정):
- * - 총 시간 = 분→시간 반올림 + 천 단위 쉼표, 상위．5시간 = 분/60 소수 1자리 + 'h'.
+ * - 수치 표시는 shared/format.ts(C15-5): 시간 정수 반올림 + 천 단위 쉼표, 별점 평균 0.5 단위.
  * - 장르 줄은 상위 3개만.
- * - 별점 평균은 소수 1자리. 미평가면 개수 줄만.
+ * - 미평가면 개수 줄만.
  * - 빈 top5·장르는 줄 생략. en TBTI 줄은 코드만(PM #109421 — 한국어 본문 제외).
  * - 내보내기 파일명 'recap.md'(가정). 복사 텍스트는 끝개행 없음, 파일은 끝개행 1개(export.ts 선례).
  */
 import type { GameFacts, LibraryRecap } from '@questail/core';
 import type { ExportFile } from '../server/export.js';
 import { displayNameOf } from '../shared/displayName.js';
+import { formatHours, formatStarAvg } from '../shared/format.js';
 import { genreDisplayNames, type GenreName } from '../shared/genres.js';
 import { t, type Locale } from '../ui/i18n/index.js';
 import { TBTI_NAMES, type TbtiCode } from './tbtiNames.js';
@@ -55,11 +56,6 @@ export function recapNameTables(
   return { names, genreNames };
 }
 
-/** 천 단위 쉼표 — 로케일 ICU와 무관하게 결정적이다. */
-function groupThousands(value: number): string {
-  return String(Math.trunc(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
 /**
  * A-8 복사 텍스트. 이름표에 없는 게임은 externalId로 둔다(결정적 대체).
  * 장르 줄은 이름표에 있는 상위 3개만 싣고, 하나도 없으면 줄을 생략한다.
@@ -74,7 +70,7 @@ export function renderRecapText(
   const lines = [
     `${t(locale, 'recap.title')} ${t(locale, 'recap.basis', { days: recap.basis.observedDays })}`,
     t(locale, 'recap.total', {
-      hours: groupThousands(Math.round(recap.s01.totalMinutes / 60)),
+      hours: formatHours(recap.s01.totalMinutes),
       owned: recap.s03.owned,
       played: recap.s03.played,
     }),
@@ -82,7 +78,7 @@ export function renderRecapText(
   if (recap.s01.top5.length > 0) {
     const entries = recap.s01.top5.map((row) => {
       const name = names?.get(gameKeyOf(row.key)) ?? row.key.externalId;
-      return `${name} ${(row.minutes / 60).toFixed(1)}h`;
+      return `${name} ${formatHours(row.minutes)}h`;
     });
     lines.push(t(locale, 'recap.top5', { list: entries.join(' · ') }));
   }
@@ -101,7 +97,7 @@ export function renderRecapText(
     recap.s04.ratedCount > 0 && recap.s04.mean !== null
       ? t(locale, 'recap.rating', {
           n: recap.s04.ratedCount,
-          mean: recap.s04.mean.toFixed(1),
+          mean: formatStarAvg(recap.s04.mean),
         })
       : t(locale, 'recap.ratingNone'),
   );

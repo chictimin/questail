@@ -94,8 +94,8 @@ describe('formatYear', () => {
 
 describe('formatPlaytime', () => {
   it('ko·en 단위', () => {
-    expect(formatPlaytime(18744, 'ko')).toBe('312.4시간');
-    expect(formatPlaytime(18744, 'en')).toBe('312.4h');
+    expect(formatPlaytime(18744, 'ko')).toBe('312시간');
+    expect(formatPlaytime(18744, 'en')).toBe('312h');
   });
 });
 

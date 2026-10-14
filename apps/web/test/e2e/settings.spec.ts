@@ -187,7 +187,7 @@ test.describe('설정 데이터 섹션', () => {  test.use({ locale: 'ko-KR' });
 
   test('with-files: 백업 2건 표시·stray 제외', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${(withStarted as StartedServer).port}/settings`);
-    await expect(page.getByText('0.0 MB')).toHaveCount(2);
+    await expect(page.getByText('<1 MB')).toHaveCount(2);
     await expect(page.getByText('stray.txt')).toHaveCount(0);
   });
 

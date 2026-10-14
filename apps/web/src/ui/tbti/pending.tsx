@@ -6,6 +6,7 @@
 import { Link } from 'wouter';
 import type { TbtiCardSummary } from '@questail/core';
 import { useLocale } from '../i18n/context.js';
+import { formatPendingHours } from '../../shared/format.js';
 import logoUrl from '../../assets/logo-mark.png';
 import './tbti.css';
 
@@ -26,7 +27,7 @@ export function TbtiPendingCard({
 }): React.JSX.Element {
   const { text } = useLocale();
   const haveHours =
-    pendingHours !== null ? (pendingHours.have / 60).toFixed(1) : null;
+    pendingHours !== null ? formatPendingHours(pendingHours.have) : null;
   return (
     <section
       className="tbti-pending"

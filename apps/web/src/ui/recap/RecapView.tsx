@@ -10,6 +10,15 @@ import { TBTI_NAMES, type TbtiCode } from '../../data/tbtiNames.js';
 import { renderRecapExportFile, renderRecapText } from '../../data/recapText.js';
 import { useLocale } from '../i18n/context.js';
 import type { Locale } from '../i18n/index.js';
+import {
+  formatCaveatCount,
+  formatHours,
+  formatInt,
+  formatRatioPct,
+  formatStar,
+  formatStarAvg,
+  formatStarDev,
+} from '../../shared/format.js';
 import { lookupCover, lookupName } from '../r15/names.js';
 import type { GameNameMap } from '../r15/names.js';
 import { MARKDOWN_MIME, downloadTextFile } from '../r15/download.js';
@@ -19,10 +28,6 @@ import './recap.css';
 
 function isTbtiCode(code: string): code is TbtiCode {
   return code in TBTI_NAMES;
-}
-
-function formatInt(locale: Locale, value: number): string {
-  return new Intl.NumberFormat(locale).format(value);
 }
 
 function formatDay(locale: Locale, epochSeconds: number): string {
@@ -78,7 +83,7 @@ function Caveats({ list }: { list: Caveat[] }): React.JSX.Element | null {
               {text(CAVEAT_KEYS[caveat.code])}
               {caveat.count !== null ? (
                 <span className="recap-caveat-num">
-                  {formatInt(locale, caveat.count)}
+                  {formatCaveatCount(caveat.code, caveat.count)}
                 </span>
               ) : null}
             </li>
@@ -181,7 +186,7 @@ function Rows01({
             key={`${row.key.platform}/${row.key.externalId}`}
             className="recap-top-row"
           >
-            <span className="recap-top-rank">{formatInt(locale, index + 1)}</span>
+            <span className="recap-top-rank">{formatInt(index + 1)}</span>
             <span className="recap-top-name">{lookupName(map, row.key)}</span>
             <span className="recap-top-track" aria-hidden="true">
               <span
@@ -190,17 +195,17 @@ function Rows01({
               />
             </span>
             <span className="recap-top-hours">
-              {(row.minutes / 60).toFixed(1)}
+              {formatHours(row.minutes)}
               {text('library.unitHours')}
             </span>
             <span className="recap-top-share">
-              {(row.share * 100).toFixed(1)}%
+              {formatRatioPct(row.share)}%
             </span>
           </li>
         ))}
       </ol>
       <p className="recap-note">
-        {text('recap.top5Share', { pct: formatInt(locale, totalShare) })}
+        {text('recap.top5Share', { pct: formatInt(totalShare) })}
       </p>
     </div>
   );
@@ -234,13 +239,13 @@ function Bars02({
                 style={{ width: `${(bar.games / max) * 100}%` }}
               />
             </span>
-            <span className="recap-bar-num">{formatInt(locale, bar.games)}</span>
+            <span className="recap-bar-num">{formatInt(bar.games)}</span>
           </li>
         ))}
         {unknown !== undefined && unknown.games > 0 ? (
           <li className="recap-bar-row">
             <span className="recap-bar-name">
-              {text('recap.unknownRow', { n: formatInt(locale, unknown.games) })}
+              {text('recap.unknownRow', { n: formatInt(unknown.games) })}
             </span>
             <span className="recap-bar-track" aria-hidden="true">
               <span
@@ -249,7 +254,7 @@ function Bars02({
               />
             </span>
             <span className="recap-bar-num">
-              {formatInt(locale, unknown.games)}
+              {formatInt(unknown.games)}
             </span>
           </li>
         ) : null}
@@ -257,7 +262,7 @@ function Bars02({
       <p className="recap-note">
         {text(
           'recap.genreNote',
-          { n: formatInt(locale, unknown !== undefined ? unknown.games : 0) },
+          { n: formatInt(unknown !== undefined ? unknown.games : 0) },
         )}
       </p>
     </div>
@@ -302,7 +307,7 @@ function Buckets03({
               />
             </span>
             <span className="recap-col-num">
-              {formatInt(locale, bucket.games)}
+              {formatInt(bucket.games)}
             </span>
           </span>
         ))}
@@ -316,7 +321,7 @@ function Buckets03({
             onClick={() => setOpen((value) => !value)}
           >
             {text('recap.unplayed', {
-              n: formatInt(locale, recap.s03.unplayedKeys.length),
+              n: formatInt(recap.s03.unplayedKeys.length),
             })}
           </button>
           {open && recap.s03.unplayedKeys.length > 0 ? (
@@ -363,8 +368,8 @@ function Stars04({
     <div>
       <p className="recap-mean">
         {text('recap.meanLine', {
-          mean: recap.s04.mean.toFixed(1),
-          n: formatInt(locale, recap.s04.ratedCount),
+          mean: formatStarAvg(recap.s04.mean),
+          n: formatInt(recap.s04.ratedCount),
         })}
       </p>
       <div className="recap-deviants">
@@ -425,8 +430,6 @@ function DeviantRow({
   map: GameNameMap;
 }): React.JSX.Element {
   const cover = lookupCover(map, gameKey);
-  const sign = dev >= 0 ? '+' : '−';
-  const abs = Math.abs(dev).toFixed(1);
   return (
     <li className="recap-deviant-row">
       {cover !== null ? (
@@ -435,11 +438,8 @@ function DeviantRow({
         <span className="game-cover game-cover--empty" aria-hidden="true" />
       )}
       <span className="recap-deviant-name">{lookupName(map, gameKey)}</span>
-      <span className="recap-deviant-score">★{score.toFixed(1)}</span>
-      <span className="recap-deviant-dev">
-        {sign}
-        {abs}
-      </span>
+      <span className="recap-deviant-score">★{formatStar(score)}</span>
+      <span className="recap-deviant-dev">{formatStarDev(dev)}</span>
     </li>
   );
 }
@@ -482,13 +482,13 @@ function Eras05({ recap }: { recap: LibraryRecap }): React.JSX.Element {
               –
               {band.toYear !== null ? String(band.toYear) : '…'}
             </span>
-            <span className="recap-era-num">{formatInt(locale, band.games)}</span>
+            <span className="recap-era-num">{formatInt(band.games)}</span>
           </li>
         ))}
       </ul>
       {releaseUnknown > 0 ? (
         <p className="recap-note">
-          {text('recap.releaseUnknown', { n: formatInt(locale, releaseUnknown) })}
+          {text('recap.releaseUnknown', { n: formatInt(releaseUnknown) })}
         </p>
       ) : null}
     </div>
@@ -590,7 +590,7 @@ export function RecapView({
     first === null
       ? null
       : text('recap.band', {
-          days: formatInt(locale, days),
+          days: formatInt(days),
           range: `${formatDay(locale, first)}~${today}`,
         });
   const showZero = days === 0 || bandFull === null;
@@ -613,7 +613,7 @@ export function RecapView({
             >
               {bandOpen
                 ? bandFull
-                : text('recap.bandShort', { days: formatInt(locale, days) })}
+                : text('recap.bandShort', { days: formatInt(days) })}
             </button>
           </div>
         )}

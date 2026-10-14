@@ -30,7 +30,11 @@ import {
 import type { CollectSource } from '../../data/sync.js';
 import { TBTI_NAMES, type TbtiCode } from '../../data/tbtiNames.js';
 import { useLocale } from '../i18n/context.js';
-import type { Locale } from '../i18n/index.js';
+import {
+  formatCaveatCount,
+  formatInt,
+  formatPct,
+} from '../../shared/format.js';
 import { lookupCover, lookupName } from '../r15/names.js';
 import type { GameNameMap } from '../r15/names.js';
 import { TbtiPendingCard } from './pending.js';
@@ -40,10 +44,6 @@ import './tbti.css';
 
 function isTbtiCode(code: string): code is TbtiCode {
   return code in TBTI_NAMES;
-}
-
-function formatInt(locale: Locale, value: number): string {
-  return new Intl.NumberFormat(locale).format(value);
 }
 
 type TextKey = Parameters<ReturnType<typeof useLocale>['text']>[0];
@@ -148,8 +148,8 @@ function FrontCard({ result }: { result: TbtiResult }): React.JSX.Element {
     homePct === null || second === undefined
       ? null
       : second.primary === 'N'
-        ? text('tbti.homeShare', { pct: formatInt(locale, homePct) })
-        : text('tbti.seriesReplay', { pct: formatInt(locale, homePct) });
+        ? text('tbti.homeShare', { pct: formatInt(homePct) })
+        : text('tbti.seriesReplay', { pct: formatInt(homePct) });
   const days =
     result.caveats.find((caveat) => caveat.code === 'observation_days')?.count ?? 0;
   return (
@@ -169,7 +169,7 @@ function FrontCard({ result }: { result: TbtiResult }): React.JSX.Element {
       )}
       {definition !== '' ? <p className="tbti-def">{definition}</p> : null}
       <p className="tbti-note">
-        {text('tbti.frontNote', { days: formatInt(locale, days) })}
+        {text('tbti.frontNote', { days: formatInt(days) })}
       </p>
     </section>
   );
@@ -179,8 +179,8 @@ function Chip({ kind }: { kind: TextKey | { part: { got: number; of: number } } 
   const { locale, text } = useLocale();
   if (typeof kind === 'object') {
     const label = text('tbti.chipAchPart', {
-      got: formatInt(locale, kind.part.got),
-      of: formatInt(locale, kind.part.of),
+      got: formatInt(kind.part.got),
+      of: formatInt(kind.part.of),
     });
     return (
       <span className="tbti-chip" aria-label={label}>
@@ -201,7 +201,7 @@ function MetricText({ value, unit }: { value: number; unit: 'hours' | 'percent' 
   if (unit === 'hours') {
     return (
       <span>
-        {value.toFixed(1)}
+        {formatInt(value)}
         {text('tbti.unitHours')}
       </span>
     );
@@ -209,14 +209,14 @@ function MetricText({ value, unit }: { value: number; unit: 'hours' | 'percent' 
   if (unit === 'percent') {
     return (
       <span>
-        {value}
+        {formatPct(value)}
         {text('tbti.unitPercent')}
       </span>
     );
   }
   return (
     <span>
-      {formatInt(locale, value)}
+      {formatInt(value)}
       {text('tbti.unitCount')}
     </span>
   );
@@ -344,11 +344,13 @@ function AxisCard({
     axis.secondary !== null && axis.secondaryPct !== null
       ? text('tbti.meterText', {
           w0: axisWord(text, axis.primary),
-          p0: axis.primaryPct ?? '?',
+          p0: axis.primaryPct !== null ? formatPct(axis.primaryPct) : '?',
           w1: axisWord(text, axis.secondary),
-          p1: axis.secondaryPct,
+          p1: formatPct(axis.secondaryPct),
         })
-      : `${axisWord(text, axis.primary)} ${axis.primaryPct ?? '?'}`;
+      : axis.primaryPct !== null
+        ? `${axisWord(text, axis.primary)} ${formatPct(axis.primaryPct)}%`
+        : axisWord(text, axis.primary);
   return (
     <section className="tbti-axis" aria-label={text(AXIS_NAMES[axis.axis])}>
       <div className="tbti-axis-head">
@@ -357,7 +359,10 @@ function AxisCard({
           <p className="tbti-axis-score">{text('tbti.heldTitle')}</p>
         ) : (
           <p className="tbti-axis-score">
-            {axis.primary} {axis.primaryPct ?? '?'}
+            {axis.primary}{' '}
+            {axis.primaryPct !== null
+              ? `${formatPct(axis.primaryPct)}${text('tbti.unitPercent')}`
+              : '?'}
           </p>
         )}
         <div className="tbti-chips">
@@ -375,7 +380,7 @@ function AxisCard({
         aria-label={meterLabel}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={axis.primaryPct ?? 0}
+        aria-valuenow={axis.primaryPct !== null ? Math.round(axis.primaryPct) : 0}
       >
         {held ? (
           <span className="tbti-meter-held" aria-label={heldReason}>
@@ -407,15 +412,15 @@ function AxisCard({
       {!held && axis.axis === 2 && axis.secondary !== null && axis.secondaryPct !== null ? (
         <p className="tbti-sub">
           {axis.primary === 'N'
-            ? `${axisWord(text, axis.secondary)} ${axis.secondaryPct}%`
+            ? `${axisWord(text, axis.secondary)} ${formatPct(axis.secondaryPct)}%`
             : text('tbti.seriesReplay', {
-                pct: formatInt(locale, axis.secondaryPct),
+                pct: formatInt(axis.secondaryPct),
               })}
         </p>
       ) : null}
       {!held && axis.axis !== 2 && axis.secondary !== null && axis.secondaryPct !== null ? (
         <p className="tbti-sub">
-          {axisWord(text, axis.secondary)} {axis.secondaryPct}
+          {axisWord(text, axis.secondary)} {formatPct(axis.secondaryPct)}
           {text('tbti.unitPercent')}
         </p>
       ) : null}
@@ -438,7 +443,7 @@ function AxisCard({
           ) : null}
           {axis.axis === 2 && axis.nInterval !== null ? (
             <p className="tbti-metric">
-              N {axis.nInterval.min}~{axis.nInterval.max}
+              N {formatPct(axis.nInterval.min)}~{formatPct(axis.nInterval.max)}
               {text('tbti.unitPercent')}
             </p>
           ) : null}
@@ -487,7 +492,7 @@ function AxisCard({
           {axis.excludedCount > 0 ? (
             <p className="tbti-excluded">
               {text('tbti.excludedNote', {
-                n: formatInt(locale, axis.excludedCount),
+                n: formatInt(axis.excludedCount),
               })}
             </p>
           ) : null}
@@ -498,7 +503,7 @@ function AxisCard({
                   {text(CAVEAT_KEYS[caveat.code])}
                   {caveat.count !== null ? (
                     <span className="tbti-caveat-num">
-                      {formatInt(locale, caveat.count)}
+                      {formatCaveatCount(caveat.code, caveat.count)}
                     </span>
                   ) : null}
                 </li>
@@ -577,7 +582,7 @@ function ResultCaveats({ result }: { result: TbtiResult }): React.JSX.Element | 
               {text(CAVEAT_KEYS[caveat.code])}
               {caveat.count !== null ? (
                 <span className="tbti-caveat-num">
-                  {formatInt(locale, caveat.count)}
+                  {formatCaveatCount(caveat.code, caveat.count)}
                 </span>
               ) : null}
             </li>

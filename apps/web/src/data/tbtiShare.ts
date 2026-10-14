@@ -14,6 +14,7 @@
  * - pct null(보류·`)은 '?'로 찍는다. 보류 공유는 보류 안내 줄을 쓴다.
  */
 import type { AxisLetter, TbtiAxis, TbtiResult } from '@questail/core';
+import { formatPct } from '../shared/format.js';
 import { t, type Locale } from '../ui/i18n/index.js';
 import { TBTI_NAMES, type TbtiCode } from './tbtiNames.js';
 
@@ -32,7 +33,7 @@ function axisName(locale: Locale, letter: AxisLetter): string {
 }
 
 function pctText(pct: number | null): string {
-  return pct === null ? '?' : String(pct);
+  return pct === null ? '?' : formatPct(pct);
 }
 
 /** 축 1개 수치 조각. ②축만 secondary 병기를 단다(가정). */
@@ -41,8 +42,8 @@ function axisSegment(locale: Locale, axis: TbtiAxis): string {
   if (axis.axis === 2 && axis.secondary !== null && axis.secondaryPct !== null) {
     const tail =
       locale === 'ko'
-        ? `(${axisName(locale, axis.secondary)} 비중 ${axis.secondaryPct}%)`
-        : ` (${axisName(locale, axis.secondary)} ${axis.secondaryPct}%)`;
+        ? `(${axisName(locale, axis.secondary)} 비중 ${formatPct(axis.secondaryPct)}%)`
+        : ` (${axisName(locale, axis.secondary)} ${formatPct(axis.secondaryPct)}%)`;
     return `${head}${tail}`;
   }
   return head;
