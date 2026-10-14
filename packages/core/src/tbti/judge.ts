@@ -105,12 +105,14 @@ function classifyNh(
   if (cutoff === null || game.releaseDate === null) {
     return { confirmed: 0, late: 0, none: total, bucket: 'no_evidence', confirmedVia: null };
   }
-  // 증거 ① 확정 시간(확정): 기준선 total 전액 + deltas 중 observedAt ≤ 출시+W인 증감 합.
+  // 증거 ① 확정 시간(확정): 첫 스냅샷 observedAt ≤ 출시+W일 때만 기준선 total 전액 + deltas 중 observedAt ≤ 출시+W인 증감 합.
   // 기준선 = coverage.isBaseline인 게임의 첫 스냅샷 total. W 이후분은 분모에만 남는다.
   let snapshotConfirmed = 0;
   if (game.snapshots.length > 0 && game.coverage.isBaseline) {
     const first = [...game.snapshots].sort((a, b) => a.observedAt - b.observedAt)[0];
-    snapshotConfirmed += first.totalMinutes;
+    if (first.observedAt <= cutoff) {
+      snapshotConfirmed += first.totalMinutes;
+    }
   }
   for (const delta of game.deltas) {
     if (delta.observedAt <= cutoff) snapshotConfirmed += delta.deltaMinutes;

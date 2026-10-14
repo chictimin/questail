@@ -425,6 +425,104 @@ describe('r15-core-tbti: ② N/H', () => {
     );
   });
 
+  it('D-14형: 첫 스냅샷이 W 이후면 기준선 total 전액 미확정 · W 이내 deltas만', () => {
+    const release = dayOf(2020);
+    const cutoff = cutoffOf(release);
+    const firstObserved = cutoff + DAY;
+    const d14 = makeFacts('d14', {
+      releaseDate: release,
+      confirmedMinutes: 800,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: null,
+      wishlist: [],
+      coverage: { firstObservedAt: firstObserved, lastObservedAt: firstObserved + DAY, gapDays: [], isBaseline: true },
+      snapshots: [
+        {
+          observedAt: firstObserved,
+          observedDay: '2021-01-02',
+          totalMinutes: 5000,
+          deltaMinutes: null,
+          elapsedSeconds: null,
+          isReview: false,
+        },
+      ],
+      deltas: [
+        { observedAt: cutoff - DAY, deltaMinutes: 300, elapsedSeconds: 18000 },
+        { observedAt: cutoff + DAY, deltaMinutes: 700, elapsedSeconds: 42000 },
+      ],
+    });
+    const axis = judgeTbti(inputOf([d14, makeFacts('a'), makeFacts('b')])).axes[1];
+    // 확정 기여 300(W 이내 delta만, 5000 전액은 미확정) · d14 나머지는 증거 없음 버킷.
+    const row = axis.evidence.find((entry) => entry.key.externalId === 'd14');
+    expect(row?.reasonKey).toBe('tbti.reason.nh.no_evidence');
+    // N_min = (600 + 600 + 300) / 2000 = 75 → N. 전액이 섞였으면 100이 된다.
+    expect(axis.primary).toBe('N');
+    expect(axis.primaryPct).toBeCloseTo(75, 12);
+  });
+
+  it('D-14형 late 변형: W 이후 첫 스냅샷 + min unlocked_at > W → late', () => {
+    const release = dayOf(2020);
+    const cutoff = cutoffOf(release);
+    const firstObserved = cutoff + DAY;
+    const d14late = makeFacts('d14late', {
+      releaseDate: release,
+      confirmedMinutes: 600,
+      achievements: [{ apiname: 'a', achieved: true, unlockedAt: cutoff + 100 }],
+      lastPlayed: null,
+      wishlist: [],
+      coverage: { firstObservedAt: firstObserved, lastObservedAt: firstObserved + DAY, gapDays: [], isBaseline: true },
+      snapshots: [
+        {
+          observedAt: firstObserved,
+          observedDay: '2021-01-02',
+          totalMinutes: 500,
+          deltaMinutes: null,
+          elapsedSeconds: null,
+          isReview: false,
+        },
+      ],
+      deltas: [],
+    });
+    const axis = judgeTbti(inputOf([d14late, makeFacts('a'), makeFacts('b')])).axes[1];
+    expect(axis.evidence.find((row) => row.key.externalId === 'd14late')?.reasonKey).toBe(
+      'tbti.reason.nh.late',
+    );
+  });
+
+  it('경계: 첫 스냅샷 observedAt == 출시+W 정확히 → 전액 확정', () => {
+    const release = dayOf(2024);
+    const cutoff = cutoffOf(release);
+    const game = makeFacts('edge', {
+      releaseDate: release,
+      confirmedMinutes: 600,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: null,
+      wishlist: [],
+      coverage: { firstObservedAt: cutoff, lastObservedAt: cutoff + DAY, gapDays: [], isBaseline: true },
+      snapshots: [
+        {
+          observedAt: cutoff,
+          observedDay: '2025-01-01',
+          totalMinutes: 400,
+          deltaMinutes: null,
+          elapsedSeconds: null,
+          isReview: false,
+        },
+      ],
+      deltas: [{ observedAt: cutoff, deltaMinutes: 200, elapsedSeconds: 12000 }],
+    });
+    const axis = judgeTbti(inputOf([game, makeFacts('a'), makeFacts('b')])).axes[1];
+    expect(axis.primary).toBe('N');
+    expect(axis.primaryPct).toBeCloseTo(100, 12);
+    expect(axis.evidence.find((row) => row.key.externalId === 'edge')?.reasonKey).toBe(
+      'tbti.reason.nh.confirmed_snapshot',
+    );
+  });
+
   it('확정 경로별 reasonKey 4키: snapshot·unlock·lastplayed·wishlist (신뢰도 순서)', () => {
     const release = dayOf(2024);
     const cutoff = cutoffOf(release);
