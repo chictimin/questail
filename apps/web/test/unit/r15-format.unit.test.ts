@@ -81,6 +81,7 @@ function axis(
     caveats: [],
     baselineKey: null,
     baselineTextKey: null,
+    metrics: null,
     ...extra,
   };
 }
@@ -100,6 +101,8 @@ const RAW: TbtiResult = {
   ],
   pending: false,
   pendingHours: null,
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: [{ code: 'observation_days', count: 4 }],
 };
 

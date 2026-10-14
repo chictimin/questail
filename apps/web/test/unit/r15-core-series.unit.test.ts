@@ -59,6 +59,21 @@ describe('정규화 파이프라인 순서 ①→②→③→④', () => {
   it('꼬리 반복 제거 — Deluxe Edition Remastered 둘 다 제거', () => {
     expect(normalizeSeriesTitle('Foo Deluxe Edition Remastered').normalized).toBe('foo');
   });
+  it('꼬리 제거 뒤 끝 구분자·공백 trim (F-20) — Dark Souls: Remastered → dark souls', () => {
+    expect(normalizeSeriesTitle('Dark Souls: Remastered')).toEqual({
+      normalized: 'dark souls',
+      core: 'dark souls',
+    });
+  });
+  it('꼬리 제거 뒤 끝 하이픈 trim — Foo - Remastered → foo', () => {
+    expect(normalizeSeriesTitle('Foo - Remastered').normalized).toBe('foo');
+  });
+  it('꼬리 연쇄 제거 시 매 절단마다 trim — Foo - Remastered - Remake → foo', () => {
+    expect(normalizeSeriesTitle('Foo - Remastered - Remake').normalized).toBe('foo');
+  });
+  it('꼬리 없이 끝 콜론도 trim — Dark Souls: → dark souls', () => {
+    expect(normalizeSeriesTitle('Dark Souls:').normalized).toBe('dark souls');
+  });
   it('Deluxe 단독은 계약 꼬리가 아니다 — Foo Deluxe Remastered → foo deluxe', () => {
     expect(normalizeSeriesTitle('Foo Deluxe Remastered').normalized).toBe('foo deluxe');
   });
@@ -71,11 +86,32 @@ describe('정규화 파이프라인 순서 ①→②→③→④', () => {
   it("Director's Cut 절단", () => {
     expect(normalizeSeriesTitle("Bar Director's Cut").normalized).toBe('bar');
   });
+  it('Special Edition 절단 (F-41) — Foo Special Edition → foo', () => {
+    expect(normalizeSeriesTitle('Foo Special Edition').normalized).toBe('foo');
+  });
+  it('Special Edition 반복 제거 — Foo Special Edition Remastered → foo', () => {
+    expect(normalizeSeriesTitle('Foo Special Edition Remastered').normalized).toBe('foo');
+  });
   it('로마 I~X 통일 — Dark Souls II → dark souls 2', () => {
     expect(normalizeSeriesTitle('Dark Souls II').normalized).toBe('dark souls 2');
   });
   it('로마 XI~ 통일 안 함 — Final Fantasy XI 유지', () => {
     expect(normalizeSeriesTitle('Final Fantasy XI').normalized).toBe('final fantasy xi');
+  });
+  it('로마 XI~ 통일 안 함 — Final Fantasy XVI 유지(별칭 조회로 커버)', () => {
+    expect(normalizeSeriesTitle('Final Fantasy XVI')).toEqual({
+      normalized: 'final fantasy xvi',
+      core: 'final fantasy xvi',
+    });
+  });
+  it('F-40 하이픈 결합 토큰 제외 — X-COM 불변', () => {
+    expect(normalizeSeriesTitle('X-COM').normalized).toBe('x-com');
+  });
+  it('F-40 한 글자 토큰 제외 — Mega Man X 불변', () => {
+    expect(normalizeSeriesTitle('Mega Man X').normalized).toBe('mega man x');
+  });
+  it('F-40 한 글자 토큰 제외 — I Am Bread 불변', () => {
+    expect(normalizeSeriesTitle('I Am Bread').normalized).toBe('i am bread');
   });
   it('4자리 숫자 통일 제외 — Battlefield 2042 유지', () => {
     expect(normalizeSeriesTitle('Battlefield 2042').normalized).toBe('battlefield 2042');
@@ -106,11 +142,41 @@ describe('별칭 조회 — ③ 후 전체 정확 일치, 접두 금지(C15)', (
     expect(r.items[0]).toMatchObject({ normalized: 'biohazard', bundleId: 'alias:resident-evil', via: 'alias' });
     expect(r.aliasBundleCount).toBe(1);
   });
-  it('접두 매칭 금지 — Monster Hunter: World는 내장 monster hunter에 걸리지 않는다', () => {
+  it('F-20 2회 조회 — Monster Hunter: World는 전체 미스 → 코어 monster hunter로 내장 별칭 적중', () => {
     const r = judgeSeriesBundles({ games: [fact('1', { name: 'Monster Hunter: World' })], seriesAliases: MISSING });
-    expect(r.items[0]).toMatchObject({ normalized: 'monster hunter: world', core: 'monster hunter', via: 'core' });
-    expect(r.items[0]?.bundleId).toBe('core:monster hunter');
+    expect(r.items[0]).toMatchObject({ normalized: 'monster hunter: world', core: 'monster hunter', via: 'alias' });
+    expect(r.items[0]?.bundleId).toBe('alias:monster-hunter');
+    expect(r.aliasBundleCount).toBe(1);
+  });
+  it('접두 매칭 금지 — 구분자 없는 Monster Hunter World는 내장 monster hunter에 걸리지 않는다', () => {
+    const r = judgeSeriesBundles({ games: [fact('1', { name: 'Monster Hunter World' })], seriesAliases: MISSING });
+    expect(r.items[0]).toMatchObject({ normalized: 'monster hunter world', core: 'monster hunter world', via: 'core' });
+    expect(r.items[0]?.bundleId).toBe('core:monster hunter world');
     expect(r.aliasBundleCount).toBe(0);
+  });
+  it('F-20 실스토어 표기 적중 — Dark Souls: Remastered ≡ Dark Souls (내장 dark souls)', () => {
+    const r = judgeSeriesBundles({
+      games: [fact('1', { name: 'Dark Souls: Remastered' }), fact('2', { name: 'Dark Souls' })],
+      seriesAliases: MISSING,
+    });
+    expect(r.bundles).toHaveLength(1);
+    expect(r.bundles[0]).toMatchObject({ bundleId: 'alias:dark-souls', via: 'alias', size: 2 });
+  });
+  it('번호작은 파일 별칭으로 커버 — Final Fantasy XVI ≡ FINAL FANTASY VII Remake', () => {
+    const r = judgeSeriesBundles({
+      games: [fact('1', { name: 'Final Fantasy XVI' }), fact('2', { name: 'FINAL FANTASY VII Remake' })],
+      seriesAliases: okAliases({ 'final fantasy xvi': 'final-fantasy', 'final fantasy 7': 'final-fantasy' }),
+    });
+    expect(r.bundles).toHaveLength(1);
+    expect(r.bundles[0]).toMatchObject({ bundleId: 'alias:final-fantasy', via: 'alias', size: 2 });
+  });
+  it('번호작은 파일 별칭으로 커버 — Resident Evil 4 ≡ Biohazard 4', () => {
+    const r = judgeSeriesBundles({
+      games: [fact('1', { name: 'Resident Evil 4' }), fact('2', { name: 'Biohazard 4' })],
+      seriesAliases: okAliases({ 'resident evil 4': 'resident-evil', 'biohazard 4': 'resident-evil' }),
+    });
+    expect(r.bundles).toHaveLength(1);
+    expect(r.bundles[0]).toMatchObject({ bundleId: 'alias:resident-evil', via: 'alias', size: 2 });
   });
   it('broken이면 별칭 없이 정규화만 — Biohazard 단독 코어', () => {
     const r = judgeSeriesBundles({ games: [fact('1', { name: 'Biohazard' })], seriesAliases: BROKEN });
@@ -221,6 +287,20 @@ describe('개발사 정규화 — 단어 경계, Co 부분일치 금지', () => 
   it('Co 부분일치 금지 — Acme Company 유지, Acme Co 제거', () => {
     expect(normalizeSeriesDeveloper('Acme Company')).toBe('acme company');
     expect(normalizeSeriesDeveloper('Acme Co')).toBe('acme');
+  });
+  it('Ltd 제거 (F-41) — CAPCOM Co., Ltd. ≡ capcom', () => {
+    expect(normalizeSeriesDeveloper('CAPCOM Co., Ltd.')).toBe('capcom');
+  });
+  it('Ltd 제거로 병합 가능 — id Software Ltd. ≡ id Software (접미 1토큰 차이)', () => {
+    const r = judgeSeriesBundles({
+      games: [
+        fact('1', { name: 'Doom', developerRaw: 'id Software Ltd.' }),
+        fact('2', { name: 'Doom Eternal', developerRaw: 'id Software' }),
+      ],
+      seriesAliases: BROKEN,
+    });
+    expect(r.bundles).toHaveLength(1);
+    expect(r.bundles[0]).toMatchObject({ via: 'core-dev', size: 2 });
   });
   it('null·빈값은 null', () => {
     expect(normalizeSeriesDeveloper(null)).toBeNull();

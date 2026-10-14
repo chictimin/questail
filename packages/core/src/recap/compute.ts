@@ -80,7 +80,8 @@ function computeBasis(
   visible: GameFacts[],
   ownedObservedDays: string[],
 ): LibraryRecap['basis'] {
-  const observedDays = new Set(ownedObservedDays).size;
+  const distinctDays = [...new Set(ownedObservedDays)].sort();
+  const observedDays = distinctDays.length;
   let firstObservedAt: number | null = null;
   for (const game of visible) {
     const first = game.coverage.firstObservedAt;
@@ -88,14 +89,22 @@ function computeBasis(
       firstObservedAt = first;
     }
   }
-  return { observedDays, firstObservedAt };
+  return {
+    observedDays,
+    rangeStart: observedDays > 0 ? distinctDays[0] : null,
+    rangeEnd: observedDays > 0 ? distinctDays[distinctDays.length - 1] : null,
+    firstObservedAt,
+  };
 }
 
 function computeS01(visible: GameFacts[], base: Caveat[]): Recap01 {
   const totalMinutes = visible.reduce((sum, game) => sum + game.confirmedMinutes, 0);
-  const sorted = [...visible].sort(
-    (a, b) => b.confirmedMinutes - a.confirmedMinutes || compareGameKey(a.key, b.key),
-  );
+  // F-22: 0분 게임 제외 후 정렬·동점 규칙 적용(제외 후 5위 동점 전원 포함).
+  const sorted = [...visible]
+    .filter((game) => game.confirmedMinutes > 0)
+    .sort(
+      (a, b) => b.confirmedMinutes - a.confirmedMinutes || compareGameKey(a.key, b.key),
+    );
   let top = sorted.slice(0, RECAP_TOP5_COUNT);
   if (sorted.length > RECAP_TOP5_COUNT) {
     const cutoff = top[top.length - 1].confirmedMinutes;
@@ -180,10 +189,22 @@ function computeS03(visible: GameFacts[], base: Caveat[]): Recap03 {
   const missing = visible.filter((game) => !isOwned(game));
   const missingKeys = missing.map((game) => game.key).sort(compareGameKey);
   const timepointUnknown = missing.filter(hasUnknownTimepoint).length;
+  // medianMinutes: played 게임 confirmedMinutes 중앙값(분). played=0이면 null.
+  // 짝수 개면 두 중앙값 평균(제안).
+  const sortedMinutes = [...playedMinutes].sort((a, b) => a - b);
+  let medianMinutes: number | null = null;
+  if (sortedMinutes.length > 0) {
+    const mid = Math.floor(sortedMinutes.length / 2);
+    medianMinutes =
+      sortedMinutes.length % 2 === 1
+        ? sortedMinutes[mid]
+        : (sortedMinutes[mid - 1] + sortedMinutes[mid]) / 2;
+  }
   return {
     caveats: [...base, { code: 'timepoint_unknown', count: timepointUnknown }],
     owned: ownedGames.length,
     played: playedMinutes.length,
+    medianMinutes,
     buckets,
     unplayedKeys,
     missingKeys,

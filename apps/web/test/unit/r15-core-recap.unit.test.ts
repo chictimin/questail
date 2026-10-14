@@ -75,11 +75,12 @@ function pendingTbti(): TbtiResult {
     excludedCount: 0,
     held: true,
     heldReasonKey: 'short_sample',
+    metrics: null,
     caveats: [],
     baselineKey: null,
     baselineTextKey: null,
   });
-  return { code: '????', axes: [axis(1), axis(2), axis(3), axis(4)], pending: true, pendingHours: { have: 0, need: 300 }, caveats: [] };
+  return { code: '????', axes: [axis(1), axis(2), axis(3), axis(4)], pending: true, pendingHours: { have: 0, need: 300 }, caveats: [], gameLetters: [], aliasStatus: 'missing' };
 }
 
 /** 메인 픽스처: 동점·경계·숨김·빠짐·미평점·미확인 장르/출시일을 한 번에 둔다. */
@@ -111,14 +112,14 @@ function mainInput(over: Partial<RecapInput> = {}): RecapInput {
 }
 
 describe('r15-core-recap', () => {
-  it('basis: observedDays distinct 수 · firstObservedAt 최소값', () => {
+  it('basis: observedDays distinct 수 · firstObservedAt 최소값 · rangeStart~End', () => {
     const sections = computeRecapSections(mainInput());
-    expect(sections.basis).toEqual({ observedDays: 2, firstObservedAt: 1000 });
+    expect(sections.basis).toEqual({ observedDays: 2, rangeStart: '2026-10-01', rangeEnd: '2026-10-02', firstObservedAt: 1000 });
   });
 
-  it('관측 0건이면 observedDays 0 · firstObservedAt null', () => {
+  it('관측 0건이면 observedDays 0 · range null · firstObservedAt null', () => {
     const sections = computeRecapSections(mainInput({ games: [], ownedObservedDays: [] }));
-    expect(sections.basis).toEqual({ observedDays: 0, firstObservedAt: null });
+    expect(sections.basis).toEqual({ observedDays: 0, rangeStart: null, rangeEnd: null, firstObservedAt: null });
   });
 
   it('s01: 숨김 제외 합 분모 · 동률 key 오름차순 · 5위 동점 전원 포함', () => {
@@ -130,6 +131,20 @@ describe('r15-core-recap', () => {
     for (const row of sections.s01.top5) {
       expect(row.share).toBeCloseTo(row.minutes / total, 12);
     }
+  });
+
+  it('s01(F-22): 0분 게임 제외 — top5에 0분 행 없음', () => {
+    const sections = computeRecapSections(mainInput());
+    for (const row of sections.s01.top5) {
+      expect(row.minutes).toBeGreaterThan(0);
+    }
+  });
+
+  it('s01(F-22): 전부 0분이면 top5 빈 배열 · totalMinutes 0', () => {
+    const games = mainGames().map((game) => ({ ...game, confirmedMinutes: 0 }));
+    const sections = computeRecapSections(mainInput({ games }));
+    expect(sections.s01.totalMinutes).toBe(0);
+    expect(sections.s01.top5).toEqual([]);
   });
 
   it('s02: 상위 줄 + __unknown 줄 · knownGames', () => {
@@ -166,7 +181,29 @@ describe('r15-core-recap', () => {
     ]);
     expect(sections.s03.unplayedKeys).toEqual([keyOf('06')]);
     expect(sections.s03.missingKeys).toEqual([keyOf('07')]);
+    expect(sections.s03.medianMinutes).toBe(1750);
     expect(sections.s03.caveats).toContainEqual({ code: 'timepoint_unknown', count: 1 });
+  });
+
+  it('s03 medianMinutes: 홀수 개면 중앙값 · played=0이면 null', () => {
+    const one = [makeFacts({ key: keyOf('a'), confirmedMinutes: 100 })];
+    expect(computeRecapSections(mainInput({ games: one })).s03.medianMinutes).toBe(100);
+    const three = [
+      ...one,
+      makeFacts({ key: keyOf('b'), confirmedMinutes: 300 }),
+      makeFacts({ key: keyOf('c'), confirmedMinutes: 200 }),
+    ];
+    expect(computeRecapSections(mainInput({ games: three })).s03.medianMinutes).toBe(200);
+    const zeroOnly = [makeFacts({ key: keyOf('z'), confirmedMinutes: 0 })];
+    expect(computeRecapSections(mainInput({ games: zeroOnly })).s03.medianMinutes).toBeNull();
+  });
+
+  it('s03 medianMinutes: 짝수 개면 두 중앙값 평균', () => {
+    const two = [
+      makeFacts({ key: keyOf('a'), confirmedMinutes: 100 }),
+      makeFacts({ key: keyOf('b'), confirmedMinutes: 200 }),
+    ];
+    expect(computeRecapSections(mainInput({ games: two })).s03.medianMinutes).toBe(150);
   });
 
   it('s04: 출력 척도 0.5~5 · mean 매긴 게임만 · dist10 · high/low', () => {
@@ -229,7 +266,7 @@ describe('r15-core-recap', () => {
     expect(sections.s01.totalMinutes).toBe(0);
     expect(sections.s01.top5).toEqual([]);
     expect(sections.s02).toMatchObject({ knownGames: 0, bars: [] });
-    expect(sections.s03).toMatchObject({ owned: 0, played: 0, unplayedKeys: [], missingKeys: [] });
+    expect(sections.s03).toMatchObject({ owned: 0, played: 0, medianMinutes: null, unplayedKeys: [], missingKeys: [] });
     expect(sections.s04.mean).toBeNull();
     expect(sections.s05.bands.map((band) => band.games)).toEqual([0, 0, 0]);
     expect(sections.s06.years).toEqual([]);
@@ -259,11 +296,13 @@ describe('r15-core-recap', () => {
       pending: false,
       pendingHours: null,
       caveats: [],
+      gameLetters: [],
+      aliasStatus: 'missing',
       axes: [
-        { axis: 1, primary: 'I', primaryPct: 60, secondary: 'R', secondaryPct: 40, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, caveats: [], baselineKey: null, baselineTextKey: null },
-        { axis: 2, primary: 'N', primaryPct: 42, secondary: 'H', secondaryPct: 30, nInterval: { min: 42, max: 65 }, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, caveats: [], baselineKey: null, baselineTextKey: null },
-        { axis: 3, primary: 'O', primaryPct: 55, secondary: 'A', secondaryPct: 45, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, caveats: [], baselineKey: null, baselineTextKey: null },
-        { axis: 4, primary: 'C', primaryPct: 70, secondary: 'L', secondaryPct: 30, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 1, primary: 'I', primaryPct: 60, secondary: 'R', secondaryPct: 40, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 2, primary: 'N', primaryPct: 42, secondary: 'H', secondaryPct: 30, nInterval: { min: 42, max: 65 }, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 3, primary: 'O', primaryPct: 55, secondary: 'A', secondaryPct: 45, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 4, primary: 'C', primaryPct: 70, secondary: 'L', secondaryPct: 30, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
       ],
     };
     expect(toCardSummary(result)).toEqual({
@@ -273,6 +312,34 @@ describe('r15-core-recap', () => {
       mini: [
         { axis: 1, pct: 60 },
         { axis: 2, pct: 42 },
+        { axis: 3, pct: 55 },
+        { axis: 4, pct: 70 },
+      ],
+    });
+  });
+
+  it('toCardSummary: held ②축 mini는 null(F-15 interval_cross도 nInterval을 실으므로)', () => {
+    const result: TbtiResult = {
+      code: 'I?OC',
+      pending: false,
+      pendingHours: null,
+      caveats: [],
+      gameLetters: [],
+      aliasStatus: 'missing',
+      axes: [
+        { axis: 1, primary: 'I', primaryPct: 60, secondary: 'R', secondaryPct: 40, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 2, primary: '?', primaryPct: null, secondary: 'H', secondaryPct: 30, nInterval: { min: 40, max: 60 }, chips: [], evidence: [], excludedCount: 0, held: true, heldReasonKey: 'interval_cross', metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 3, primary: 'O', primaryPct: 55, secondary: 'A', secondaryPct: 45, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+        { axis: 4, primary: 'C', primaryPct: 70, secondary: 'L', secondaryPct: 30, nInterval: null, chips: [], evidence: [], excludedCount: 0, held: false, heldReasonKey: null, metrics: null, caveats: [], baselineKey: null, baselineTextKey: null },
+      ],
+    };
+    expect(toCardSummary(result)).toEqual({
+      code: 'I?OC',
+      pending: false,
+      letters: ['I', '?', 'O', 'C'],
+      mini: [
+        { axis: 1, pct: 60 },
+        { axis: 2, pct: null },
         { axis: 3, pct: 55 },
         { axis: 4, pct: 70 },
       ],

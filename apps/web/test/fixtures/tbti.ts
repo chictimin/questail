@@ -25,27 +25,27 @@ function axis1(): TbtiAxis {
       {
         key: { platform: 'steam', externalId: 'wilds-2025' },
         metric: { value: 921.9, unit: 'hours' },
-        reasonKey: 'tbti.reasonFreshStart',
+        reasonKey: 'tbti.reason.ir.i_only',
       },
       {
         key: { platform: 'steam', externalId: 'bg3' },
         metric: { value: 303.3, unit: 'hours' },
-        reasonKey: 'tbti.reasonLongHours',
+        reasonKey: 'tbti.reason.ir.i_only',
       },
       {
         key: { platform: 'steam', externalId: 'zomboid' },
         metric: { value: 300.9, unit: 'hours' },
-        reasonKey: 'tbti.reasonLongHours',
+        reasonKey: 'tbti.reason.ir.i_only',
       },
       {
         key: { platform: 'steam', externalId: 'spire2' },
         metric: { value: 199.5, unit: 'hours' },
-        reasonKey: 'tbti.reasonFreshStart',
+        reasonKey: 'tbti.reason.ir.i_only',
       },
       {
         key: { platform: 'steam', externalId: 'isaac' },
         metric: { value: 224.4, unit: 'hours' },
-        reasonKey: 'tbti.reasonReplay',
+        reasonKey: 'tbti.reason.ir.i_only',
       },
     ],
     excludedCount: 22,
@@ -55,6 +55,7 @@ function axis1(): TbtiAxis {
     caveats: [{ code: 'tag_uncollected', count: 22 }],
     baselineKey: null,
     baselineTextKey: null,
+    metrics: null,
   };
 }
 
@@ -70,12 +71,12 @@ function axis2(): TbtiAxis {
       {
         key: { platform: 'steam', externalId: 'wilds-2025' },
         metric: { value: 956.0, unit: 'hours' },
-        reasonKey: 'tbti.reasonFreshStart',
+        reasonKey: 'tbti.reason.nh.confirmed_snapshot',
       },
       {
         key: { platform: 'steam', externalId: 'spire2' },
         metric: { value: 382.0, unit: 'hours' },
-        reasonKey: 'tbti.reasonFreshStart',
+        reasonKey: 'tbti.reason.nh.confirmed_snapshot',
       },
     ],
     excludedCount: 6,
@@ -89,6 +90,7 @@ function axis2(): TbtiAxis {
     ],
     baselineKey: null,
     baselineTextKey: null,
+    metrics: null,
   };
 }
 
@@ -104,16 +106,17 @@ function axis3(): TbtiAxis {
       {
         key: { platform: 'steam', externalId: 'bg3' },
         metric: { value: 85, unit: 'percent' },
-        reasonKey: 'tbti.reasonMarathon',
+        reasonKey: 'tbti.reason.oa.genre',
       },
     ],
     excludedCount: 3,
     held: false,
     heldReasonKey: null,
     nInterval: null,
-    caveats: [{ code: 'genre_tag_unknown', count: 3 }],
+    caveats: [{ code: 'genre_unknown', count: 3 }],
     baselineKey: null,
     baselineTextKey: null,
+    metrics: null,
   };
 }
 
@@ -129,12 +132,12 @@ function axis4Full(): TbtiAxis {
       {
         key: { platform: 'steam', externalId: 'wilds-2025' },
         metric: { value: 100, unit: 'percent' },
-        reasonKey: 'tbti.reasonMarathon',
+        reasonKey: 'tbti.reason.cl.ach_ready',
       },
       {
         key: { platform: 'steam', externalId: 'spire2' },
         metric: { value: 100, unit: 'percent' },
-        reasonKey: 'tbti.reasonMarathon',
+        reasonKey: 'tbti.reason.cl.ach_ready',
       },
     ],
     excludedCount: 15,
@@ -144,6 +147,7 @@ function axis4Full(): TbtiAxis {
     caveats: [],
     baselineKey: 'imc2016',
     baselineTextKey: 'tbti.baseline.imc2016',
+    metrics: null,
   };
 }
 
@@ -153,6 +157,8 @@ export const fixture8a: TbtiResult = {
   axes: [axis1(), axis2(), axis3(), axis4Full()],
   pending: false,
   pendingHours: null,
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: COMMON_CAVEATS,
 };
 
@@ -175,6 +181,7 @@ export const fixture8c: TbtiResult = {
       caveats: [],
       baselineKey: null,
       baselineTextKey: null,
+      metrics: null,
     },
     {
       axis: 2,
@@ -191,6 +198,7 @@ export const fixture8c: TbtiResult = {
       caveats: [],
       baselineKey: null,
       baselineTextKey: null,
+      metrics: null,
     },
     {
       axis: 3,
@@ -207,6 +215,7 @@ export const fixture8c: TbtiResult = {
       caveats: [],
       baselineKey: null,
       baselineTextKey: null,
+      metrics: null,
     },
     {
       axis: 4,
@@ -223,10 +232,13 @@ export const fixture8c: TbtiResult = {
       caveats: [],
       baselineKey: null,
       baselineTextKey: null,
+      metrics: null,
     },
   ],
   pending: true,
   pendingHours: { have: 192, need: 300 },
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: COMMON_CAVEATS,
 };
 
@@ -249,6 +261,7 @@ export const fixture8d: TbtiResult = {
       caveats: [],
       baselineKey: null,
       baselineTextKey: null,
+      metrics: null,
     },
     axis2(),
     axis3(),
@@ -256,6 +269,8 @@ export const fixture8d: TbtiResult = {
   ],
   pending: false,
   pendingHours: null,
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: COMMON_CAVEATS,
 };
 
@@ -272,10 +287,13 @@ export const fixtureAchOff: TbtiResult = {
       caveats: [{ code: 'ach_not_reflected', count: null }],
       baselineKey: null,
       baselineTextKey: null,
+      metrics: null,
     },
   ],
   pending: false,
   pendingHours: null,
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: COMMON_CAVEATS,
 };
 
@@ -295,5 +313,7 @@ export const fixtureAchPart: TbtiResult = {
   ],
   pending: false,
   pendingHours: null,
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: COMMON_CAVEATS,
 };

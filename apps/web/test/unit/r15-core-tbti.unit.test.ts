@@ -7,7 +7,7 @@ import {
 import type { GameFacts, SeriesAliasInput, TbtiJudgeInput } from '@questail/core';
 
 /**
- * T2 TBTI 판정 단위 테스트 (계약 R15-5·R15-4, 동결 v1.0 + v1.0.1 델타).
+ * T2 TBTI 판정 단위 테스트 (계약 R15-5·R15-4, v1.1: F-05·F-15·F-27·F-30·F-39·F-43 + metrics·gameLetters·aliasStatus).
  * 합성 픽스처만 쓴다. 실 Steam·실키 호출 없음. 캡틴 실데이터를 기대값 근거로 쓰지 않는다.
  */
 const NOW = Math.floor(Date.UTC(2026, 9, 13, 0, 0, 0) / 1000);
@@ -298,9 +298,11 @@ describe('r15-core-tbti: ② N/H', () => {
       ]),
     ).axes[1];
     // 확정 1200/3600=33.3% · 없음 600/3600=16.7% → N_max 50 → 걸침.
+    // F-15: 구간 걸침 보류 ②축도 nInterval을 싣는다(short_sample·pending은 null 유지).
     expect(axis.primary).toBe('?');
     expect(axis.heldReasonKey).toBe('interval_cross');
-    expect(axis.nInterval).toBeNull();
+    expect(axis.nInterval?.min).toBeCloseTo((1200 / 3600) * 100, 12);
+    expect(axis.nInterval?.max).toBeCloseTo(50, 12);
   });
 
   it('H≥30 걸침이면 secondary H · H<30 걸침이면 secondary null', () => {
@@ -425,7 +427,7 @@ describe('r15-core-tbti: ② N/H', () => {
     );
   });
 
-  it('D-14형: 첫 스냅샷이 W 이후면 기준선 total 전액 미확정 · W 이내 deltas만', () => {
+  it('D-14형: 첫 스냅샷이 W 이후면 기준선 total 전액 미확정 · 확정 기여 0(v1.1)', () => {
     const release = dayOf(2020);
     const cutoff = cutoffOf(release);
     const firstObserved = cutoff + DAY;
@@ -454,12 +456,62 @@ describe('r15-core-tbti: ② N/H', () => {
       ],
     });
     const axis = judgeTbti(inputOf([d14, makeFacts('a'), makeFacts('b')])).axes[1];
-    // 확정 기여 300(W 이내 delta만, 5000 전액은 미확정) · d14 나머지는 증거 없음 버킷.
+    // v1.1: 첫 스냅샷이 W 밖이면 deltas 무관 전액 미확정 → d14 확정 0, 증거 없음 버킷.
     const row = axis.evidence.find((entry) => entry.key.externalId === 'd14');
     expect(row?.reasonKey).toBe('tbti.reason.nh.no_evidence');
-    // N_min = (600 + 600 + 300) / 2000 = 75 → N. 전액이 섞였으면 100이 된다.
+    // N_min = (600 + 600 + 0) / 2000 = 60 → N.
     expect(axis.primary).toBe('N');
-    expect(axis.primaryPct).toBeCloseTo(75, 12);
+    expect(axis.primaryPct).toBeCloseTo(60, 12);
+  });
+
+  it('F-05: isBaseline=false 신작도 첫 스냅샷이 W 안이면 전액 확정(기준선 여부 무관)', () => {
+    const release = dayOf(2024);
+    const cutoff = cutoffOf(release);
+    const fresh = makeFacts('fresh', {
+      releaseDate: release,
+      confirmedMinutes: 600,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: null,
+      wishlist: [],
+      coverage: { firstObservedAt: release + DAY, lastObservedAt: release + 2 * DAY, gapDays: [], isBaseline: false },
+      snapshots: [
+        {
+          observedAt: release + DAY,
+          observedDay: '2024-01-02',
+          totalMinutes: 100,
+          deltaMinutes: null,
+          elapsedSeconds: null,
+          isReview: false,
+        },
+      ],
+      deltas: [],
+    });
+    const axis = judgeTbti(inputOf([fresh, makeFacts('a'), makeFacts('b')])).axes[1];
+    expect(axis.primary).toBe('N');
+    expect(axis.primaryPct).toBeCloseTo(100, 12);
+    expect(axis.evidence.find((row) => row.key.externalId === 'fresh')?.reasonKey).toBe(
+      'tbti.reason.nh.confirmed_snapshot',
+    );
+  });
+
+  it('F-43: lastPlayed 0은 NULL 취급 — ③ 증거에서 확정되지 않는다', () => {
+    const release = dayOf(2024);
+    const zero = makeFacts('zero', {
+      releaseDate: release,
+      confirmedMinutes: 600,
+      achievements: [],
+      achievementState: 'not_collected',
+      achievementSummary: null,
+      lastPlayed: 0,
+      wishlist: [],
+    });
+    const axis = judgeTbti(inputOf([zero, makeFacts('a'), makeFacts('b')])).axes[1];
+    // 0을 W 안으로 보면 lastplayed 확정이 되지만, NULL 취급이면 증거 없음이다.
+    expect(axis.evidence.find((row) => row.key.externalId === 'zero')?.reasonKey).toBe(
+      'tbti.reason.nh.no_evidence',
+    );
   });
 
   it('D-14형 late 변형: W 이후 첫 스냅샷 + min unlocked_at > W → late', () => {
@@ -679,7 +731,8 @@ describe('r15-core-tbti: ③ O/A', () => {
     expect(axis.heldReasonKey).toBe('short_sample');
     expect(axis.excludedCount).toBe(2);
     expect(axis.caveats).toContainEqual({ code: 'genre_unknown', count: 2 });
-    expect(axis.caveats).toContainEqual({ code: 'genre_tag_unknown', count: 2 });
+    // F-30: genre_tag_unknown 방출 제거 — genre_unknown 1코드로만.
+    expect(axis.caveats.map((caveat) => caveat.code)).not.toContain('genre_tag_unknown');
   });
 });
 
@@ -771,6 +824,37 @@ describe('r15-core-tbti: ④ C/L', () => {
     expect(axis.caveats).toContainEqual({ code: 'ach_partial', count: 3 });
   });
 
+  it('F-39: ready 1편이면 (b) 없이 2재료 평균 + ach_partial + achMean null', () => {
+    const games = [
+      makeFacts('a'),
+      makeFacts('b', { achievementState: 'disabled' }),
+      makeFacts('c', { achievementState: 'not_collected', achievementSummary: null, achievements: [] }),
+    ];
+    const axis = judgeTbti(inputOf(games)).axes[3];
+    // target 3편 → 표본 충족. ready 1편 < 2 → (b) 미사용.
+    expect(axis.held).toBe(false);
+    expect(axis.chips).toContain('ach_partial');
+    expect(axis.achReflected).toEqual({ got: 1, of: 3 });
+    expect(axis.caveats).toContainEqual({ code: 'ach_partial', count: 1 });
+    if (axis.metrics === null || axis.metrics.kind !== 'cl') throw new Error('④ metrics 없음');
+    expect(axis.metrics.achMean).toBeNull();
+  });
+
+  it('F-27: of는 >0분·achievementState empty 아님만 — 0분·empty는 제외', () => {
+    const games = [
+      makeFacts('a'),
+      makeFacts('b'),
+      makeFacts('c', { achievementState: 'empty', achievementSummary: null, achievements: [] }),
+      makeFacts('d', { confirmedMinutes: 0, achievementState: 'ready' }),
+    ];
+    const axis = judgeTbti(inputOf(games)).axes[3];
+    // target = a,b,c(d 0분 제외). of = a,b(c empty 제외) = 2, got = 2 → 전부 반영, 칩 없음.
+    expect(axis.excludedCount).toBe(1);
+    expect(axis.chips).not.toContain('ach_partial');
+    expect(axis.chips).not.toContain('ach_not_reflected');
+    expect(axis.achReflected).toBeUndefined();
+  });
+
   it('전부 ready면 칩 없음 + baseline 표시', () => {
     const axis = judgeTbti(inputOf([makeFacts('a'), makeFacts('b'), makeFacts('c')])).axes[3];
     expect(axis.chips).not.toContain('ach_not_reflected');
@@ -849,5 +933,30 @@ describe('r15-core-tbti: 합성·결정성', () => {
   it('② evidence 동률은 key 오름차순', () => {
     const axis = judgeTbti(inputOf(richGames())).axes[1];
     expect(axis.evidence.map((row) => row.key.externalId)).toEqual(['a', 'b', 'h1', 'h2']);
+  });
+
+  it('v1.1: metrics 4축 원값', () => {
+    const result = judgeTbti(inputOf(richGames()));
+    const [a1, a2, a3, a4] = result.axes;
+    expect(a1.metrics).toEqual({ kind: 'ir', iGames: 4, rGames: 0, judgedGames: 4 });
+    expect(a2.metrics).toEqual({
+      kind: 'nh',
+      bundles: [{ id: 'core:hollow knight', games: 2, minutes: 1200 }],
+      nMin: 100,
+      nMax: 100,
+    });
+    expect(a3.metrics).toEqual({ kind: 'oa', hhi: 1, g: 1 });
+    expect(a4.metrics).toEqual({ kind: 'cl', medianHours: 10, achMean: 80, quitCount: 0, quitDenom: 4 });
+  });
+
+  it('v1.1: gameLetters 근거행 귀속(제안 규칙) + aliasStatus 입력 그대로', () => {
+    const result = judgeTbti(inputOf(richGames()));
+    expect(result.aliasStatus).toBe('broken');
+    expect(result.gameLetters.map((row) => row.key.externalId)).toEqual(['a', 'b', 'h1', 'h2']);
+    // ① 태그 I · ② 확정 N · ③④ 귀속 규칙 미정이라 null(PM 확정).
+    for (const row of result.gameLetters) {
+      expect(row.letters).toEqual(['I', 'N', null, null]);
+    }
+    expect(judgeTbti(inputOf(richGames(), { seriesAliases: MISSING })).aliasStatus).toBe('missing');
   });
 });

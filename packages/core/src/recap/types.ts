@@ -8,13 +8,13 @@ import type { GameKey } from '../types.js';
 import type { AxisLetter, TbtiResult } from '../tbti/types.js';
 import type { GameFacts } from '../archive/types.js';
 
-/** R15-4 맹점 고지 코드 (전부 열거, plan-r15 초기 목록). */
+/** R15-4 맹점 고지 코드 (전부 열거, plan-r15 초기 목록). ③축 genre_tag_unknown 삭제 — 장르 미확인은 genre_unknown 1코드로만(F-30, v1.1). */
 export type CaveatCode =
   | 'observation_days' | 'hidden_excluded' | 'outside_steam_missing'
   | 'server_record_basis' | 'genre_unknown' | 'genre_multi_overlap'
   | 'timepoint_unknown' | 'rated_only' | 'release_unknown'
   | 'release_not_purchase' | 'tag_uncollected' | 'n_covered_ratio'
-  | 'n_achievements_off' | 'h_alias_file' | 'genre_tag_unknown'
+  | 'n_achievements_off' | 'h_alias_file'
   | 'ach_not_reflected' | 'ach_partial' | 'wishlist_toggle_off';
 
 /** count null = 개수 없음(상태형). */
@@ -27,7 +27,7 @@ export interface RecapSectionBase {
   caveats: Caveat[];
 }
 
-/** 01. totalMinutes·share 분모 = 숨김 제외 confirmedMinutes 합(확정). */
+/** 01. totalMinutes·share 분모 = 숨김 제외 confirmedMinutes 합(확정). 0분 게임 제외(F-22, v1.1). */
 export interface Recap01 extends RecapSectionBase {
   totalMinutes: number;
   /** 정렬 = minutes 내림차순, 동률 = key 오름차순, 5위 동점 전원 포함(확정 N6). */
@@ -41,12 +41,14 @@ export interface Recap02 extends RecapSectionBase {
   bars: { genreId: string; games: number }[];
 }
 
-/** 03. 모집단 = played(confirmedMinutes > 0)만(확정). 경계 하한 포함·상한 미포함(확정). */
+/** 03. 모집단 = played(confirmedMinutes > 0)만(확정). 경계 하한 포함·상한 미포함(확정). 화면 구간 라벨은 이 경계로(F-46, v1.1). */
 export interface Recap03 extends RecapSectionBase {
   /** 현 보유 수. */
   owned: number;
   /** 그 중 >0분. */
   played: number;
+  /** played 게임 confirmedMinutes 중앙값(분, played=0이면 null — 해석 문장 "한 게임당 중간값은 n시간"용, v1.1). */
+  medianMinutes: number | null;
   buckets: { code: 'lt2h' | 'h2_10' | 'h10_30' | 'h30_100' | 'gte100h'; games: number }[];
   /** 현 보유 중 0분. */
   unplayedKeys: GameKey[];
@@ -88,8 +90,8 @@ export interface TbtiCardSummary {
 }
 
 export interface LibraryRecap {
-  /** observedDays = owned 소스 ok run의 observedDay distinct 수(R20). 0건이면 0 + 관측 0일 띠 문구. firstObservedAt = epoch 초, null = 관측 0건. basis 렌더는 i18n. */
-  basis: { observedDays: number; firstObservedAt: number | null };
+  /** observedDays = owned 소스 ok run의 observedDay distinct 수(R20). rangeStart·rangeEnd = 관측일 min~max(YYYY-MM-DD, 둘 다 null = 관측 0건 — 띠 범위, F-19, v1.1). observedDays ≤ 1이면 "관측 0일" 취지 문구. firstObservedAt = epoch 초, null = 관측 0건. basis 렌더는 i18n. */
+  basis: { observedDays: number; rangeStart: string | null; rangeEnd: string | null; firstObservedAt: number | null };
   s01: Recap01;
   s02: Recap02;
   s03: Recap03;

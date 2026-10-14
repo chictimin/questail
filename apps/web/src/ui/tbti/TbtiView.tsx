@@ -117,7 +117,6 @@ const CAVEAT_KEYS: Record<Caveat['code'], TextKey> = {  observation_days: 'recap
   n_covered_ratio: 'recap.caveatNCoveredRatio',
   n_achievements_off: 'recap.caveatNAchievementsOff',
   h_alias_file: 'recap.caveatHAliasFile',
-  genre_tag_unknown: 'recap.caveatGenreTagUnknown',
   ach_not_reflected: 'recap.caveatAchNotReflected',
   ach_partial: 'recap.caveatAchPartial',
   wishlist_toggle_off: 'recap.caveatWishlistToggleOff',

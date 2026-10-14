@@ -346,7 +346,6 @@ ownership_status: "owned"
     caveatNCoveredRatio: 'N 판정 시간 비중',
     caveatNAchievementsOff: '업적 꺼짐',
     caveatHAliasFile: '별칭 묶음',
-    caveatGenreTagUnknown: '장르 미확인',
     caveatAchNotReflected: '업적 미반영',
     caveatAchPartial: '업적 부분 반영',
     caveatWishlistToggleOff: '찜 반영 꺼짐',

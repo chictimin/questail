@@ -1,5 +1,6 @@
 /**
- * T2 TBTI 판정 (계약 R15-5·R15-4, 동결 v1.0 + v1.0.1 델타).
+ * T2 TBTI 판정 (계약 R15-5·R15-4, v1.1: F-05 증거① 교체·F-15 nInterval·
+ * F-27 achReflected·F-30 genre 1코드·F-39 ready 2편·F-43 lastPlayed 0 + metrics·gameLetters·aliasStatus).
  * 순수 함수 — DB·FS·HTTP·Date.now·Math.random·apps/web import 0. series import는 core 내부라 허용.
  * 입력 TbtiJudgeInput.games는 hidden 포함 원본 — 내부에서 hidden 제외 후 집계한다(R15-2 ①).
  * 16유형 이름·리캡 섹션·웹은 범위 밖이다.
@@ -8,7 +9,7 @@
 import type { GameKey } from '../types.js';
 import type { GameFacts } from '../archive/types.js';
 import type { Caveat } from '../recap/types.js';
-import type { AxisLetter, TbtiAxis, TbtiJudgeInput, TbtiResult } from './types.js';
+import type { AxisLetter, ReasonKey, TbtiAxis, TbtiJudgeInput, TbtiResult } from './types.js';
 import { judgeSeriesBundles } from '../series/judge.js';
 import {
   TBTI_BASELINE_IMC2016_KEY,
@@ -40,21 +41,21 @@ const IR_I_SET = new Set(TBTI_IR_TAGS_I.map((tag) => tag.toLowerCase()));
 const IR_R_SET = new Set(TBTI_IR_TAGS_R.map((tag) => tag.toLowerCase()));
 
 /** i18n 키 제안 — ①축 행 사유. 값 정의는 범위 밖(웹 i18n). */
-export const TBTI_REASON_IR_I_ONLY = 'tbti.reason.ir.i_only';
-export const TBTI_REASON_IR_R_ONLY = 'tbti.reason.ir.r_only';
-export const TBTI_REASON_IR_BOTH = 'tbti.reason.ir.both';
+export const TBTI_REASON_IR_I_ONLY : ReasonKey = 'tbti.reason.ir.i_only';
+export const TBTI_REASON_IR_R_ONLY : ReasonKey = 'tbti.reason.ir.r_only';
+export const TBTI_REASON_IR_BOTH : ReasonKey = 'tbti.reason.ir.both';
 /** i18n 키 제안 — ②축 행 사유(게임별 N 분류). */
-export const TBTI_REASON_NH_CONFIRMED_SNAPSHOT = 'tbti.reason.nh.confirmed_snapshot';
-export const TBTI_REASON_NH_CONFIRMED_UNLOCK = 'tbti.reason.nh.confirmed_unlock';
-export const TBTI_REASON_NH_CONFIRMED_LASTPLAYED = 'tbti.reason.nh.confirmed_lastplayed';
-export const TBTI_REASON_NH_CONFIRMED_WISHLIST = 'tbti.reason.nh.confirmed_wishlist';
-export const TBTI_REASON_NH_LATE = 'tbti.reason.nh.late';
-export const TBTI_REASON_NH_NO_EVIDENCE = 'tbti.reason.nh.no_evidence';
+export const TBTI_REASON_NH_CONFIRMED_SNAPSHOT : ReasonKey = 'tbti.reason.nh.confirmed_snapshot';
+export const TBTI_REASON_NH_CONFIRMED_UNLOCK : ReasonKey = 'tbti.reason.nh.confirmed_unlock';
+export const TBTI_REASON_NH_CONFIRMED_LASTPLAYED : ReasonKey = 'tbti.reason.nh.confirmed_lastplayed';
+export const TBTI_REASON_NH_CONFIRMED_WISHLIST : ReasonKey = 'tbti.reason.nh.confirmed_wishlist';
+export const TBTI_REASON_NH_LATE : ReasonKey = 'tbti.reason.nh.late';
+export const TBTI_REASON_NH_NO_EVIDENCE : ReasonKey = 'tbti.reason.nh.no_evidence';
 /** i18n 키 제안 — ③축 행 사유. */
-export const TBTI_REASON_OA_GENRE = 'tbti.reason.oa.genre';
+export const TBTI_REASON_OA_GENRE : ReasonKey = 'tbti.reason.oa.genre';
 /** i18n 키 제안 — ④축 행 사유(업적 반영 게임 vs 시간만 반영 게임). */
-export const TBTI_REASON_CL_ACH_READY = 'tbti.reason.cl.ach_ready';
-export const TBTI_REASON_CL_HOURS_ONLY = 'tbti.reason.cl.hours_only';
+export const TBTI_REASON_CL_ACH_READY : ReasonKey = 'tbti.reason.cl.ach_ready';
+export const TBTI_REASON_CL_HOURS_ONLY : ReasonKey = 'tbti.reason.cl.hours_only';
 
 /** 결정적 키 순서 — platform → externalId 바이트 비교(localeCompare 금지, R15-6 T3와 동일 규칙). */
 function compareGameKey(a: GameKey, b: GameKey): number {
@@ -90,8 +91,11 @@ interface NhClass {
 }
 
 /**
- * R15-5 ② N 증거 순서(확정): ①관측 스냅샷 ②가장 이른 unlocked_at ≤ 출시+W
- * ③lastPlayed ≤ 출시+W, 보조 출시 전 찜(wishlistEnabled on일 때만).
+ * R15-5 ② N 증거 순서(확정): ①첫 성공 스냅샷 observedAt ≤ 출시+W(기준선 여부 무관, F-05)
+ * ②가장 이른 unlocked_at ≤ 출시+W ③lastPlayed ≤ 출시+W(0은 NULL, F-43),
+ * 보조 출시 전 찜(wishlistEnabled on일 때만).
+ * N 확정 시간(확정 — 캡틴 결정 1): 시작 증거가 있는 게임은 confirmedMinutes 전액을 확정으로 센다.
+ * "W 이후분은 분모에만" 규칙·v1.0.5 게이트(기준선total+deltas 상한)는 폐기한다.
  * fallback 3행(제안): ② 미달성·unlocked_at NULL 행 제외 후 min, 해당 없음이면 확정 기여 0 ·
  * ③ lastPlayed NULL이면 증거 없음 · 보조는 dateAdded non-null이면 그것, NULL이면 firstObservedAt.
  */
@@ -105,21 +109,13 @@ function classifyNh(
   if (cutoff === null || game.releaseDate === null) {
     return { confirmed: 0, late: 0, none: total, bucket: 'no_evidence', confirmedVia: null };
   }
-  // 증거 ① 확정 시간(확정): 첫 스냅샷 observedAt ≤ 출시+W일 때만 기준선 total 전액 + deltas 중 observedAt ≤ 출시+W인 증감 합.
-  // 기준선 = coverage.isBaseline인 게임의 첫 스냅샷 total. W 이후분은 분모에만 남는다.
-  let snapshotConfirmed = 0;
-  if (game.snapshots.length > 0 && game.coverage.isBaseline) {
-    const first = [...game.snapshots].sort((a, b) => a.observedAt - b.observedAt)[0];
+  // 증거 ①(확정): 그 게임의 첫 성공 스냅샷 observedAt ≤ 출시+W이면(기준선 여부 무관) 전액 확정.
+  if (game.snapshots.length > 0) {
+    const first = [...game.snapshots].sort((a, b) => a.observedAt - b.observedAt)[0] as GameFacts['snapshots'][number];
     if (first.observedAt <= cutoff) {
-      snapshotConfirmed += first.totalMinutes;
+      return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'snapshot' };
     }
   }
-  for (const delta of game.deltas) {
-    if (delta.observedAt <= cutoff) snapshotConfirmed += delta.deltaMinutes;
-  }
-  if (snapshotConfirmed < 0) snapshotConfirmed = 0;
-  if (snapshotConfirmed > total) snapshotConfirmed = total;
-  const rest = total - snapshotConfirmed;
 
   // 증거 ②: 미달성·unlocked_at NULL 행 제외 후 min.
   let earliestUnlock: number | null = null;
@@ -141,30 +137,43 @@ function classifyNh(
     }
   }
 
-  if (rest <= 0) {
-    return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'snapshot' };
-  }
   if (earliestUnlock !== null && earliestUnlock <= cutoff) {
     return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'unlock' };
   }
   // 증거 ③: lastPlayed ≤ 출시+W. lastPlayed NULL이면 증거 없음(R15).
+  // lastPlayed 0은 NULL과 같게 취급한다(F-43 — 미플레이 last_played = 0 저장).
   // lastPlayed > W 단독은 늦음 근거가 아니다(C13).
-  if (game.lastPlayed !== null && game.lastPlayed <= cutoff) {
+  const lastPlayed = game.lastPlayed === 0 ? null : game.lastPlayed;
+  if (lastPlayed !== null && lastPlayed <= cutoff) {
     return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'lastplayed' };
   }
   // 보조는 증거 없음→확정 재분류 용도로만. N 확정 시간 가산 없음(R15-7).
   if (preReleaseWish) {
     return { confirmed: total, late: 0, none: 0, bucket: 'confirmed', confirmedVia: 'wishlist' };
   }
-  // 늦음 = min unlocked_at > 출시+W인 게임의 시간(늦게 시작 추정, SPEC-tbti 79행).
+  // 늦음 = min unlocked_at > 출시+W인 게임의 전액 시간(늦게 시작 추정, SPEC-tbti 79행).
   if (earliestUnlock !== null && earliestUnlock > cutoff) {
-    return { confirmed: snapshotConfirmed, late: rest, none: 0, bucket: 'late', confirmedVia: null };
+    return { confirmed: 0, late: total, none: 0, bucket: 'late', confirmedVia: null };
   }
   // 증거 없음 = 그 외 비확정(증거 경로 전부 없음 — 첫 관측이 W 이후 시작 포함 · 출시일 미확인 포함).
-  return { confirmed: snapshotConfirmed, late: 0, none: rest, bucket: 'no_evidence', confirmedVia: null };
+  return { confirmed: 0, late: 0, none: total, bucket: 'no_evidence', confirmedVia: null };
 }
 
-function nhReasonKey(bucket: NhBucket, confirmedVia: NhClass['confirmedVia']): string {
+/** visible 전 게임의 ②축 분류 1회 계산(판정·gameLetters 공유, 결정성 유지). */
+function classifyAllNh(
+  visible: GameFacts[],
+  wishlistEnabled: boolean,
+): Map<string, NhClass> {
+  const classes = new Map<string, NhClass>();
+  for (const game of visible) {
+    const cutoff =
+      game.releaseDate === null ? null : game.releaseDate + TBTI_NEW_WINDOW_SECONDS;
+    classes.set(gameKeyOf(game), classifyNh(game, cutoff, wishlistEnabled));
+  }
+  return classes;
+}
+
+function nhReasonKey(bucket: NhBucket, confirmedVia: NhClass['confirmedVia']): ReasonKey {
   if (bucket === 'late') return TBTI_REASON_NH_LATE;
   if (bucket === 'no_evidence') return TBTI_REASON_NH_NO_EVIDENCE;
   switch (confirmedVia) {
@@ -180,6 +189,21 @@ function nhReasonKey(bucket: NhBucket, confirmedVia: NhClass['confirmedVia']): s
   }
 }
 
+/** ①축 게임별 태그 편(판정·gameLetters 공유). ready 판정은 호출자가 한다. */
+function tagSide(game: GameFacts): 'I' | 'R' | 'both' | 'none' {
+  const lowered = new Set(game.tags.map((entry) => entry.tag.toLowerCase()));
+  let hasI = false;
+  let hasR = false;
+  for (const tag of lowered) {
+    if (IR_I_SET.has(tag)) hasI = true;
+    if (IR_R_SET.has(tag)) hasR = true;
+  }
+  if (hasI && hasR) return 'both';
+  if (hasI) return 'I';
+  if (hasR) return 'R';
+  return 'none';
+}
+
 /** ①축. 최소 표본: 판정 게임 3편(집중3). */
 function judgeAxis1(
   visible: GameFacts[],
@@ -191,17 +215,11 @@ function judgeAxis1(
   const pieces: Piece[] = [];
   for (const game of visible) {
     if (game.tagStatus !== 'ready') continue;
-    const lowered = new Set(game.tags.map((entry) => entry.tag.toLowerCase()));
-    let hasI = false;
-    let hasR = false;
-    for (const tag of lowered) {
-      if (IR_I_SET.has(tag)) hasI = true;
-      if (IR_R_SET.has(tag)) hasR = true;
-    }
     // 둘 다 → 양쪽 0.5편씩(SPEC 확정). 사전에 하나도 안 걸리면 판정 제외 + excludedCount.
-    if (hasI && hasR) pieces.push({ game, iPiece: 0.5, rPiece: 0.5 });
-    else if (hasI) pieces.push({ game, iPiece: 1, rPiece: 0 });
-    else if (hasR) pieces.push({ game, iPiece: 0, rPiece: 1 });
+    const side = tagSide(game);
+    if (side === 'both') pieces.push({ game, iPiece: 0.5, rPiece: 0.5 });
+    else if (side === 'I') pieces.push({ game, iPiece: 1, rPiece: 0 });
+    else if (side === 'R') pieces.push({ game, iPiece: 0, rPiece: 1 });
   }
   const iPieces = pieces.reduce((sum, row) => sum + row.iPiece, 0);
   const rPieces = pieces.reduce((sum, row) => sum + row.rPiece, 0);
@@ -212,6 +230,13 @@ function judgeAxis1(
     { code: 'hidden_excluded', count: hiddenExcluded },
     { code: 'tag_uncollected', count: tagUncollected },
   ];
+  // metrics ①(확정 — 캡틴 결정 2): I/R 편 합(둘다는 0.5씩, 판정 원값) · 판정게임수.
+  const metrics = {
+    kind: 'ir' as const,
+    iGames: iPieces,
+    rGames: rPieces,
+    judgedGames: pieces.length,
+  };
   const base = {
     axis: 1 as const,
     nInterval: null,
@@ -219,6 +244,7 @@ function judgeAxis1(
     caveats,
     baselineKey: null,
     baselineTextKey: null,
+    metrics,
   };
   if (sample < TBTI_MIN_SAMPLE_IR_PIECES) {
     return {
@@ -282,6 +308,13 @@ function topIrEvidence(
   }));
 }
 
+/** ②축 metrics bundles 항목(확정 M1 — 상위 3묶음, 시간 내림차순·동률 bundleId 오름차순). */
+interface NhBundleStat {
+  id: string;
+  games: number;
+  minutes: number;
+}
+
 /** ②축. 최소 표본: 출시일 확인 게임 3편(시기3). ②축 similar 없음(절대 금지). */
 function judgeAxis2(
   visible: GameFacts[],
@@ -290,24 +323,18 @@ function judgeAxis2(
   wishlistEnabled: boolean,
   hMinutes: number,
   aliasBundleCount: number,
+  bundlesTop3: NhBundleStat[],
 ): TbtiAxis {
   const known = visible.filter((game) => game.releaseDate !== null);
   // excludedCount ② = 출시일 미확인 게임 수("증거 없음"은 분류라 제외 아님, R15-3).
   const excludedCount = visible.length - known.length;
-  const classes = new Map<string, NhClass>();
+  const classes = classifyAllNh(visible, wishlistEnabled);
   let confirmedSum = 0;
-  let lateSum = 0;
   let noneSum = 0;
-  for (const game of visible) {
-    const cutoff =
-      game.releaseDate === null ? null : game.releaseDate + TBTI_NEW_WINDOW_SECONDS;
-    const cls = classifyNh(game, cutoff, wishlistEnabled);
-    classes.set(gameKeyOf(game), cls);
+  for (const cls of classes.values()) {
     confirmedSum += cls.confirmed;
-    lateSum += cls.late;
     noneSum += cls.none;
   }
-  void lateSum;
   // 분모 "전체 시간"(확정): 숨김 제외 confirmedMinutes 합.
   const nMin = totalMinutes > 0 ? (confirmedSum / totalMinutes) * 100 : 0;
   const nMax = totalMinutes > 0 ? ((confirmedSum + noneSum) / totalMinutes) * 100 : 0;
@@ -341,6 +368,13 @@ function judgeAxis2(
       metric: { value: row.game.confirmedMinutes / 60, unit: 'hours' as const },
       reasonKey: nhReasonKey(row.cls.bucket, row.cls.confirmedVia),
     }));
+  // metrics ②(확정 — 캡틴 결정 2): 상위 3묶음 + N 구간 원값.
+  const metrics = {
+    kind: 'nh' as const,
+    bundles: bundlesTop3,
+    nMin,
+    nMax,
+  };
   const base = {
     axis: 2 as const,
     excludedCount,
@@ -348,10 +382,10 @@ function judgeAxis2(
     baselineKey: null,
     baselineTextKey: null,
     evidence,
+    metrics,
   };
   if (known.length < TBTI_MIN_SAMPLE_NH_KNOWN) {
-    // held면 nInterval null — T1 toCardSummary가 ② mini에 nInterval.min을 그대로 싣고
-    // R16은 `?`축 mini null이라 held 축의 구간은 싣지 않는다(리뷰 M1 통과).
+    // short_sample 보류는 nInterval null 유지(F-15 — interval_cross만 싣는다).
     return {
       ...base,
       primary: '?',
@@ -395,7 +429,8 @@ function judgeAxis2(
       heldReasonKey: null,
     };
   }
-  // N=? (구간이 경계에 걸침). H≥30이면 secondary H 병기(O10).
+  // N=? (구간이 경계에 걸침). 구간 걸침 보류 ②축도 nInterval을 싣는다(F-15, H 작은 줄 유지).
+  // short_sample 보류·전체 보류(pending)는 null 유지.
   if (hPct >= TBTI_H_BOUNDARY_PCT) {
     return {
       ...base,
@@ -403,7 +438,7 @@ function judgeAxis2(
       primaryPct: null,
       secondary: 'H',
       secondaryPct: hPct,
-      nInterval: null,
+      nInterval: { min: nMin, max: nMax },
       chips: [],
       held: true,
       heldReasonKey: 'interval_cross',
@@ -415,7 +450,7 @@ function judgeAxis2(
     primaryPct: null,
     secondary: null,
     secondaryPct: null,
-    nInterval: null,
+    nInterval: { min: nMin, max: nMax },
     chips: [],
     held: true,
     heldReasonKey: 'interval_cross',
@@ -436,9 +471,8 @@ function judgeAxis3(
   const excludedCount = visible.length - known.length;
   const caveats: Caveat[] = [
     { code: 'hidden_excluded', count: hiddenExcluded },
+    // 장르 미확인은 genre_unknown 1코드로만 싣는다(F-30 — genre_tag_unknown 방출 제거).
     { code: 'genre_unknown', count: excludedCount },
-    // ③축에 태그를 쓰지 않으므로 장르 미확인 n만 세운다(R15-4).
-    { code: 'genre_tag_unknown', count: excludedCount },
   ];
   const evidence = [...known]
     .sort(
@@ -451,28 +485,8 @@ function judgeAxis3(
       metric: { value: row.genreIds.length, unit: 'count' as const },
       reasonKey: TBTI_REASON_OA_GENRE,
     }));
-  const base = {
-    axis: 3 as const,
-    nInterval: null,
-    excludedCount,
-    caveats,
-    baselineKey: null,
-    baselineTextKey: null,
-    evidence,
-  };
-  if (known.length < TBTI_MIN_SAMPLE_OA_KNOWN) {
-    return {
-      ...base,
-      primary: '?',
-      primaryPct: null,
-      secondary: null,
-      secondaryPct: null,
-      chips: [],
-      held: true,
-      heldReasonKey: 'short_sample',
-    };
-  }
   // share 정의(확정 구조): 장르 배정 총수 분모(겹침 명시). HHI 본식(확정 구조, C11): HHI = Σ share_g².
+  // metrics ③(확정 — 캡틴 결정 2): HHI 원값 · 장르 종류 수. held(표본 미달)에도 싣는다.
   const assignments = known.reduce((sum, row) => sum + row.genreIds.length, 0);
   const counts = new Map<string, number>();
   for (const row of known) {
@@ -486,6 +500,29 @@ function judgeAxis3(
   for (const count of counts.values()) {
     const share = count / assignments;
     hhi += share * share;
+  }
+  const metrics = { kind: 'oa' as const, hhi, g: distinct };
+  const base = {
+    axis: 3 as const,
+    nInterval: null,
+    excludedCount,
+    caveats,
+    baselineKey: null,
+    baselineTextKey: null,
+    evidence,
+    metrics,
+  };
+  if (known.length < TBTI_MIN_SAMPLE_OA_KNOWN) {
+    return {
+      ...base,
+      primary: '?',
+      primaryPct: null,
+      secondary: null,
+      secondaryPct: null,
+      chips: [],
+      held: true,
+      heldReasonKey: 'short_sample',
+    };
   }
   // 변환식(제안): A_pct = (1 − HHI_norm) × 100. G=1(완전 원툴) → A=0 고정(C11).
   let aPct: number;
@@ -538,46 +575,54 @@ function judgeAxis4(
   const hours = target
     .map((game) => game.confirmedMinutes / 60)
     .sort((a, b) => a - b);
+  let medianHours = 0;
   let scoreA = 0;
   if (hours.length > 0) {
     const mid = Math.floor(hours.length / 2);
-    const median =
+    medianHours =
       hours.length % 2 === 1
         ? (hours[mid] as number)
         : ((hours[mid - 1] as number) + (hours[mid] as number)) / 2;
     scoreA = Math.min(
       100,
-      (100 * Math.log10(1 + median)) / Math.log10(1 + TBTI_MEDIAN_CAP_HOURS),
+      (100 * Math.log10(1 + medianHours)) / Math.log10(1 + TBTI_MEDIAN_CAP_HOURS),
     );
   }
   // (b) 업적 달성률 점수 = ready 게임별 달성률의 산술평균(母집단 = ready, C10).
+  // ④ 업적 재료는 ready 게임 2편 이상일 때만 쓴다. 미만이면 2재료(a·c) 평균 + ach_partial(F-39).
   const readyTarget = target.filter((game) => game.achievementState === 'ready');
   const rates: number[] = [];
   for (const game of readyTarget) {
     const rate = achievementRate(game);
     if (rate !== null) rates.push(rate);
   }
+  const useAch = readyTarget.length >= TBTI_MIN_SAMPLE_CL_READY && rates.length > 0;
+  const achMean = useAch
+    ? rates.reduce((sum, rate) => sum + rate, 0) / rates.length
+    : null;
   // (c) 그만둔 비율 역점수. 그만둔 = confirmedMinutes < 2시간かつlastPlayed가 90일 전(확정 N3).
-  // lastPlayed NULL이면 최근성 미충족 → 그만둠 아님(R15).
+  // lastPlayed NULL이면 최근성 미충족 → 그만둠 아님(R15). lastPlayed 0은 NULL과 같게 취급(F-43).
   const quitCutoff = now - TBTI_QUIT_RECENCY_SECONDS;
   let quitCount = 0;
   for (const game of target) {
+    const lastPlayed = game.lastPlayed === 0 ? null : game.lastPlayed;
     if (
       game.confirmedMinutes < TBTI_QUIT_MINUTES &&
-      game.lastPlayed !== null &&
-      game.lastPlayed <= quitCutoff
+      lastPlayed !== null &&
+      lastPlayed <= quitCutoff
     ) {
       quitCount += 1;
     }
   }
   const scoreC = target.length > 0 ? 100 - (quitCount / target.length) * 100 : 0;
-  // of = 숨김 제외 보유 게임 수, got = 그 중 ready 수(디자인 「103/123편 반영」과 정합).
-  const got = visible.filter((game) => game.achievementState === 'ready').length;
-  const achReflected = { got, of: visible.length };
-  // off/실패/미수집 게임은 (b)에서 빼고 남은 2개 재료(a·c) 평균 + 칩·안내(확정).
-  const score = rates.length > 0
-    ? (scoreA + rates.reduce((sum, rate) => sum + rate, 0) / rates.length + scoreC) / 3
-    : (scoreA + scoreC) / 2;
+  // achReflected(F-27): of = 숨김 제외 · 플레이한(>0분) · 업적이 있는(achievementState empty 아님) 게임 수,
+  // got = 그중 ready. ach_partial 표시는 got/of 둘 다(F-30 — count = got).
+  const ofGames = target.filter((game) => game.achievementState !== 'empty');
+  const of = ofGames.length;
+  const got = ofGames.filter((game) => game.achievementState === 'ready').length;
+  const achReflected = { got, of };
+  // off/실패/미수집 게임의 업적률은 0%로 바꾸지 않고 남은 2개 재료(a·c) 평균 + 칩·안내(확정).
+  const score = useAch && achMean !== null ? (scoreA + achMean + scoreC) / 3 : (scoreA + scoreC) / 2;
   const evidence = [...target]
     .sort(
       (a, b) => b.confirmedMinutes - a.confirmedMinutes || compareGameKey(a.key, b.key),
@@ -591,14 +636,23 @@ function judgeAxis4(
           ? TBTI_REASON_CL_ACH_READY
           : TBTI_REASON_CL_HOURS_ONLY,
     }));
-  // 최소 표본 "업적 반영 2편" = ready 2편(달성률 산출 가능 기준, 제안).
+  // 최소 표본 "업적 반영 2편" = ready 2편(F-39) · 대리 3편 = 대상 게임 3편.
   const sampleOk =
-    rates.length >= TBTI_MIN_SAMPLE_CL_READY || target.length >= TBTI_MIN_SAMPLE_CL_PROXY;
+    readyTarget.length >= TBTI_MIN_SAMPLE_CL_READY || target.length >= TBTI_MIN_SAMPLE_CL_PROXY;
+  // metrics ④(확정 — 캡틴 결정 2): 중앙값 시간 · 업적 평균(2재료 판정이면 null) · 그만둠 수/분모.
+  const metrics = {
+    kind: 'cl' as const,
+    medianHours,
+    achMean,
+    quitCount,
+    quitDenom: target.length,
+  };
   const base = {
     axis: 4 as const,
     nInterval: null,
     excludedCount,
     evidence,
+    metrics,
   };
   if (!sampleOk) {
     return {
@@ -610,6 +664,7 @@ function judgeAxis4(
       chips: [],
       held: true,
       heldReasonKey: 'short_sample',
+      // held(표본 미달)는 판정이 없으므로 achMean null — medianHours·quitCount·quitDenom은 원값 그대로.
       caveats: [{ code: 'hidden_excluded', count: hiddenExcluded }],
       baselineKey: null,
       baselineTextKey: null,
@@ -627,7 +682,7 @@ function judgeAxis4(
   let baselineTextKey: string | null = TBTI_BASELINE_IMC2016_TEXT_KEY;
   let caveats: Caveat[];
   let reflected: { got: number; of: number } | undefined;
-  if (rates.length === 0) {
+  if (got === 0) {
     // 업적 미반영이면 baseline 생략(R15-3).
     chips.push('ach_not_reflected');
     baselineKey = null;
@@ -636,8 +691,8 @@ function judgeAxis4(
       { code: 'hidden_excluded', count: hiddenExcluded },
       { code: 'ach_not_reflected', count: null },
     ];
-  } else if (readyTarget.length < target.length) {
-    // 부분 반영(ach_partial)도 baseline 표시(R15-3).
+  } else if (!useAch || got < of) {
+    // 부분 반영(ach_partial)도 baseline 표시(R15-3). ready 2편 미만(F-39)도 2재료 + ach_partial.
     chips.push('ach_partial');
     reflected = achReflected;
     caveats = [
@@ -664,6 +719,56 @@ function judgeAxis4(
 }
 
 /**
+ * gameLetters 귀속(PM 확정 — ③④는 귀속 규칙 미정이라 null, 지어내지 않는다).
+ * - ① 게임 태그 편: I만→I · R만→R · 둘 다→축 우세편(보류면 ?) · 판정 제외(tagStatus 미ready·사전 빗나감)→?
+ * - ② 게임 버킷: confirmed→N · late/no_evidence→H(N 아님=H 준용) · 출시일 미확인→?
+ * - ③④: null.
+ * 대상 = 4축 evidence 합집합(근거 행 게임별), 정렬 = key 오름차순(결정성).
+ */
+function buildGameLetters(
+  visible: GameFacts[],
+  axes: [TbtiAxis, TbtiAxis, TbtiAxis, TbtiAxis],
+  classes: Map<string, NhClass>,
+): TbtiResult['gameLetters'] {
+  const keySet = new Map<string, GameKey>();
+  for (const axis of axes) {
+    for (const row of axis.evidence) {
+      keySet.set(itemKeyOf(row.key), row.key);
+    }
+  }
+  const byKey = new Map<string, GameFacts>();
+  for (const game of visible) {
+    byKey.set(gameKeyOf(game), game);
+  }
+  const axis1Primary = axes[0].primary;
+  const rows: TbtiResult['gameLetters'] = [];
+  for (const [id, key] of [...keySet.entries()].sort((a, b) =>
+    a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0,
+  )) {
+    const game = byKey.get(id);
+    if (game === undefined) continue;
+    let first: AxisLetter = '?';
+    if (game.tagStatus === 'ready') {
+      const side = tagSide(game);
+      if (side === 'I') first = 'I';
+      else if (side === 'R') first = 'R';
+      else if (side === 'both') {
+        first = axis1Primary === 'I' || axis1Primary === 'R' ? axis1Primary : '?';
+      }
+    }
+    let second: AxisLetter = '?';
+    if (game.releaseDate !== null) {
+      const cls = classes.get(id);
+      if (cls !== undefined) {
+        second = cls.bucket === 'confirmed' ? 'N' : 'H';
+      }
+    }
+    rows.push({ key, letters: [first, second, null, null] });
+  }
+  return rows;
+}
+
+/**
  * TBTI 판정 본체 (계약 R15-5·R15-4).
  * T3 소비: judgeSeriesBundles({ games, seriesAliases }) 1회.
  * H 분자 = size≥2 묶음 귀속 게임 시간 합. items key→bundleId 매핑 사용.
@@ -683,16 +788,40 @@ export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
       .filter((item) => hBundleIds.has(item.bundleId))
       .map((item) => itemKeyOf(item.key)),
   );
+  const visibleByKey = new Map<string, GameFacts>();
+  for (const game of visible) {
+    visibleByKey.set(gameKeyOf(game), game);
+  }
   const hMinutes = visible
     .filter((game) => hKeys.has(gameKeyOf(game)))
     .reduce((sum, game) => sum + game.confirmedMinutes, 0);
+  // metrics ② bundles(확정 M1): size≥2 묶음만, 시간 내림차순·동률 bundleId 오름차순 상위 3.
+  // games = 숨김 제외 귀속 게임 수 · minutes = confirmedMinutes 합(분, 원값).
+  const bundlesTop3: NhBundleStat[] = series.bundles
+    .filter((bundle) => bundle.size >= 2)
+    .map((bundle) => {
+      let bundleGames = 0;
+      let bundleMinutes = 0;
+      for (const key of bundle.keys) {
+        const game = visibleByKey.get(itemKeyOf(key));
+        if (game !== undefined) {
+          bundleGames += 1;
+          bundleMinutes += game.confirmedMinutes;
+        }
+      }
+      return { id: bundle.bundleId, games: bundleGames, minutes: bundleMinutes };
+    })
+    .sort((a, b) => b.minutes - a.minutes || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .slice(0, 3);
 
-  let axes: [TbtiAxis, TbtiAxis, TbtiAxis, TbtiAxis] = [
+  const classes = classifyAllNh(visible, wishlistEnabled);
+  const axes: [TbtiAxis, TbtiAxis, TbtiAxis, TbtiAxis] = [
     judgeAxis1(visible, hiddenExcluded),
-    judgeAxis2(visible, hiddenExcluded, totalMinutes, wishlistEnabled, hMinutes, series.aliasBundleCount),
+    judgeAxis2(visible, hiddenExcluded, totalMinutes, wishlistEnabled, hMinutes, series.aliasBundleCount, bundlesTop3),
     judgeAxis3(visible, hiddenExcluded),
     judgeAxis4(visible, hiddenExcluded, now),
   ];
+  const gameLetters = buildGameLetters(visible, axes, classes);
 
   // 전체 보류: 숨김 제외 confirmedMinutes 합 < 300분(R22 확정).
   if (totalMinutes < TBTI_PENDING_NEED_MINUTES) {
@@ -719,6 +848,8 @@ export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
       pending: true,
       pendingHours: { have: totalMinutes, need: TBTI_PENDING_NEED_MINUTES },
       caveats: resultCaveats(hiddenExcluded, ownedObservedDays),
+      gameLetters,
+      aliasStatus: seriesAliases.status,
     };
   }
 
@@ -729,6 +860,8 @@ export function judgeTbti(input: TbtiJudgeInput): TbtiResult {
     // 비보류면 pendingHours null(R22).
     pendingHours: null,
     caveats: resultCaveats(hiddenExcluded, ownedObservedDays),
+    gameLetters,
+    aliasStatus: seriesAliases.status,
   };
 }
 

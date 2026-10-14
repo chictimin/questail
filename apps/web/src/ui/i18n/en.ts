@@ -346,7 +346,6 @@ ownership_status: "owned"
     caveatNCoveredRatio: 'Hours used for New',
     caveatNAchievementsOff: 'Achievements off',
     caveatHAliasFile: 'Alias groups',
-    caveatGenreTagUnknown: 'Genre unknown',
     caveatAchNotReflected: 'Achievements unreflected',
     caveatAchPartial: 'Achievements partial',
     caveatWishlistToggleOff: 'Wishlist off',

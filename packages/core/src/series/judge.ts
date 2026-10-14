@@ -1,6 +1,6 @@
 /**
- * T3 시리즈 판별 — 묶음 판정 (계약 R15-6, 동결 v1.0).
- * 별칭 조회 = ③ 숫자 통일 후 정규화명 전체 정확 일치, 미스면 ④ 코어 추출. 접두 매칭 금지(C15).
+ * T3 시리즈 판별 — 묶음 판정 (계약 R15-6, 동결 v1.0 + F-20 2회 조회).
+ * 별칭 조회 = ③ 숫자 통일 후 정규화명 전체 정확 일치 → 미스면 코어로 한 번 더(둘 다 정확 일치, 접두 금지, C15).
  * 개발사 보조는 불리언 조건으로만 쓴다(점수 가산 금지, 확정 N5).
  * hidden 게임은 입력 단계에서 제외하고 제외 수를 반환에 포함한다(R15-2 ①).
  * DB·FS·HTTP·Date·Random·apps/web import 0.
@@ -46,6 +46,21 @@ function isSuffixDiffWithinOneToken(a: string, b: string): boolean {
     if (shorter[i] !== longer[i]) return false;
   }
   return true;
+}
+
+/** F-20 별칭 2회 조회 — 정규화명 전체 정확 일치 → 미스면 코어로 한 번 더(둘 다 정확 일치, 접두 금지). 빈 값은 미스로 취급. */
+function lookupSeriesAlias(
+  aliasMap: Record<string, string>,
+  normalized: string,
+  core: string,
+): string | undefined {
+  const full = aliasMap[normalized];
+  if (full !== undefined && full.length > 0) return full;
+  if (core !== normalized) {
+    const byCore = aliasMap[core];
+    if (byCore !== undefined && byCore.length > 0) return byCore;
+  }
+  return undefined;
 }
 
 export function judgeSeriesBundles(input: SeriesJudgeInput): SeriesJudgeResult {
@@ -96,8 +111,8 @@ export function judgeSeriesBundles(input: SeriesJudgeInput): SeriesJudgeResult {
         via: 'core' as SeriesBundleVia,
       };
     }
-    const aliasId = aliasMap[normalized];
-    if (aliasId !== undefined && aliasId.length > 0) {
+    const aliasId = lookupSeriesAlias(aliasMap, normalized, core);
+    if (aliasId !== undefined) {
       return { game, normalized, core, dev, bundleId: `alias:${aliasId}`, via: 'alias' };
     }
     return { game, normalized, core, dev, bundleId: `core:${core}`, via: 'core' };

@@ -54,7 +54,7 @@ const GENRES_KO_ONLY = new Map([
 ]);
 
 const RECAP: LibraryRecap = {
-  basis: { observedDays: 2, firstObservedAt: 1700000000 },
+  basis: { observedDays: 2, rangeStart: null, rangeEnd: null, firstObservedAt: 1700000000 },
   s01: {
     caveats: [],
     totalMinutes: 407760,
@@ -76,6 +76,7 @@ const RECAP: LibraryRecap = {
     caveats: [],
     owned: 123,
     played: 108,
+    medianMinutes: null,
     buckets: [
       { code: 'lt2h', games: 0 },
       { code: 'h2_10', games: 0 },
@@ -137,6 +138,7 @@ function axis(
     caveats: [],
     baselineKey: null,
     baselineTextKey: null,
+    metrics: null,
     ...extra,
   };
 }
@@ -155,6 +157,8 @@ const RESULT: TbtiResult = {
   ],
   pending: false,
   pendingHours: null,
+  gameLetters: [],
+  aliasStatus: 'missing',
   caveats: [
     { code: 'observation_days', count: 2 },
     { code: 'hidden_excluded', count: 0 },

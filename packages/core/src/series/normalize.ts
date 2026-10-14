@@ -26,7 +26,7 @@ export const SERIES_BUILTIN_ALIASES: Readonly<Record<string, string>> = {
 };
 
 /**
- * R15-6 「에디션 꼬리 목록」(확정, 판정 반영 — 7종, 대소문자 무시, 후치 절단).
+ * R15-6 「에디션 꼬리 목록」(확정 + F-41 Special Edition, 판정 반영 — 8종, 대소문자 무시, 후치 절단).
  * 비교는 ① 후 소문자 상태에서 한다.
  */
 export const SERIES_EDITION_TAILS: readonly string[] = [
@@ -35,6 +35,7 @@ export const SERIES_EDITION_TAILS: readonly string[] = [
   'complete edition',
   'deluxe edition',
   "director's cut",
+  'special edition',
   'remastered',
   'remake',
 ];
@@ -55,15 +56,24 @@ export const SERIES_ROMAN_I_TO_X: readonly string[] = [
 export const SERIES_CORE_SEPARATOR_PATTERN = /:|\s+-\s+|\(|–/;
 
 /**
- * R15-6 「개발사 보조」(확정 N5 — 보조만) — 개발사 정규화 시 단어 경계에서 제거하는 접미어.
+ * R15-6 「개발사 보조」(확정 N5 + F-41 Ltd — 보조만) — 개발사 정규화 시 단어 경계에서 제거하는 접미어.
  * Co 부분일치 금지 → 전부 단어 단위 정확 일치로만 제거한다.
  */
 export const SERIES_DEV_SUFFIX_WORDS: readonly string[] = [
-  'inc', 'llc', 'co', 'gmbh', 'studio', 'studios',
+  'inc', 'llc', 'ltd', 'co', 'gmbh', 'studio', 'studios',
 ];
 
 function collapseSpaces(s: string): string {
   return s.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * F-20 ②단계 후 끝 구분자·공백 trim — "Dark Souls: Remastered" 절단 뒤 "dark souls:" 잔류 방지.
+ * 자르는 문자 = ④ 코어 구분자 중 끝에 남을 수 있는 것(`:`·`-`·`(`·`–`) + 공백.
+ * ② 단계 안에서(③·④보다 먼저) 하므로 코어 추출과 순서 충돌 없음.
+ */
+function trimTrailingSeparators(s: string): string {
+  return collapseSpaces(s.replace(/[\s:\-(–]+$/, ''));
 }
 
 /** ① 소문자화. */
@@ -71,7 +81,7 @@ export function seriesLower(raw: string): string {
   return collapseSpaces(raw.toLowerCase());
 }
 
-/** ② 에디션 꼬리 제거(반복 적용 — "Deluxe Remastered"는 둘 다 제거, R14). 꼬리만 남은 경우(빈 문자열)는 자르지 않는다. */
+/** ② 에디션 꼬리 제거(반복 적용 — "Deluxe Remastered"는 둘 다 제거, R14). 꼬리만 남은 경우(빈 문자열)는 자르지 않는다. 절단·종료 시 F-20 끝 구분자·공백 trim. */
 export function seriesStripEditionTails(lowered: string): string {
   // 긴 꼬리 우선(같은 접미 공유 대비).
   const tails = [...SERIES_EDITION_TAILS].sort((a, b) => b.length - a.length);
@@ -86,13 +96,13 @@ export function seriesStripEditionTails(lowered: string): string {
         const boundaryOk =
           cur.length > tail.length && /[\s:,\-(–]/.test(cur[cur.length - tail.length - 1] ?? '');
         if (head.length > 0 && boundaryOk) {
-          cur = head;
+          cur = trimTrailingSeparators(head);
           cut = true;
           break;
         }
       }
     }
-    if (!cut) return cur;
+    if (!cut) return trimTrailingSeparators(cur);
   }
 }
 
@@ -102,9 +112,13 @@ function romanToArabic(token: string): string | null {
 }
 
 /**
- * ③ 숫자 통일(확정 N5).
- * - 로마 I~X 토큰 → 아라비아(XI~ 제외 — 토큰 전체 일치만 치환하므로 자동 제외).
+ * ③ 숫자 통일(확정 N5 + F-40).
+ * - 로마 I~X → 아라비아. XI~ 제외(토큰 전체 일치만 치환하므로 자동 제외).
+ * - F-40: 공백 분리 토큰 전체 일치 + 2글자 이상일 때만 통일.
+ *   "x-com"류 하이픈 결합 토큰은 통째로 비교라 제외, 한 글자 "i·v·x"
+ *   (I Am Bread의 I, Mega Man X의 X — 대명사·고유명사 오탐)는 제외.
  * - "Part N"·접미 " N" 동일 처리: "part" + (로마 I~X | 1~3자리 숫자) → 숫자만 남긴다.
+ *   ("Part X"처럼 part 뒤 1글자 로마는 수 맥락이 분명하므로 통일 유지.)
  * - 4자리 숫자(연도·고유번호, 예: Battlefield 2042)는 통일 제외.
  */
 export function seriesUnifyNumbers(stripped: string): string {
@@ -121,10 +135,13 @@ export function seriesUnifyNumbers(stripped: string): string {
     },
   );
   // 독립 로마 토큰 I~X → 아라비아. XI~는 매칭 자체가 안 된다.
-  const unified = partDropped.replace(
-    /\b(i|ii|iii|iv|v|vi|vii|viii|ix|x)\b/g,
-    (m) => romanToArabic(m) ?? m,
-  );
+  const unified = partDropped
+    .split(' ')
+    .map((token) => {
+      if (token.length < 2) return token;
+      return romanToArabic(token) ?? token;
+    })
+    .join(' ');
   return collapseSpaces(unified);
 }
 
