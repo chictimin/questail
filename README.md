@@ -15,22 +15,41 @@
 
 ## Prerequisites
 
-- Node.js >= 22.13
-- pnpm 10.28.2
+- Node.js >= 22.13 (22 LTS or 24 LTS recommended)
+  - On Node 25+, run `npm install -g corepack` first (Node 25 no longer bundles corepack).
+  - No git needed. No separate pnpm install needed — pnpm comes through corepack, pinned to the exact version by the repo's `packageManager` field.
 - A Steam account that owns at least one game, plus a Steam Web API key
   - Issue a key on the [Steam API key page](https://steamcommunity.com/dev/apikey). Enter `localhost` in the domain name field, then agree to the [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) and register.
   - If the page blocks issuance ("limited user account" notice), the account cannot receive a key yet. See the [Steam support page](https://help.steampowered.com/en/faqs/view/71D3-35C2-AD96-AA3A).
 
 ## Quick Start
 
+Open [the releases page](https://github.com/chictimin/questail/releases), download **Source code (zip)** from the newest release at the top, unzip it, and open a terminal in the unzipped folder. Then:
+
 <!-- ci:run -->
 ```bash
-git clone https://github.com/chictimin/questail.git
-cd questail
-pnpm install && pnpm start
+corepack pnpm install && corepack pnpm start
 ```
 
 After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` redirects home when a Steam account is already connected, and to the connect screen otherwise. On the connect screen, enter the API key and a profile address or SteamID.
+
+> `corepack enable` is optional — it only adds `pnpm` shims to your PATH so you can type `pnpm` instead of `corepack pnpm`.
+>
+> On rare platforms without a prebuilt database binary, the install stops at `better-sqlite3`: run `pnpm approve-builds`, install the OS build tools (Xcode Command Line Tools on macOS, Visual Studio C++ workload + Python on Windows, Python + make + GCC on Linux), and install again.
+
+### Updating
+
+Recommended: keep data outside the app folder. Set `QUESTAIL_DATA_DIR` to a folder outside the release folders once — every version then uses that folder as is, and updating needs no data move. (The default location stays `data/<steamid64>/` under the app folder.)
+
+Otherwise, to move to a new version: stop the app, copy `data/<steamid64>/` from the old folder into the new folder's `data/`, and start the new version.
+
+### Developer alternative (git)
+
+```bash
+git clone https://github.com/chictimin/questail.git
+cd questail
+corepack pnpm install && corepack pnpm start
+```
 
 ## Collection Scope
 
@@ -87,7 +106,7 @@ After startup, open `http://127.0.0.1:4747` in a browser. The root address `/` r
 ## Stopping
 
 - Stop with Ctrl+C.
-- For background or service use, build once with `pnpm start`, then run the server directly:
+- For background or service use, build once with `corepack pnpm start`, then run the server directly:
 
 ```bash
 node apps/web/dist/src/server/run.js

@@ -15,22 +15,41 @@
 
 ## 사전 조건
 
-- Node.js >= 22.13
-- pnpm 10.28.2
+- Node.js >= 22.13 (22 LTS·24 LTS 권장)
+  - Node 25+면 `npm install -g corepack`을 먼저 실행한다(Node 25부터 corepack 미번들).
+  - git 불필요. pnpm 별도 설치 불필요 — corepack으로 오며 버전은 저장소의 `packageManager` 필드로 고정된다.
 - 게임을 1개 이상 보유한 Steam 계정과 Steam Web API 키
   - [Steam API 키 페이지](https://steamcommunity.com/dev/apikey)에서 발급한다. 도메인 이름 칸에 `localhost`를 입력하고 [Steam Web API 이용 약관](https://steamcommunity.com/dev/apiterms)에 동의한 뒤 등록한다.
   - 발급이 막히면("제한된 사용자 계정" 안내) 아직 키를 받을 수 없는 계정이다. [Steam 지원 페이지](https://help.steampowered.com/en/faqs/view/71D3-35C2-AD96-AA3A)를 확인한다.
 
 ## 빠른 시작
 
+[릴리스 페이지](https://github.com/chictimin/questail/releases) 맨 위 최신 릴리스에서 **Source code (zip)**을 받아 푼 뒤, 푼 폴더에서 터미널을 연다. 이후:
+
 <!-- ci:run -->
 ```bash
-git clone https://github.com/chictimin/questail.git
-cd questail
-pnpm install && pnpm start
+corepack pnpm install && corepack pnpm start
 ```
 
 기동 후 브라우저에서 `http://127.0.0.1:4747`을 연다. 루트 주소 `/`는 Steam 계정이 이미 연동돼 있으면 홈으로, 아니면 연동 화면으로 이동한다. 연동 화면에서 API 키와 프로필 주소 또는 SteamID를 입력한다.
+
+> `corepack enable`은 선택이다 — PATH에 `pnpm` 심을 깔아 `corepack pnpm` 대신 `pnpm`으로 치게 할 뿐이다.
+>
+> 드문 플랫폼(prebuilt 없는 DB 바이너리)에서 설치가 `better-sqlite3`에서 멈추면 `pnpm approve-builds`를 실행하고 OS 빌드 도구(macOS Xcode CLT, Windows VS C++ 워크로드 + Python, Linux Python + make + GCC)를 설치한 뒤 다시 설치한다.
+
+### 업데이트
+
+권장: 데이터를 앱 폴더 밖에 둔다. 릴리스 폴더 밖 경로에 `QUESTAIL_DATA_DIR`를 한 번 지정하면 이후 버전이 그 폴더를 그대로 쓰므로 데이터 이동이 필요 없다. (기본 위치는 앱 폴더 아래 `data/<steamid64>/` 그대로다.)
+
+그렇지 않으면 버전 교체 시: 앱 종료 → 구 폴더의 `data/<steamid64>/`를 새 폴더의 `data/` 아래로 복사 → 새 버전 기동.
+
+### 개발자용 대안 (git)
+
+```bash
+git clone https://github.com/chictimin/questail.git
+cd questail
+corepack pnpm install && corepack pnpm start
+```
 
 ## 수집 범위
 
@@ -87,7 +106,7 @@ pnpm install && pnpm start
 ## 종료
 
 - Ctrl+C로 종료한다.
-- 백그라운드·서비스 실행은 `pnpm start`로 한 번 빌드한 뒤 서버를 직접 실행한다:
+- 백그라운드·서비스 실행은 `corepack pnpm start`로 한 번 빌드한 뒤 서버를 직접 실행한다:
 
 ```bash
 node apps/web/dist/src/server/run.js
